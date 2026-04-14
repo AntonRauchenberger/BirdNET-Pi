@@ -5,8 +5,8 @@ Main features:
 - Multiple timers at the same time (by name)
 - Per-timer averages over multiple runs
 - Process RAM usage (RSS) and peaks during timed blocks
-- Approximate CPU usage based on process CPU-time
 - Confidence during prediction
+- Flash storage calculations
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ class BenchmarkService:
         self._total_disk_size_gb: float | None = None
         self._free_disk_size_gb: float | None = None
 
-        # Timer state:
+        # Timer states:
         # - _active_starts stores start snapshots for currently running timers
         # - _timers aggregates completed runs per timer name
         self._active_starts: dict[str, dict[str, Any]] = {}
@@ -126,8 +126,8 @@ class BenchmarkService:
         self.set_project_path(project_path)
         self.set_os_sizes()
 
-        # Confidence during prediction
-        self._confidence: float | None = None
+        self._detections: list | None = None
+        self._avg_total_confidence: float | None = None
 
         self._scenario = scenario
 
@@ -340,21 +340,36 @@ class BenchmarkService:
     ############################################################################ 
     # Accuracy
     ############################################################################
-    # def set_confidence_from_prediction(self, timestamps: list[str], result: dict[str, list]) -> float:
-    #     """
-    #     Compute average confidence from the prediction results
-    #     """
-    #     predictionsCounter = 0
-    #     confidenceSum = 0
+    def set_detections(self, detections: Any) -> None:
+        """Calculates and stores the average confidence and all detections"""
+        if not detections:
+            return
 
-    #     for timestamp in timestamps:
-    #         for c in result[timestamp]:
-    #             if float(c[1]) >= cfg.MIN_CONFIDENCE:
-    #                 predictionsCounter += 1
-    #                 confidenceSum += float(c[1])
-        
-    #     self._confidence = confidenceSum / predictionsCounter
+        total_conf = 0.0
+        count = 0
+        detections_list = []
+        for pred in detections:
+            confidence = pred.confidence if hasattr(pred, "confidence") else pred.get("confidence", 0.0)
+            scientific_name = pred.scientific_name if hasattr(pred, "scientific_name") else pred.get("scientific_name", "Unknown")
 
+            if confidence is None or scientific_name is None:
+                continue
+
+            total_conf += confidence
+            count += 1
+
+            detections_list.append({
+                "confidence": confidence,
+                "scientific_name": scientific_name
+            })
+
+        self._avg_total_confidence = total_conf / count if count > 0 else None        
+        self._detections = detections_list
+
+
+    ############################################################################ 
+    # Logging and output
+    ############################################################################
     # def write_to_csv_log(self, file_path: str = "ownTests/performance/metrics_log.csv") -> None:
     #     """
     #     Writes the current metrics into a CSV file (appends one row per run).
@@ -453,12 +468,20 @@ class BenchmarkService:
 
         print("")
         print("=RAM USAGE=")
-
-        # formated_confidence = self._confidence * 100.0
-        # print(f"Average Confidence: {formated_confidence:.2f} %")
-
         print(f"RAM Usage (current RSS): {ram_now_mb:.2f} MB")
         print(f"Peak RAM Usage: {peak_ram_usage:.2f} MB")
+
+        print("")
+        print("==ACCURACY==")
+        print(f"Total Average Confidence: {(self._avg_total_confidence * 100.0):.2f} %" if self._avg_total_confidence is not None else "Average Confidence: (unknown)")
+        print("Detections:")
+        if self._detections is not None:
+            for det in self._detections:
+                conf = det.get("confidence", 0.0)
+                sci_name = det.get("scientific_name", "Unknown")
+                print(f" - {sci_name}: {conf * 100:.2f} % confidence")
+        else:
+            print(f"Detections: {len(self._detections)}" if self._detections is not None else "Detections: (unknown)")
 
         # Common timers
         print("")

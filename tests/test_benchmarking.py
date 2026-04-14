@@ -57,7 +57,10 @@ class TestRunAnalysis(unittest.TestCase):
         # Stop analysis timer
         BENCHMARKING_SERVICE.stop_timer("total analysis")
 
-        # Log benchmark results
+        # Save detections
+        BENCHMARKING_SERVICE.set_detections(detections)
+    
+        # TODO Log benchmark results
         BENCHMARKING_SERVICE.print_summary()
 
         # Assertions
