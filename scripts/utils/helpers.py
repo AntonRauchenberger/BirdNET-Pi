@@ -6,6 +6,7 @@ import subprocess
 from collections import OrderedDict
 from configparser import ConfigParser
 from itertools import chain
+from .benchmarking import BenchmarkService
 
 _settings = None
 
@@ -14,6 +15,20 @@ DB_PATH = os.path.join(BASE_PATH, 'scripts/birds.db')
 MODEL_PATH = os.path.join(BASE_PATH, 'model')
 FONT_DIR = os.path.join(BASE_PATH, 'homepage/static')
 ANALYZING_NOW = os.path.expanduser('~/BirdSongs/StreamData/analyzing_now.txt')
+
+class BenchmarkingServiceProxy:
+    def __init__(self):
+        self._service: BenchmarkService | None = None
+
+    def set(self, service: BenchmarkService | None) -> None:
+        self._service = service
+
+    def __getattr__(self, name):
+        if self._service is None:
+            raise RuntimeError("Benchmarking service has not been initialized")
+        return getattr(self._service, name)
+
+BENCHMARKING_SERVICE: BenchmarkingServiceProxy = BenchmarkingServiceProxy()
 
 
 def get_font():

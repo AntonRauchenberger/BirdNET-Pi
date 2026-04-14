@@ -12,10 +12,11 @@ import inotify.adapters
 from inotify.constants import IN_CLOSE_WRITE
 
 from utils.analysis import load_global_model, run_analysis
-from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW
+from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, BENCHMARKING_SERVICE
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
     update_json_file
+from utils.benchmarking import BenchmarkService
 
 shutdown = False
 
@@ -33,6 +34,14 @@ def main():
     conf = get_settings()
     i = inotify.adapters.Inotify()
     i.add_watch(os.path.join(conf['RECS_DIR'], 'StreamData'), mask=IN_CLOSE_WRITE)
+
+    # Initialize benchmarking service
+    conf = get_settings()
+    model = conf['MODEL']
+    BENCHMARKING_SERVICE.set(
+        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'),
+                        scenario="Local Laptop")
+    )
 
     backlog = get_wav_files()
 
@@ -89,7 +98,10 @@ def process_file(file_name, report_queue):
         with open(ANALYZING_NOW, 'w') as analyzing:
             analyzing.write(file_name)
         file = ParseFileName(file_name)
+
+        BENCHMARKING_SERVICE.start_timer("total analysis")
         detections = run_analysis(file)
+
         # we join() to make sure te reporting queue does not get behind
         if not report_queue.empty():
             log.warning('reporting queue not yet empty')
@@ -98,6 +110,8 @@ def process_file(file_name, report_queue):
     except BaseException as e:
         stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
         log.exception(f'Unexpected error: {stderr}', exc_info=e)
+    finally:
+        BENCHMARKING_SERVICE.stop_timer("total analysis")
 
 
 def handle_reporting_queue(queue):
@@ -109,21 +123,37 @@ def handle_reporting_queue(queue):
 
         file, detections = msg
         try:
+            BENCHMARKING_SERVICE.start_timer("total reporting")
+
+            BENCHMARKING_SERVICE.start_timer("update json file")
             update_json_file(file, detections)
+            BENCHMARKING_SERVICE.stop_timer("update json file")
+
+            BENCHMARKING_SERVICE.start_timer("write to db and file")
             for detection in detections:
                 detection.file_name_extr = extract_detection(file, detection)
                 log.info('%s;%s', summary(file, detection), os.path.basename(detection.file_name_extr))
                 write_to_file(file, detection)
                 write_to_db(file, detection)
+            BENCHMARKING_SERVICE.stop_timer("write to db and file")
+
             apprise(file, detections)
+
+            BENCHMARKING_SERVICE.start_timer("soundscape POST to server")
             bird_weather(file, detections)
+            BENCHMARKING_SERVICE.stop_timer("soundscape POST to server")
+
             heartbeat()
             os.remove(file.file_name)
         except BaseException as e:
             stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
             log.exception(f'Unexpected error: {stderr}', exc_info=e)
+        finally:
+            BENCHMARKING_SERVICE.stop_timer("total reporting")
 
         queue.task_done()
+
+    # TODO Add logging
 
     # mark the 'None' signal as processed
     queue.task_done()

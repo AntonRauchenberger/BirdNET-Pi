@@ -1,14 +1,12 @@
 """
-Reusable monitoring / benchmarking utilities for BirdNET-Analyzer
+Reusable monitoring / benchmarking utilities for BirdNET-Pi
 
 Main features:
 - Multiple timers at the same time (by name)
 - Per-timer averages over multiple runs
 - Process RAM usage (RSS) and peaks during timed blocks
 - Approximate CPU usage based on process CPU-time
-- Estimated energy based on CPU-time (approximation; see `estimate_energy_joules`)
 - Confidence during prediction
-- Light_mode for benchmarking on small devices (controller, ...)
 """
 
 from __future__ import annotations
@@ -17,9 +15,10 @@ import os
 import time
 import datetime
 import threading
-import birdnet_analyzer.config as cfg
+import psutil
+# import birdnet_analyzer.config as cfg
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any
 
 
 def _bytes_to_mb(num_bytes: float) -> float:
@@ -96,23 +95,14 @@ class _TimerStats:
         return max((r.rss_end_bytes for r in self.runs), default=0)
 
 
-class MetricsService:
+class BenchmarkService:
     """
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, scenario: str = 'original', light_mode: bool = False, assumed_cpu_power_watts: float = 5.0) -> None:
-        # Var for enabling to two stage benchmarking
-        self._light_mode: bool = light_mode
-        
-        # Power is used for *estimated* energy. Default is a conservative small-device value.
-        self.assumed_cpu_power_watts = float(assumed_cpu_power_watts)
+    def __init__(self, *, model_path: str | None = None, scenario: str = 'original') -> None:
 
-        if not self._light_mode:
-            import psutil
-            self._proc = psutil.Process(os.getpid())
-        else:
-            self._proc = None
+        self._proc = psutil.Process(os.getpid())
 
         self._model_path: str | None = None
         self._model_size_mb: float | None = None
@@ -172,10 +162,7 @@ class MetricsService:
         """
         Current RAM usage (RSS: Resident Set Size) of the current Python process in MB.
         """
-        if not self._light_mode:
-            return _bytes_to_mb(self._proc.memory_info().rss)
-        else:
-            return self._get_ram_usage_edge()
+        return _bytes_to_mb(self._proc.memory_info().rss)
 
     def get_cpu_usage_percent(self, *, interval_s: float = 0.1) -> float:
         """
@@ -185,11 +172,6 @@ class MetricsService:
         - This uses psutil's sampling over a short interval.
         - Good for "current CPU usage now", not for measuring a specific block.
         """ 
-        if self._light_mode:
-            return 0.0  # not supported in light mode
-
-        import psutil
-
         # psutil returns a percent that can exceed 100 on multi-core, has to be normalized
         raw = self._proc.cpu_percent(interval=interval_s)
         cores = psutil.cpu_count(logical=True) or 1
@@ -205,6 +187,10 @@ class MetricsService:
             return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
         return 0.0
 
+
+    ############################################################################ 
+    # Latency
+    ############################################################################
     def start_timer(self, name: str) -> None:
         """
         Start a named timer.
@@ -218,15 +204,9 @@ class MetricsService:
 
         t0 = time.perf_counter() # wall time: real world time
 
-        if self._light_mode:
-            # Lightweight CPU measurement (works on Raspberry Pi)
-            cpu_times = os.times()
-            cpu0 = float(cpu_times.user + cpu_times.system)
-            rss0 = self._get_ram_usage_edge() * 1024 * 1024
-        else:
-            cpu_times = self._proc.cpu_times() # cpu time: real time value, the process was acitve 
-            cpu0 = float(cpu_times.user + cpu_times.system)
-            rss0 = int(self._proc.memory_info().rss)
+        cpu_times = self._proc.cpu_times() # cpu time: real time value, the process was acitve 
+        cpu0 = float(cpu_times.user + cpu_times.system)
+        rss0 = int(self._proc.memory_info().rss)
 
         # Start runner to measure ram peaks during inference
         sampler = None
@@ -253,14 +233,10 @@ class MetricsService:
 
         t1 = time.perf_counter()
 
-        if self._light_mode:
-            cpu_times = os.times()
-            cpu1 = float(cpu_times.user + cpu_times.system)
-            rss1 = self._get_ram_usage_edge() * 1024 * 1024
-        else:
-            cpu_times = self._proc.cpu_times()
-            cpu1 = float(cpu_times.user + cpu_times.system)
-            rss1 = int(self._proc.memory_info().rss)
+        cpu_times = self._proc.cpu_times()
+        cpu1 = float(cpu_times.user + cpu_times.system)
+        rss1 = int(self._proc.memory_info().rss)
+            
 
         wall = max(0.0, t1 - float(snap["t0"]))
         cpu = max(0.0, cpu1 - float(snap["cpu0"]))
@@ -297,16 +273,13 @@ class MetricsService:
         stats = self._timers.get(name, _TimerStats())
         cpu_util = 0.0
 
-        if not self._light_mode:
-            import psutil
+        cores = psutil.cpu_count(logical=True) or 1
 
-            cores = psutil.cpu_count(logical=True) or 1
-
-            if stats.total_wall_seconds > 0:
-                # CPU utilization for the block:
-                # (CPU seconds / wall seconds) gives "fraction of one core".
-                # Divide by core count to normalize to 0..100 for the whole machine.
-                cpu_util = (stats.total_cpu_seconds / stats.total_wall_seconds) * 100.0 / cores
+        if stats.total_wall_seconds > 0:
+            # CPU utilization for the block:
+            # (CPU seconds / wall seconds) gives "fraction of one core".
+            # Divide by core count to normalize to 0..100 for the whole machine.
+            cpu_util = (stats.total_cpu_seconds / stats.total_wall_seconds) * 100.0 / cores
 
         return {
             "count": float(stats.count),
@@ -317,105 +290,87 @@ class MetricsService:
             "cpu_util_percent": float(cpu_util),
         }
 
-    def estimate_energy_joules(self, cpu_seconds: float | None = None) -> float:
-        """
-        Estimate energy consumption in Joules (approximation).
+    ############################################################################ 
+    # Accuracy
+    ############################################################################
+    # def set_confidence_from_prediction(self, timestamps: list[str], result: dict[str, list]) -> float:
+    #     """
+    #     Compute average confidence from the prediction results
+    #     """
+    #     predictionsCounter = 0
+    #     confidenceSum = 0
 
-        IMPORTANT:
-        - This is NOT a real power measurement.
-        - Approximate energy from CPU-time using:
-              Energy (J) = CPU_time_seconds * assumed_cpu_power_watts
-        - Real energy depends on CPU frequency, voltage, load, peripherals, and more.
-
-        If cpu_seconds is None, we use the sum of CPU-time from all recorded timers.
-        """
-        if cpu_seconds is None:
-            cpu_seconds = sum(s.total_cpu_seconds for s in self._timers.values())
-        return float(cpu_seconds) * float(self.assumed_cpu_power_watts)
-
-    def set_confidence_from_prediction(self, timestamps: list[str], result: dict[str, list]) -> float:
-        """
-        Compute average confidence from the prediction results
-        """
-        predictionsCounter = 0
-        confidenceSum = 0
-
-        for timestamp in timestamps:
-            for c in result[timestamp]:
-                if float(c[1]) >= cfg.MIN_CONFIDENCE:
-                    predictionsCounter += 1
-                    confidenceSum += float(c[1])
+    #     for timestamp in timestamps:
+    #         for c in result[timestamp]:
+    #             if float(c[1]) >= cfg.MIN_CONFIDENCE:
+    #                 predictionsCounter += 1
+    #                 confidenceSum += float(c[1])
         
-        self._confidence = confidenceSum / predictionsCounter
+    #     self._confidence = confidenceSum / predictionsCounter
 
-    def write_to_csv_log(self, file_path: str = "ownTests/performance/metrics_log.csv") -> None:
-        """
-        Writes the current metrics into a CSV file (appends one row per run).
-        """
-        # Prepare timestamp
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # def write_to_csv_log(self, file_path: str = "ownTests/performance/metrics_log.csv") -> None:
+    #     """
+    #     Writes the current metrics into a CSV file (appends one row per run).
+    #     """
+    #     # Prepare timestamp
+    #     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Get values (safe defaults if not available)
-        model_size = f"{self._model_size_mb:.2f}" if self._model_size_mb is not None else "NA"
+    #     # Get values (safe defaults if not available)
+    #     model_size = f"{self._model_size_mb:.2f}" if self._model_size_mb is not None else "NA"
 
-        confidence = f"{self._confidence * 100:.2f}" if self._confidence is not None else "NA"
-        ram_usage = f"{self.get_ram_usage_mb():.2f}"
-        peak_ram_usage = f"{self.get_peak_ram_usage_mb():.2f}"
+    #     confidence = f"{self._confidence * 100:.2f}" if self._confidence is not None else "NA"
+    #     ram_usage = f"{self.get_ram_usage_mb():.2f}"
+    #     peak_ram_usage = f"{self.get_peak_ram_usage_mb():.2f}"
 
-        # Helper to extract timer values
-        def get_avg_time(timer_name: str) -> str:
-            if timer_name not in self._timers:
-                return "NA"
-            stats = self.get_timer_stats(timer_name)
-            return f"{stats['avg_wall_s']:.4f}"
+    #     # Helper to extract timer values
+    #     def get_avg_time(timer_name: str) -> str:
+    #         if timer_name not in self._timers:
+    #             return "NA"
+    #         stats = self.get_timer_stats(timer_name)
+    #         return f"{stats['avg_wall_s']:.4f}"
 
-        model_load_time = get_avg_time("model_load")
-        audio_time = get_avg_time("audio_processing")
-        inference_time = get_avg_time("inference")
+    #     model_load_time = get_avg_time("model_load")
+    #     audio_time = get_avg_time("audio_processing")
+    #     inference_time = get_avg_time("inference")
 
-        energy = f"{self.estimate_energy_joules():.2f}"
+    #     # Get peak ram usage during inference
+    #     inference_peak = "NA"
+    #     if "inference" in self._timers:
+    #         # Wir nehmen den höchsten Peak-Wert aller bisherigen Inferenz-Runs
+    #         runs = self._timers["inference"].runs
+    #         inference_peak = f"{max((r.peak_interval_mb for r in runs), default=0.0):.2f}"
 
-        # Get peak ram usage during inference
-        inference_peak = "NA"
-        if "inference" in self._timers:
-            # Wir nehmen den höchsten Peak-Wert aller bisherigen Inferenz-Runs
-            runs = self._timers["inference"].runs
-            inference_peak = f"{max((r.peak_interval_mb for r in runs), default=0.0):.2f}"
+    #     # CSV header
+    #     header = (
+    #         "Timestamp,Scenario,Model Size (MB),Average Confidence (%),"
+    #         "RAM Usage (MB), Total Peak RAM Usage (MB), Inference Peak RAM Usage (MB), Model Load Time (s),Audio Processing Time (s),"
+    #         "Inference Time (s)\n"
+    #     )
 
-        # CSV header
-        header = (
-            "Timestamp,Scenario,Model Size (MB),Average Confidence (%),"
-            "RAM Usage (MB), Total Peak RAM Usage (MB), Inference Peak RAM Usage (MB), Model Load Time (s),Audio Processing Time (s),"
-            "Inference Time (s),Energy (J)\n"
-        )
+    #     # CSV row
+    #     row = (
+    #         f"{timestamp},{self._scenario},{model_size},{confidence},"
+    #         f"{ram_usage}, {peak_ram_usage}, {inference_peak},{model_load_time},{audio_time},{inference_time}\n"
+    #     )
 
-        # CSV row
-        row = (
-            f"{timestamp},{self._scenario},{model_size},{confidence},"
-            f"{ram_usage}, {peak_ram_usage}, {inference_peak},{model_load_time},{audio_time},{inference_time},{energy}\n"
-        )
+    #     # Make directory if it doesn't exist
+    #     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        # Make directory if it doesn't exist
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    #     # Check if file exists
+    #     file_exists = os.path.isfile(file_path)
 
-        # Check if file exists
-        file_exists = os.path.isfile(file_path)
-
-        # Write to file
-        with open(file_path, "a") as f:
-            if not file_exists:
-                f.write(header)
-            f.write(row)
+    #     # Write to file
+    #     with open(file_path, "a") as f:
+    #         if not file_exists:
+    #             f.write(header)
+    #         f.write(row)
 
     def print_summary(self) -> None:
         """Print all collected metrics in a structured, beginner-friendly format."""
         ram_now_mb = self.get_ram_usage_mb()
         peak_ram_usage = self.get_peak_ram_usage_mb()
-        energy_j = self.estimate_energy_joules()
 
         print(f"\n=== PERFORMANCE METRICS for '{self._scenario}'===")
-
-        print(f"Benchmark Light Mode: {self._light_mode}")
 
         if self._model_size_mb is not None:
             print(f"Model Size: {self._model_size_mb:.2f} MB")
@@ -424,13 +379,15 @@ class MetricsService:
         else:
             print("Model Size: (not set)")
 
-        formated_confidence = self._confidence * 100.0
-        print(f"Average Confidence: {formated_confidence:.2f} %")
+        # formated_confidence = self._confidence * 100.0
+        # print(f"Average Confidence: {formated_confidence:.2f} %")
 
         print(f"RAM Usage (current RSS): {ram_now_mb:.2f} MB")
         print(f"Peak RAM Usage: {peak_ram_usage:.2f} MB")
 
         # Common timers
+        print("")
+        print("Latencies:")
         for label, timer_name in (
             ("Model Load Time", "model_load"),
             ("Audio Processing Time", "audio_processing"),
@@ -458,8 +415,6 @@ class MetricsService:
                 print(f"{name}: {stats['total_wall_s']:.4f} s")
             else:
                 print(f"{name}: {stats['total_wall_s']:.4f} s total | {stats['avg_wall_s']:.4f} s avg (n={n})")
-
-        print(f"Energy (estimated): {energy_j:.2f} J (approx.)")
 
         print("===========================\n")
 

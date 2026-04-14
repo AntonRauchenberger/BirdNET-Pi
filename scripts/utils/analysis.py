@@ -6,7 +6,7 @@ import librosa
 import numpy as np
 
 from .classes import Detection, ParseFileName
-from .helpers import get_settings, get_language
+from .helpers import get_settings, get_language, BENCHMARKING_SERVICE
 from .models import get_model
 
 log = logging.getLogger(__name__)
@@ -64,15 +64,20 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
 
     start = time.time()
     log.info('ANALYZING AUDIO...')
+    
+    BENCHMARKING_SERVICE.start_timer("audio analysis")
 
     model.set_meta_data(lat, lon, week)
     predicted_species_list = model.get_species_list()
 
     # Parse every chunk
+    BENCHMARKING_SERVICE.start_timer("inference")
     for chunk in chunks:
         p = model.predict(chunk)
         log.debug("PPPPP: %s", p)
         detections.append(p)
+
+    BENCHMARKING_SERVICE.stop_timer("inference")
 
     labeled = {}
     pred_start = 0.0
@@ -82,6 +87,8 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
         labeled[str(pred_start) + ';' + str(pred_end)] = p
 
         pred_start = pred_end - overlap
+
+    BENCHMARKING_SERVICE.stop_timer("audio analysis")
 
     log.info('DONE! Time %.2f SECONDS', time.time() - start)
     return labeled, predicted_species_list
@@ -143,12 +150,18 @@ def run_analysis(file):
     whitelist_list = loadCustomSpeciesList(os.path.expanduser("~/BirdNET-Pi/whitelist_species_list.txt"))
 
     conf = get_settings()
-    model = load_global_model()
+
+    BENCHMARKING_SERVICE.start_timer("model loading")
+    model = load_global_model() 
+    BENCHMARKING_SERVICE.stop_timer("model loading")
+
     names = get_language(conf['DATABASE_LANG'])
 
     # Read audio data & handle errors
     try:
+        BENCHMARKING_SERVICE.start_timer("audio processing")
         audio_data = readAudioData(file.file_name, conf.getfloat('OVERLAP'), model.sample_rate, model.chunk_duration)
+        BENCHMARKING_SERVICE.stop_timer("audio processing")
     except (NameError, TypeError) as e:
         log.error("Error with the following info: %s", e)
         return []
@@ -156,6 +169,9 @@ def run_analysis(file):
     # Process audio data and get detections
     raw_detections, predicted_species_list = analyzeAudioData(audio_data, conf.getfloat('OVERLAP'), conf.getfloat('LATITUDE'),
                                                               conf.getfloat('LONGITUDE'), file.week)
+    
+    BENCHMARKING_SERVICE.start_timer("post-processing detections")
+
     confident_detections = []
     for time_slot, entries in raw_detections.items():
         sci_name, confidence = entries[0]
@@ -179,6 +195,9 @@ def run_analysis(file):
                         confidence,
                     )
                     confident_detections.append(d)
+
+    BENCHMARKING_SERVICE.stop_timer("post-processing detections")
+
     return confident_detections
 
 
