@@ -19,11 +19,14 @@ import psutil
 # import birdnet_analyzer.config as cfg
 from dataclasses import dataclass, field
 from typing import Any
+import shutil
 
-
+# Binary size units are used (1024 instead of 1000)
 def _bytes_to_mb(num_bytes: float) -> float:
     return num_bytes / (1024 * 1024)
 
+def _bytes_to_gb(num_bytes: float) -> float:
+    return num_bytes / (1024 * 1024 * 1024)
 
 class MemorySampler(threading.Thread):
     def __init__(self, service_ref, interval=0.01): # 10 ms so ram use measurements are not disturbed
@@ -100,12 +103,18 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, scenario: str = 'original') -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original') -> None:
 
         self._proc = psutil.Process(os.getpid())
 
         self._model_path: str | None = None
         self._model_size_mb: float | None = None
+
+        self._project_path: str | None = None
+        self._project_size_gb: float | None = None
+        self._os_size_gb: float | None = None
+        self._total_disk_size_gb: float | None = None
+        self._free_disk_size_gb: float | None = None
 
         # Timer state:
         # - _active_starts stores start snapshots for currently running timers
@@ -114,20 +123,25 @@ class BenchmarkService:
         self._timers: dict[str, _TimerStats] = {}
 
         self.set_model_path(model_path)
+        self.set_project_path(project_path)
+        self.set_os_sizes()
 
         # Confidence during prediction
         self._confidence: float | None = None
 
         self._scenario = scenario
 
+
+    ############################################################################ 
+    # Storage
+    ############################################################################
+
+    ############################################################################ 
+    # Flash storage
+    ############################################################################
     @staticmethod
     def get_model_size(path: str) -> float:
-        """
-        Returns the model file size in MB.
-
-        Why it's important:
-        - On edge devices, a smaller model is faster to load and may fit into memory easier.
-        """
+        """Returns the model file size in MB."""
         size_bytes = os.path.getsize(path)
         return _bytes_to_mb(size_bytes)
 
@@ -144,6 +158,39 @@ class BenchmarkService:
             # If file is missing, we keep size as unknown.
             self._model_size_mb = None
 
+    def get_project_size(self, path: str | None) -> float:
+        """Returns the project directory size in MB."""
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                total_size += os.path.getsize(fp)
+        return _bytes_to_gb(total_size)
+
+    def set_project_path(self, path: str | None) -> None:
+        """Stores the project path and caches its directory size (MB) for the summary output."""
+        if path is None:
+            self._project_size_gb = None
+            return
+
+        self._project_path = path
+        try:
+            self._project_size_gb = self.get_project_size(path)
+        except OSError:
+            # If file is missing, we keep size as unknown.
+            self._project_size_gb = None
+
+    def set_os_sizes(self) -> None:
+        """Sets the OS and total disk directory sizes in MB."""
+        usage = shutil.disk_usage("/")
+
+        self._os_size_gb = _bytes_to_gb(usage.used)
+        self._total_disk_size_gb = _bytes_to_gb(usage.total)      
+        self._free_disk_size_gb = _bytes_to_gb(usage.free)  
+
+    ############################################################################ 
+    # RAM Storage
+    ############################################################################
     def _get_ram_usage_edge(self) -> float:
         """
         Uses unix system files
@@ -370,7 +417,27 @@ class BenchmarkService:
         ram_now_mb = self.get_ram_usage_mb()
         peak_ram_usage = self.get_peak_ram_usage_mb()
 
-        print(f"\n=== PERFORMANCE METRICS for '{self._scenario}'===")
+        print(f"\n===PERFORMANCE METRICS===")
+        print("Scenario: ", self._scenario)
+        print("Timestamp: ", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        print("")
+        print("==STORAGE==")
+        print("=FLASH STORAGE=")
+        if self._total_disk_size_gb is not None:
+            print(f"Total Disk Size: {self._total_disk_size_gb:.2f} GB")
+        elif self._total_disk_size_gb is None:
+            print("Total Disk Size: (unknown)")
+
+        if self._os_size_gb is not None:
+            print(f"OS Disk Size: {self._os_size_gb:.2f} GB")
+        elif self._os_size_gb is None:
+            print("OS Disk Size: (unknown)")
+
+        if self._project_size_gb is not None:
+            print(f"Project Size: {self._project_size_gb:.2f} GB")
+        elif self._project_path:
+            print("Project Size: (unknown - file not found)")
 
         if self._model_size_mb is not None:
             print(f"Model Size: {self._model_size_mb:.2f} MB")
@@ -378,6 +445,14 @@ class BenchmarkService:
             print("Model Size: (unknown - file not found)")
         else:
             print("Model Size: (not set)")
+        
+        if self._free_disk_size_gb is not None:
+            print(f"Free Disk Size: {self._free_disk_size_gb:.2f} GB ({(self._free_disk_size_gb / self._total_disk_size_gb * 100.0) if self._total_disk_size_gb else 0.0:.1f} %)")
+        elif self._free_disk_size_gb is None:
+            print("Free Disk Size: (unknown)")
+
+        print("")
+        print("=RAM USAGE=")
 
         # formated_confidence = self._confidence * 100.0
         # print(f"Average Confidence: {formated_confidence:.2f} %")
@@ -387,7 +462,7 @@ class BenchmarkService:
 
         # Common timers
         print("")
-        print("Latencies:")
+        print("==LATENCIES==")
         for label, timer_name in (
             ("Model Load Time", "model_load"),
             ("Audio Processing Time", "audio_processing"),

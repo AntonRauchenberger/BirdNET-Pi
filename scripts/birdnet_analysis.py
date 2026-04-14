@@ -36,10 +36,12 @@ def main():
     i.add_watch(os.path.join(conf['RECS_DIR'], 'StreamData'), mask=IN_CLOSE_WRITE)
 
     # Initialize benchmarking service
+    # TODO test initialization
     conf = get_settings()
     model = conf['MODEL']
+    project_path = conf['BASE_PATH']
     BENCHMARKING_SERVICE.set(
-        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'),
+        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'), project_path=project_path,
                         scenario="Local Laptop")
     )
 

@@ -5,7 +5,7 @@ from unittest.mock import patch
 from scripts.utils.analysis import run_analysis
 from scripts.utils.classes import ParseFileName
 from tests.helpers import TESTDATA, Settings
-from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE
+from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH
 
 from scripts.utils.benchmarking import BenchmarkService
 
@@ -35,7 +35,7 @@ class TestRunAnalysis(unittest.TestCase):
         conf = get_settings()
         model = conf['MODEL']
         BENCHMARKING_SERVICE.set(
-            BenchmarkService(model_path=os.path.join(MODEL_PATH, f'{model}.tflite'),
+            BenchmarkService(model_path=os.path.join(MODEL_PATH, f'{model}.tflite'), project_path=BASE_PATH,
                             scenario="Local Laptop")
         )
         # Test file
