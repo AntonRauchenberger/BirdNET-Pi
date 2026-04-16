@@ -30,6 +30,8 @@ class BenchmarkingServiceProxy:
 
 BENCHMARKING_SERVICE: BenchmarkingServiceProxy = BenchmarkingServiceProxy()
 
+BENCHMARKING_RESULTS_DIR = os.path.join(BASE_PATH, 'benchmarking_results')
+
 
 def get_font():
     conf = get_settings()

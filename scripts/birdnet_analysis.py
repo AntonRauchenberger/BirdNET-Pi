@@ -12,7 +12,7 @@ import inotify.adapters
 from inotify.constants import IN_CLOSE_WRITE
 
 from utils.analysis import load_global_model, run_analysis
-from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, BENCHMARKING_SERVICE
+from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, BENCHMARKING_SERVICE, BENCHMARKING_RESULTS_DIR
 from utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
@@ -43,7 +43,7 @@ def main():
     project_path = conf['BASE_PATH']
     BENCHMARKING_SERVICE.set(
         BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'), project_path=project_path, enable_cpu_metrics=True,
-                        scenario=BENCHMARKING_SCENARIO)
+                        scenario=BENCHMARKING_SCENARIO, results_dir=BENCHMARKING_RESULTS_DIR)
     )
 
     backlog = get_wav_files()
@@ -104,6 +104,7 @@ def process_file(file_name, report_queue):
 
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
         detections = run_analysis(file)
+        BENCHMARKING_SERVICE.set_detections(detections)
 
         # we join() to make sure te reporting queue does not get behind
         if not report_queue.empty():
@@ -153,10 +154,9 @@ def handle_reporting_queue(queue):
             log.exception(f'Unexpected error: {stderr}', exc_info=e)
         finally:
             BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.TOTAL_REPORTING.value)
+            BENCHMARKING_SERVICE.log_results_to_csv()
 
         queue.task_done()
-
-    # TODO Add logging
 
     # mark the 'None' signal as processed
     queue.task_done()

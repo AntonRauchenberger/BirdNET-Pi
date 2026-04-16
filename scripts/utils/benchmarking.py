@@ -3,10 +3,10 @@ Reusable monitoring / benchmarking utilities for BirdNET-Pi
 
 Main features:
 - Multiple timers at the same time (by name)
-- Per-timer averages over multiple runs
-- Process RAM usage (RSS) and peaks during timed blocks
+- Process RAM usage (RSS) and curve over time
 - Confidence during prediction
 - Flash storage calculations
+- Log results to CSV files
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 20.0, idle_max_samples: int = 20) -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 20.0, idle_max_samples: int = 20, results_dir: str | None = None) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
@@ -156,6 +156,12 @@ class BenchmarkService:
             self.get_ram_usage_mb(),
             self.get_cpu_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None,
         )
+
+        self._results_dir: str | None = None
+        self._results_log_dir: str | None = None
+        self._results_curves_dir: str | None = None
+        self.set_results_dirs(results_dir)
+        self.write_csv_header()
 
 
     ############################################################################ 
@@ -402,62 +408,121 @@ class BenchmarkService:
     def do_final_calculations(self):
         self.build_performance_curve()
 
-    # def write_to_csv_log(self, file_path: str = "ownTests/performance/metrics_log.csv") -> None:
-    #     """
-    #     Writes the current metrics into a CSV file (appends one row per run).
-    #     """
-    #     # Prepare timestamp
-    #     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def reset_data(self):
+        """Resets all collected data. Useful for multiple runs in the same process."""
+        self._active_starts.clear()
+        self._timers.clear()
+        self._performance_samples = {"idle": [], "analysis": []}
+        self._performance_curve = []
+        self._current_phase = "idle"
+        self._start_time = time.perf_counter()
+        self._detections = None
+        self._avg_total_confidence = None
 
-    #     # Get values (safe defaults if not available)
-    #     model_size = f"{self._model_size_mb:.2f}" if self._model_size_mb is not None else "NA"
+    def set_results_dirs(self, path: str | None) -> None:
+        """Sets the directories where results will be saved."""
+        if path is not None:
+            results_base_path = os.path.join(path, self._scenario)
+            log_dir = os.path.join(results_base_path)
+            curves_dir = os.path.join(results_base_path, "curves")
 
-    #     confidence = f"{self._confidence * 100:.2f}" if self._confidence is not None else "NA"
-    #     ram_usage = f"{self.get_ram_usage_mb():.2f}"
-    #     peak_ram_usage = f"{self.get_peak_ram_usage_mb():.2f}"
+            os.makedirs(results_base_path, exist_ok=True)
+            os.makedirs(log_dir, exist_ok=True)
+            os.makedirs(curves_dir, exist_ok=True)
 
-    #     # Helper to extract timer values
-    #     def get_avg_time(timer_name: str) -> str:
-    #         if timer_name not in self._timers:
-    #             return "NA"
-    #         stats = self.get_timer_stats(timer_name)
-    #         return f"{stats['avg_wall_s']:.4f}"
+            self._results_dir = results_base_path
+            self._results_log_dir = log_dir
+            self._results_curves_dir = curves_dir
 
-    #     model_load_time = get_avg_time("model_load")
-    #     audio_time = get_avg_time("audio_processing")
-    #     inference_time = get_avg_time("inference")
+    def write_csv_header(self):
+        """Writes the header to the log CSV file, including storage info and column names."""
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    #     # Get peak ram usage during inference
-    #     inference_peak = "NA"
-    #     if "inference" in self._timers:
-    #         # Wir nehmen den höchsten Peak-Wert aller bisherigen Inferenz-Runs
-    #         runs = self._timers["inference"].runs
-    #         inference_peak = f"{max((r.peak_interval_mb for r in runs), default=0.0):.2f}"
+        # Format storage values as strings
+        total_disk_size = f"{self._total_disk_size_gb:.2f}" if self._total_disk_size_gb is not None else "NA"
+        os_disk_size = f"{self._os_size_gb:.2f}" if self._os_size_gb is not None else "NA"
+        project_size = f"{self._project_size_gb:.2f}" if self._project_size_gb is not None else "NA"
+        model_size = f"{self._model_size_mb:.2f}" if self._model_size_mb is not None else "NA"
+        free_disk_size = f"{self._free_disk_size_gb:.2f}" if self._free_disk_size_gb is not None else "NA"
+        total_ram_size = f"{self._total_ram_mb:.2f}" if self._total_ram_mb is not None else "NA"
 
-    #     # CSV header
-    #     header = (
-    #         "Timestamp,Scenario,Model Size (MB),Average Confidence (%),"
-    #         "RAM Usage (MB), Total Peak RAM Usage (MB), Inference Peak RAM Usage (MB), Model Load Time (s),Audio Processing Time (s),"
-    #         "Inference Time (s)\n"
-    #     )
+        log_header = (
+            "Scenario: " + self._scenario + ", Created: " + timestamp + "\n\n" +
+            "Storage:\n" +
+            "Total Disk Size (GB): " + total_disk_size + "\n" +
+            "OS Disk Size (GB): " + os_disk_size + "\n" +
+            "Project Size (GB): " + project_size + "\n" +
+            "Model Size (MB): " + model_size + "\n" +
+            "Free Disk Size (GB): " + free_disk_size + "\n" +
+            "Total RAM Size (MB): " + total_ram_size + "\n\n" +
+            "Timestamp, Avg Confidence (%),Detections,Total Analysis (s),Inference (s),Model Load (s),Audio Processing (s),Total Reporting (s)\n"
+        )
 
-    #     # CSV row
-    #     row = (
-    #         f"{timestamp},{self._scenario},{model_size},{confidence},"
-    #         f"{ram_usage}, {peak_ram_usage}, {inference_peak},{model_load_time},{audio_time},{inference_time}\n"
-    #     )
+        if not os.path.exists(os.path.join(self._results_log_dir, "metrics_log.csv")):
+            with open(os.path.join(self._results_log_dir, "metrics_log.csv"), "w") as log_file:
+                log_file.write(log_header)
 
-    #     # Make directory if it doesn't exist
-    #     os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    def log_results_to_csv(self):
+        """Writes performance metrics to log CSV and performance curves to curves CSV."""
+        if self._results_log_dir is None or self._results_curves_dir is None:
+            return
+        
+        self.do_final_calculations()
+        
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Write performance curve to curves file
+        curve_file = os.path.join(self._results_curves_dir, f"{timestamp}_performance_curve.csv")
+        curves_header = "timestamp_s,phase,ram_mb,cpu_percent\n"
+        with open(curve_file, "w") as curves_file:
+            curves_file.write(curves_header)
+            for sample in self._performance_curve:
+                timestamp_s = sample["timestamp_s"]
+                phase = sample["phase"]
+                ram_mb = sample["ram_mb"]
+                cpu_percent = sample.get("cpu_percent", "")
+                rounded_cpu_percent = f"{float(cpu_percent):.2f}" if cpu_percent else "0.00"
+                curves_file.write(f"{timestamp_s:.4f},{phase},{ram_mb:.2f},{rounded_cpu_percent}\n")
+        
+        # Gather timer statistics
+        total_analysis_time = 0.0
+        inference_time = 0.0
+        model_load_time = 0.0
+        audio_processing_time = 0.0
+        total_reporting_time = 0.0
+        
+        if BenchmarkTimerNames.TOTAL_ANALYSIS.value in self._timers:
+            total_analysis_time = self.get_timer_stats(BenchmarkTimerNames.TOTAL_ANALYSIS.value)["total_wall_s"]
+        if BenchmarkTimerNames.INFERENCE.value in self._timers:
+            inference_time = self.get_timer_stats(BenchmarkTimerNames.INFERENCE.value)["total_wall_s"]
+        if BenchmarkTimerNames.MODEL_LOADING.value in self._timers:
+            model_load_time = self.get_timer_stats(BenchmarkTimerNames.MODEL_LOADING.value)["total_wall_s"]
+        if BenchmarkTimerNames.AUDIO_PROCESSING.value in self._timers:
+            audio_processing_time = self.get_timer_stats(BenchmarkTimerNames.AUDIO_PROCESSING.value)["total_wall_s"]
+        if BenchmarkTimerNames.TOTAL_REPORTING.value in self._timers:
+            total_reporting_time = self.get_timer_stats(BenchmarkTimerNames.TOTAL_REPORTING.value)["total_wall_s"]
+        
+        # Get accuracy metrics
+        confidence = (self._avg_total_confidence * 100.0) if self._avg_total_confidence is not None else 0.0
+        detections_count = len(self._detections) if self._detections is not None else 0
+        
+        # Build and write CSV row to log file
+        row = (
+            f"{timestamp},"
+            f"{confidence:.2f},"
+            f"{detections_count},"
+            f"{total_analysis_time:.4f},"
+            f"{inference_time:.4f},"
+            f"{model_load_time:.4f},"
+            f"{audio_processing_time:.4f},"
+            f"{total_reporting_time:.4f}\n"
+        )
+        
+        log_file = os.path.join(self._results_log_dir, "metrics_log.csv")
+        with open(log_file, "a") as log_f:
+            log_f.write(row)
 
-    #     # Check if file exists
-    #     file_exists = os.path.isfile(file_path)
-
-    #     # Write to file
-    #     with open(file_path, "a") as f:
-    #         if not file_exists:
-    #             f.write(header)
-    #         f.write(row)
+        self.reset_data()
 
     def print_summary(self) -> None:
         """Print all collected metrics in a structured, beginner-friendly format."""

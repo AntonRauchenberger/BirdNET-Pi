@@ -5,7 +5,7 @@ from unittest.mock import patch
 from scripts.utils.analysis import run_analysis
 from scripts.utils.classes import ParseFileName
 from tests.helpers import TESTDATA, Settings
-from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH
+from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, BENCHMARKING_RESULTS_DIR
 from scripts.utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
 
 from scripts.utils.benchmarking import BenchmarkService
@@ -37,7 +37,7 @@ class TestRunAnalysis(unittest.TestCase):
         model = conf['MODEL']
         BENCHMARKING_SERVICE.set(
             BenchmarkService(model_path=os.path.join(MODEL_PATH, f'{model}.tflite'), project_path=BASE_PATH,
-                            scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True)
+                            scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True, results_dir=BENCHMARKING_RESULTS_DIR)
         )
         # Test file
         test_file = ParseFileName(self.test_file)
@@ -60,9 +60,10 @@ class TestRunAnalysis(unittest.TestCase):
 
         # Save detections
         BENCHMARKING_SERVICE.set_detections(detections)
-    
-        # TODO Log benchmark results
+
+        # Log results
         BENCHMARKING_SERVICE.print_summary()
+        BENCHMARKING_SERVICE.log_results_to_csv()
 
         # Assertions
         self.assertEqual(len(detections), len(expected_results))

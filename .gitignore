@@ -49,3 +49,5 @@ whitelist_species_list.txt
 /nbproject/private/
 
 HELP.md
+
+benchmarking_results/
