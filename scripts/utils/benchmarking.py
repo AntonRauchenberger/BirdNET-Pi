@@ -20,6 +20,7 @@ import psutil
 from dataclasses import dataclass, field
 from typing import Any
 import shutil
+from .constants import BenchmarkTimerNames
 
 # Binary size units are used (1024 instead of 1000)
 def _bytes_to_mb(num_bytes: float) -> float:
@@ -102,7 +103,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False) -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 20.0, idle_max_samples: int = 20) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
@@ -134,6 +135,8 @@ class BenchmarkService:
 
         self._sample_interval_s = sample_interval_s
         self._enable_cpu_metrics = enable_cpu_metrics
+        self._idle_history_s = idle_history_s
+        self._idle_max_samples = idle_max_samples
         self._measurement_lock = threading.Lock()
         self._performance_samples: dict[str, list[dict[str, Any]]] = {
             "idle": [],
@@ -249,7 +252,18 @@ class BenchmarkService:
             sample["cpu_percent"] = cpu_percent
 
         with self._measurement_lock:
-            self._performance_samples.setdefault(self._current_phase, []).append(sample)
+            samples = self._performance_samples.setdefault(self._current_phase, [])
+            samples.append(sample)
+            if self._current_phase == "idle":
+                cutoff = sample["timestamp_s"] - self._idle_history_s
+                if cutoff > 0 or len(samples) > self._idle_max_samples:
+                    keep_index = 0
+                    while keep_index < len(samples) and samples[keep_index]["timestamp_s"] < cutoff:
+                        keep_index += 1
+                    if keep_index:
+                        del samples[:keep_index]
+                    if len(samples) > self._idle_max_samples:
+                        del samples[:-self._idle_max_samples]
     
     def build_performance_curve(self):
         """Combines idle and analysis performance samples into a single sorted timeline."""
@@ -272,7 +286,7 @@ class BenchmarkService:
         if name in self._active_starts:
             raise ValueError(f"Timer '{name}' is already running. Stop it before starting again.")
 
-        if name in {"inference", "analysis", "total analysis"}:
+        if name in {BenchmarkTimerNames.INFERENCE.value, BenchmarkTimerNames.TOTAL_ANALYSIS.value}:
             self._current_phase = "analysis"
 
         t0 = time.perf_counter() # wall time: real world time
@@ -317,7 +331,7 @@ class BenchmarkService:
         stats = self._timers.setdefault(name, _TimerStats())
         stats.add_run(run)
 
-        if name in {"inference", "analysis"}:
+        if name in {BenchmarkTimerNames.INFERENCE.value, BenchmarkTimerNames.TOTAL_ANALYSIS.value}:
             self._current_phase = "idle"
 
         return wall
@@ -519,9 +533,9 @@ class BenchmarkService:
         print("")
         print("==LATENCIES==")
         for label, timer_name in (
-            ("model loading", "model loading"),
-            ("audio processing", "audio processing"),
-            ("inference", "inference"),
+            (BenchmarkTimerNames.MODEL_LOADING.value, BenchmarkTimerNames.MODEL_LOADING.value),
+            (BenchmarkTimerNames.AUDIO_PROCESSING.value, BenchmarkTimerNames.AUDIO_PROCESSING.value),
+            (BenchmarkTimerNames.INFERENCE.value, BenchmarkTimerNames.INFERENCE.value),
         ):
             if timer_name not in self._timers:
                 continue
@@ -536,7 +550,7 @@ class BenchmarkService:
                 print(f"{label}: {total:.4f} s total | {avg:.4f} s avg (n={n})")
 
         # If there are additional timers, print them too.
-        extra = [k for k in self._timers.keys() if k not in {"model_load", "audio_processing", "inference"}]
+        extra = [k for k in self._timers.keys() if k not in {BenchmarkTimerNames.MODEL_LOADING.value, BenchmarkTimerNames.AUDIO_PROCESSING.value, BenchmarkTimerNames.INFERENCE.value}]
         for name in sorted(extra):
             stats = self.get_timer_stats(name)
             n = int(stats["count"])

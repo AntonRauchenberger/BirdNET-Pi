@@ -6,6 +6,7 @@ from scripts.utils.analysis import run_analysis
 from scripts.utils.classes import ParseFileName
 from tests.helpers import TESTDATA, Settings
 from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH
+from scripts.utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
 
 from scripts.utils.benchmarking import BenchmarkService
 
@@ -36,7 +37,7 @@ class TestRunAnalysis(unittest.TestCase):
         model = conf['MODEL']
         BENCHMARKING_SERVICE.set(
             BenchmarkService(model_path=os.path.join(MODEL_PATH, f'{model}.tflite'), project_path=BASE_PATH,
-                            scenario="Local Laptop", enable_cpu_metrics=True)
+                            scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True)
         )
         # Test file
         test_file = ParseFileName(self.test_file)
@@ -49,13 +50,13 @@ class TestRunAnalysis(unittest.TestCase):
         ]
 
         # Start analysis timer
-        BENCHMARKING_SERVICE.start_timer("total analysis")
+        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
 
         # Run the analysis
         detections = run_analysis(test_file)
 
         # Stop analysis timer
-        BENCHMARKING_SERVICE.stop_timer("total analysis")
+        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
 
         # Save detections
         BENCHMARKING_SERVICE.set_detections(detections)
