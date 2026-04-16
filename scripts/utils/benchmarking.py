@@ -16,7 +16,6 @@ import time
 import datetime
 import threading
 import psutil
-# import birdnet_analyzer.config as cfg
 from dataclasses import dataclass, field
 from typing import Any
 import shutil
@@ -103,7 +102,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 20.0, idle_max_samples: int = 20, results_dir: str | None = None) -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 20.0, idle_max_samples: int = 500, results_dir: str | None = None) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
@@ -288,12 +287,11 @@ class BenchmarkService:
         Supports:
         - Extended mode (psutil)
         - Light mode (os.times, no psutil)
+        
+        Note: Phase transitions must be managed separately via set_phase().
         """
         if name in self._active_starts:
             raise ValueError(f"Timer '{name}' is already running. Stop it before starting again.")
-
-        if name in {BenchmarkTimerNames.INFERENCE.value, BenchmarkTimerNames.TOTAL_ANALYSIS.value}:
-            self._current_phase = "analysis"
 
         t0 = time.perf_counter() # wall time: real world time
 
@@ -337,10 +335,19 @@ class BenchmarkService:
         stats = self._timers.setdefault(name, _TimerStats())
         stats.add_run(run)
 
-        if name in {BenchmarkTimerNames.INFERENCE.value, BenchmarkTimerNames.TOTAL_ANALYSIS.value}:
-            self._current_phase = "idle"
-
         return wall
+
+    def set_phase(self, phase: str) -> None:
+        """
+        Switch active phase and record a performance sample immediately.
+        
+        This marks explicit phase transitions (idle <-> analysis) in the performance curve.
+        """
+        self._current_phase = phase
+        timestamp = time.perf_counter()
+        ram_mb = self.get_ram_usage_mb()
+        cpu_percent = self.get_cpu_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None
+        self._record_performance_sample(timestamp, ram_mb, cpu_percent)
 
     def get_timer_stats(self, name: str) -> dict[str, float]:
         """
