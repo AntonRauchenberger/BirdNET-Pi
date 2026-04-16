@@ -36,7 +36,7 @@ class TestRunAnalysis(unittest.TestCase):
         model = conf['MODEL']
         BENCHMARKING_SERVICE.set(
             BenchmarkService(model_path=os.path.join(MODEL_PATH, f'{model}.tflite'), project_path=BASE_PATH,
-                            scenario="Local Laptop")
+                            scenario="Local Laptop", enable_cpu_metrics=True)
         )
         # Test file
         test_file = ParseFileName(self.test_file)

@@ -28,25 +28,25 @@ def _bytes_to_mb(num_bytes: float) -> float:
 def _bytes_to_gb(num_bytes: float) -> float:
     return num_bytes / (1024 * 1024 * 1024)
 
-class MemorySampler(threading.Thread):
-    def __init__(self, service_ref, interval=0.01): # 10 ms so ram use measurements are not disturbed
-        super().__init__()
+class _PerformanceSampler(threading.Thread):
+    def __init__(self, service_ref: "BenchmarkService", interval_s: float = 0.1):
+        super().__init__(daemon=True)
         self.service = service_ref
-        self.interval = interval
-        self.peak_ram = 0.0
+        self.interval_s = interval_s
         self._stop_event = threading.Event()
 
     def run(self):
         while not self._stop_event.is_set():
-            # Aktuellen RAM abfragen
-            current_ram = self.service.get_ram_usage_mb()
-            if current_ram > self.peak_ram:
-                self.peak_ram = current_ram
-            time.sleep(self.interval)
+            timestamp = time.perf_counter()
+            ram_mb = self.service.get_ram_usage_mb()
+            cpu_percent = None
+            if self.service._enable_cpu_metrics:
+                cpu_percent = self.service.get_cpu_usage_percent(interval_s=0.0)
+            self.service._record_performance_sample(timestamp, ram_mb, cpu_percent)
+            time.sleep(self.interval_s)
 
-    def stop(self):
+    def stop(self) -> None:
         self._stop_event.set()
-        return self.peak_ram
 
 @dataclass
 class _TimerRun:
@@ -56,7 +56,6 @@ class _TimerRun:
     cpu_seconds: float
     rss_start_bytes: int # Needed RAM storage at the start
     rss_end_bytes: int
-    peak_interval_mb: float = 0.0 # peak ram usage during measurement
 
     @property
     def rss_delta_bytes(self) -> int:
@@ -103,7 +102,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original') -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
@@ -115,6 +114,7 @@ class BenchmarkService:
         self._os_size_gb: float | None = None
         self._total_disk_size_gb: float | None = None
         self._free_disk_size_gb: float | None = None
+        self._total_ram_mb: float | None = None
 
         # Timer states:
         # - _active_starts stores start snapshots for currently running timers
@@ -125,11 +125,34 @@ class BenchmarkService:
         self.set_model_path(model_path)
         self.set_project_path(project_path)
         self.set_os_sizes()
+        self.set_total_ram_size_mb()
 
         self._detections: list | None = None
         self._avg_total_confidence: float | None = None
 
         self._scenario = scenario
+
+        self._sample_interval_s = sample_interval_s
+        self._enable_cpu_metrics = enable_cpu_metrics
+        self._measurement_lock = threading.Lock()
+        self._performance_samples: dict[str, list[dict[str, Any]]] = {
+            "idle": [],
+            "analysis": []
+        }
+        self._performance_curve: list[dict[str, Any]] = []
+        self._current_phase = "idle"
+        self._start_time = time.perf_counter()
+
+        if self._enable_cpu_metrics:
+            self._proc.cpu_percent(interval=None)
+
+        self._performance_sampler = _PerformanceSampler(self, self._sample_interval_s)
+        self._performance_sampler.start()
+        self._record_performance_sample(
+            self._start_time,
+            self.get_ram_usage_mb(),
+            self.get_cpu_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None,
+        )
 
 
     ############################################################################ 
@@ -189,21 +212,11 @@ class BenchmarkService:
         self._free_disk_size_gb = _bytes_to_gb(usage.free)  
 
     ############################################################################ 
-    # RAM Storage
+    # PERFORMANCE (RAM, CPU)
     ############################################################################
-    def _get_ram_usage_edge(self) -> float:
-        """
-        Uses unix system files
-        """
-        try:
-            with open("/proc/self/status") as f:
-                for line in f:
-                    if "VmRSS" in line:
-                        kb = int(line.split()[1])
-                        return kb / 1024
-        except Exception:
-            return 0.0
-        return 0.0
+    def set_total_ram_size_mb(self):
+        """Total RAM size of the machine in MB."""
+        self._total_ram_mb = _bytes_to_mb(psutil.virtual_memory().total)
 
     def get_ram_usage_mb(self) -> float:
         """
@@ -211,28 +224,38 @@ class BenchmarkService:
         """
         return _bytes_to_mb(self._proc.memory_info().rss)
 
-    def get_cpu_usage_percent(self, *, interval_s: float = 0.1) -> float:
+    def get_cpu_usage_percent(self, *, interval_s: float | None = 0.1) -> float:
         """
         Returns process CPU usage percent (normalized to 0..100 across all cores).
 
         Notes:
-        - This uses psutil's sampling over a short interval.
-        - Good for "current CPU usage now", not for measuring a specific block.
-        """ 
-        # psutil returns a percent that can exceed 100 on multi-core, has to be normalized
-        raw = self._proc.cpu_percent(interval=interval_s)
+        - If interval_s is 0 or None, psutil returns a non-blocking value based on the previous call.
+        - Good for lightweight sampling in a background collector thread.
+        """
+        if interval_s is None or interval_s == 0.0:
+            raw = self._proc.cpu_percent(interval=None)
+        else:
+            raw = self._proc.cpu_percent(interval=interval_s)
         cores = psutil.cpu_count(logical=True) or 1
         return raw / cores
 
-    def get_peak_ram_usage_mb(self) -> float:
-        """
-        Gets the maximum memory usage
-        """
-        if os.name == 'posix':  # Linux/Mac
-            import resource
-            # ru_maxrss in KB
-            return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
-        return 0.0
+    def _record_performance_sample(self, timestamp: float, ram_mb: float, cpu_percent: float | None = None) -> None:
+        sample = {
+            "timestamp_s": timestamp - self._start_time,
+            "ram_mb": ram_mb,
+            "phase": self._current_phase
+        }
+        if cpu_percent is not None:
+            sample["cpu_percent"] = cpu_percent
+
+        with self._measurement_lock:
+            self._performance_samples.setdefault(self._current_phase, []).append(sample)
+    
+    def build_performance_curve(self):
+        """Combines idle and analysis performance samples into a single sorted timeline."""
+        with self._measurement_lock:
+            combined = self._performance_samples.get("idle", []) + self._performance_samples.get("analysis", [])
+            self._performance_curve = sorted(combined, key=lambda x: x["timestamp_s"])
 
 
     ############################################################################ 
@@ -249,23 +272,19 @@ class BenchmarkService:
         if name in self._active_starts:
             raise ValueError(f"Timer '{name}' is already running. Stop it before starting again.")
 
+        if name in {"inference", "analysis", "total analysis"}:
+            self._current_phase = "analysis"
+
         t0 = time.perf_counter() # wall time: real world time
 
         cpu_times = self._proc.cpu_times() # cpu time: real time value, the process was acitve 
         cpu0 = float(cpu_times.user + cpu_times.system)
         rss0 = int(self._proc.memory_info().rss)
 
-        # Start runner to measure ram peaks during inference
-        sampler = None
-        if name == "inference":
-            sampler = MemorySampler(self)
-            sampler.start()
-
         self._active_starts[name] = {
             "t0": t0,
             "cpu0": cpu0,
-            "rss0": rss0,
-            "sampler": sampler
+            "rss0": rss0
         }
 
     def stop_timer(self, name: str) -> float:
@@ -288,22 +307,18 @@ class BenchmarkService:
         wall = max(0.0, t1 - float(snap["t0"]))
         cpu = max(0.0, cpu1 - float(snap["cpu0"]))
 
-        # stop inference ram measure runner
-        interval_peak_mb = 0.0
-        if "sampler" in snap and snap["sampler"] is not None:
-            interval_peak_mb = snap["sampler"].stop()
-            snap["sampler"].join()
-
         run = _TimerRun(
             wall_seconds=wall,
             cpu_seconds=cpu,
             rss_start_bytes=int(snap["rss0"]),
-            rss_end_bytes=rss1,
-            peak_interval_mb=interval_peak_mb
+            rss_end_bytes=rss1
         )
 
         stats = self._timers.setdefault(name, _TimerStats())
         stats.add_run(run)
+
+        if name in {"inference", "analysis"}:
+            self._current_phase = "idle"
 
         return wall
 
@@ -370,6 +385,9 @@ class BenchmarkService:
     ############################################################################ 
     # Logging and output
     ############################################################################
+    def do_final_calculations(self):
+        self.build_performance_curve()
+
     # def write_to_csv_log(self, file_path: str = "ownTests/performance/metrics_log.csv") -> None:
     #     """
     #     Writes the current metrics into a CSV file (appends one row per run).
@@ -429,8 +447,7 @@ class BenchmarkService:
 
     def print_summary(self) -> None:
         """Print all collected metrics in a structured, beginner-friendly format."""
-        ram_now_mb = self.get_ram_usage_mb()
-        peak_ram_usage = self.get_peak_ram_usage_mb()
+        self.do_final_calculations()
 
         print(f"\n===PERFORMANCE METRICS===")
         print("Scenario: ", self._scenario)
@@ -467,9 +484,24 @@ class BenchmarkService:
             print("Free Disk Size: (unknown)")
 
         print("")
-        print("=RAM USAGE=")
-        print(f"RAM Usage (current RSS): {ram_now_mb:.2f} MB")
-        print(f"Peak RAM Usage: {peak_ram_usage:.2f} MB")
+        print("=RAM STORAGE")
+        if self._total_ram_mb is not None:
+            print(f"Total RAM Size: {self._total_ram_mb:.2f} MB")
+        elif self._total_ram_mb is None:
+            print("Total RAM Size: (unknown)")
+
+        print("")
+        print("=RAM USAGE CURVE=")
+        if self._performance_curve:
+            for sample in self._performance_curve:
+                timestamp = sample["timestamp_s"]
+                ram_mb = sample["ram_mb"]
+                cpu_percent = sample.get("cpu_percent")
+                phase = sample.get("phase", "unknown")
+                cpu_str = f", CPU: {cpu_percent:.1f} %" if cpu_percent is not None else ""
+                print(f"Time: {timestamp:.2f} s, Phase: {phase}, RAM: {ram_mb:.2f} MB ({(ram_mb / self._total_ram_mb * 100.0) if self._total_ram_mb else 0.0:.1f} %) {cpu_str}")
+        else:
+            print("RAM usage curve: (no samples recorded)")
 
         print("")
         print("==ACCURACY==")
@@ -487,9 +519,9 @@ class BenchmarkService:
         print("")
         print("==LATENCIES==")
         for label, timer_name in (
-            ("Model Load Time", "model_load"),
-            ("Audio Processing Time", "audio_processing"),
-            ("Inference Time", "inference"),
+            ("model loading", "model loading"),
+            ("audio processing", "audio processing"),
+            ("inference", "inference"),
         ):
             if timer_name not in self._timers:
                 continue
@@ -497,12 +529,11 @@ class BenchmarkService:
             avg = stats["avg_wall_s"]
             total = stats["total_wall_s"]
             n = int(stats["count"])
-            cpu_util = stats["cpu_util_percent"]
 
             if n <= 1:
-                print(f"{label}: {total:.4f} s (CPU util ~ {cpu_util:.1f} %)")
+                print(f"{label}: {total:.4f} s")
             else:
-                print(f"{label}: {total:.4f} s total | {avg:.4f} s avg (n={n}) (CPU util ~ {cpu_util:.1f} %)")
+                print(f"{label}: {total:.4f} s total | {avg:.4f} s avg (n={n})")
 
         # If there are additional timers, print them too.
         extra = [k for k in self._timers.keys() if k not in {"model_load", "audio_processing", "inference"}]

@@ -41,7 +41,7 @@ def main():
     model = conf['MODEL']
     project_path = conf['BASE_PATH']
     BENCHMARKING_SERVICE.set(
-        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'), project_path=project_path,
+        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'), project_path=project_path, enable_cpu_metrics=True,
                         scenario="Local Laptop")
     )
 
