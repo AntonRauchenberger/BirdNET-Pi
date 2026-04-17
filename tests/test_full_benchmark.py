@@ -150,7 +150,6 @@ class TestFullBenchmark(unittest.TestCase):
         time.sleep(5)  # Short idle period after analysis
 
         # Assertions: In real integrations, geo/occurrence filters can legitimately yield zero detections.
-        # For benchmarking we primarily require a successful end-to-end run with valid timing data.
         self.assertIsInstance(detections, list, "Detections must be returned as a list")
         expected_sci_names = ['Pica pica']
         for det in detections:

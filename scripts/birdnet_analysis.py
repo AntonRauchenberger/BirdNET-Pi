@@ -12,12 +12,10 @@ import inotify.adapters
 from inotify.constants import IN_CLOSE_WRITE
 
 from utils.analysis import load_global_model, run_analysis
-from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, BENCHMARKING_SERVICE, BENCHMARKING_RESULTS_DIR
-from utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
+from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
     update_json_file
-from utils.benchmarking import BenchmarkService
 
 shutdown = False
 
@@ -35,16 +33,6 @@ def main():
     conf = get_settings()
     i = inotify.adapters.Inotify()
     i.add_watch(os.path.join(conf['RECS_DIR'], 'StreamData'), mask=IN_CLOSE_WRITE)
-
-    # Initialize benchmarking service
-    # TODO test initialization
-    conf = get_settings()
-    model = conf['MODEL']
-    project_path = conf['BASE_PATH']
-    BENCHMARKING_SERVICE.set(
-        BenchmarkService(model_path=os.path.join(conf["MODEL_PATH"], f'{model}.tflite'), project_path=project_path, enable_cpu_metrics=True,
-                        scenario=BENCHMARKING_SCENARIO, results_dir=BENCHMARKING_RESULTS_DIR)
-    )
 
     backlog = get_wav_files()
 
@@ -102,9 +90,7 @@ def process_file(file_name, report_queue):
             analyzing.write(file_name)
         file = ParseFileName(file_name)
 
-        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
         detections = run_analysis(file)
-        BENCHMARKING_SERVICE.set_detections(detections)
 
         # we join() to make sure te reporting queue does not get behind
         if not report_queue.empty():
@@ -114,8 +100,6 @@ def process_file(file_name, report_queue):
     except BaseException as e:
         stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
         log.exception(f'Unexpected error: {stderr}', exc_info=e)
-    finally:
-        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
 
 
 def handle_reporting_queue(queue):
@@ -127,34 +111,20 @@ def handle_reporting_queue(queue):
 
         file, detections = msg
         try:
-            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_REPORTING.value)
-
-            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
             update_json_file(file, detections)
-            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
-
-            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
             for detection in detections:
                 detection.file_name_extr = extract_detection(file, detection)
                 log.info('%s;%s', summary(file, detection), os.path.basename(detection.file_name_extr))
                 write_to_file(file, detection)
                 write_to_db(file, detection)
-            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
 
             apprise(file, detections)
-
-            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.SERVER_POST.value)
             bird_weather(file, detections)
-            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.SERVER_POST.value)
-
             heartbeat()
             os.remove(file.file_name)
         except BaseException as e:
             stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
             log.exception(f'Unexpected error: {stderr}', exc_info=e)
-        finally:
-            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.TOTAL_REPORTING.value)
-            BENCHMARKING_SERVICE.log_results_to_csv()
 
         queue.task_done()
 
