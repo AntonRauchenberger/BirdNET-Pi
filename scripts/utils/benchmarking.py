@@ -39,10 +39,12 @@ class _PerformanceSampler(threading.Thread):
         while not self._stop_event.is_set():
             timestamp = time.perf_counter()
             ram_mb = self.service.get_ram_usage_mb()
+            total_ram_mb = self.service._total_ram_mb or 0.0
             cpu_percent = None
             if self.service._enable_cpu_metrics:
                 cpu_percent = self.service.get_cpu_usage_percent(interval_s=0.0)
-            self.service._record_performance_sample(timestamp, ram_mb, cpu_percent)
+                cpu_percent_system = self.service.get_cpu_system_usage_percent(interval_s=0.0)
+            self.service._record_performance_sample(timestamp, ram_mb, total_ram_mb, cpu_percent, cpu_percent_system)
             time.sleep(self.interval_s)
 
     def stop(self) -> None:
@@ -153,7 +155,9 @@ class BenchmarkService:
         self._record_performance_sample(
             self._start_time,
             self.get_ram_usage_mb(),
+            self.get_total_ram_usage_mb(),
             self.get_cpu_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None,
+            self.get_cpu_system_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None
         )
 
         self._results_dir: str | None = None
@@ -231,6 +235,12 @@ class BenchmarkService:
         Current RAM usage (RSS: Resident Set Size) of the current Python process in MB.
         """
         return _bytes_to_mb(self._proc.memory_info().rss)
+    
+    def get_total_ram_usage_mb(self) -> float:
+        """
+        Total RAM usage of the whole system in MB.
+        """
+        return _bytes_to_mb(psutil.virtual_memory().used)
 
     def get_cpu_usage_percent(self, *, interval_s: float | None = 0.1) -> float:
         """
@@ -247,14 +257,31 @@ class BenchmarkService:
         cores = psutil.cpu_count(logical=True) or 1
         return raw / cores
 
-    def _record_performance_sample(self, timestamp: float, ram_mb: float, cpu_percent: float | None = None) -> None:
+    def get_cpu_system_usage_percent(self, *, interval_s: float | None = 0.1) -> float:
+        """
+        Returns total system CPU usage percent (normalized to 0..100 across all cores).
+
+        Notes:
+        - If interval_s is 0 or None, psutil returns a non-blocking value based on the previous call.
+        - Good for lightweight sampling in a background collector thread.
+        """
+        if interval_s is None or interval_s == 0.0:
+            raw = psutil.cpu_percent(interval=None)
+        else:
+            raw = psutil.cpu_percent(interval=interval_s)
+        return raw
+
+    def _record_performance_sample(self, timestamp: float, ram_mb: float, total_ram_mb: float, cpu_percent: float | None = None, cpu_percent_system: float | None = None) -> None:
         sample = {
             "timestamp_s": timestamp - self._start_time,
             "ram_mb": ram_mb,
+            "total_ram_mb": total_ram_mb,
             "phase": self._current_phase
         }
         if cpu_percent is not None:
             sample["cpu_percent"] = cpu_percent
+        if cpu_percent_system is not None:
+            sample["cpu_percent_system"] = cpu_percent_system
 
         with self._measurement_lock:
             samples = self._performance_samples.setdefault(self._current_phase, [])
@@ -347,7 +374,9 @@ class BenchmarkService:
         timestamp = time.perf_counter()
         ram_mb = self.get_ram_usage_mb()
         cpu_percent = self.get_cpu_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None
-        self._record_performance_sample(timestamp, ram_mb, cpu_percent)
+        cpu_percent_system = self.get_cpu_system_usage_percent(interval_s=0.0) if self._enable_cpu_metrics else None
+        total_ram_mb = self.get_total_ram_usage_mb()
+        self._record_performance_sample(timestamp, ram_mb, total_ram_mb, cpu_percent, cpu_percent_system)
 
     def get_timer_stats(self, name: str) -> dict[str, float]:
         """
@@ -480,16 +509,23 @@ class BenchmarkService:
         
         # Write performance curve to curves file
         curve_file = os.path.join(self._results_curves_dir, f"{timestamp}_performance_curve.csv")
-        curves_header = "timestamp_s,phase,ram_mb,cpu_percent\n"
+        curves_header = "timestamp_s,phase,ram_mb_birdnet_process,total_ram_mb,total_used_ram_percent,cpu_percent_birdnet_process,cpu_percent_system\n"
         with open(curve_file, "w") as curves_file:
             curves_file.write(curves_header)
             for sample in self._performance_curve:
                 timestamp_s = sample["timestamp_s"]
                 phase = sample["phase"]
                 ram_mb = sample["ram_mb"]
+                total_ram_mb = sample["total_ram_mb"]
+                total_used_ram_percent = (f"{(ram_mb / total_ram_mb * 100.0):.2f}" if total_ram_mb else "0.00")
                 cpu_percent = sample.get("cpu_percent", "")
+                cpu_percent_system = sample.get("cpu_percent_system", "")
+
+                rounded_total_used_ram_percent = f"{float(total_used_ram_percent):.2f}" if total_used_ram_percent else "0.00"
                 rounded_cpu_percent = f"{float(cpu_percent):.2f}" if cpu_percent else "0.00"
-                curves_file.write(f"{timestamp_s:.4f},{phase},{ram_mb:.2f},{rounded_cpu_percent}\n")
+                rounded_cpu_percent_system = f"{float(cpu_percent_system):.2f}" if cpu_percent_system else "0.00"
+
+                curves_file.write(f"{timestamp_s:.4f},{phase},{ram_mb:.2f},{total_ram_mb:.2f},{rounded_total_used_ram_percent},{rounded_cpu_percent},{rounded_cpu_percent_system}\n")
         
         # Gather timer statistics
         total_analysis_time = 0.0
@@ -582,10 +618,13 @@ class BenchmarkService:
             for sample in self._performance_curve:
                 timestamp = sample["timestamp_s"]
                 ram_mb = sample["ram_mb"]
+                ram_mb_total = sample["total_ram_mb"]
                 cpu_percent = sample.get("cpu_percent")
+                cpu_percent_system = sample.get("cpu_percent_system")
                 phase = sample.get("phase", "unknown")
                 cpu_str = f", CPU: {cpu_percent:.1f} %" if cpu_percent is not None else ""
-                print(f"Time: {timestamp:.2f} s, Phase: {phase}, RAM: {ram_mb:.2f} MB ({(ram_mb / self._total_ram_mb * 100.0) if self._total_ram_mb else 0.0:.1f} %) {cpu_str}")
+                cpu_system_str = f", System CPU: {cpu_percent_system:.1f} %" if cpu_percent_system is not None else ""
+                print(f"Time: {timestamp:.2f} s, Phase: {phase}, RAM: {ram_mb:.2f} MB ({(ram_mb / ram_mb_total * 100.0) if ram_mb_total else 0.0:.1f} %), Total RAM: {ram_mb_total:.2f} MB {cpu_str} {cpu_system_str}")
         else:
             print("RAM usage curve: (no samples recorded)")
 
