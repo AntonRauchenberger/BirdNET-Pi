@@ -89,7 +89,9 @@ def process_file(file_name, report_queue):
         with open(ANALYZING_NOW, 'w') as analyzing:
             analyzing.write(file_name)
         file = ParseFileName(file_name)
+
         detections = run_analysis(file)
+
         # we join() to make sure te reporting queue does not get behind
         if not report_queue.empty():
             log.warning('reporting queue not yet empty')
@@ -115,6 +117,7 @@ def handle_reporting_queue(queue):
                 log.info('%s;%s', summary(file, detection), os.path.basename(detection.file_name_extr))
                 write_to_file(file, detection)
                 write_to_db(file, detection)
+
             apprise(file, detections)
             bird_weather(file, detections)
             heartbeat()

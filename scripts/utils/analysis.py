@@ -6,7 +6,8 @@ import librosa
 import numpy as np
 
 from .classes import Detection, ParseFileName
-from .helpers import get_settings, get_language
+from .helpers import get_settings, get_language, BENCHMARKING_SERVICE
+from .constants import BenchmarkTimerNames
 from .models import get_model
 
 log = logging.getLogger(__name__)
@@ -64,15 +65,23 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
 
     start = time.time()
     log.info('ANALYZING AUDIO...')
+    
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_ANALYSIS.value)
 
     model.set_meta_data(lat, lon, week)
     predicted_species_list = model.get_species_list()
 
     # Parse every chunk
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.INFERENCE.value)
     for chunk in chunks:
         p = model.predict(chunk)
         log.debug("PPPPP: %s", p)
         detections.append(p)
+
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.INFERENCE.value)
 
     labeled = {}
     pred_start = 0.0
@@ -82,6 +91,9 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
         labeled[str(pred_start) + ';' + str(pred_end)] = p
 
         pred_start = pred_end - overlap
+
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.AUDIO_ANALYSIS.value)
 
     log.info('DONE! Time %.2f SECONDS', time.time() - start)
     return labeled, predicted_species_list
@@ -143,12 +155,22 @@ def run_analysis(file):
     whitelist_list = loadCustomSpeciesList(os.path.expanduser("~/BirdNET-Pi/whitelist_species_list.txt"))
 
     conf = get_settings()
-    model = load_global_model()
+
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.MODEL_LOADING.value)
+    model = load_global_model() 
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.MODEL_LOADING.value)
+
     names = get_language(conf['DATABASE_LANG'])
 
     # Read audio data & handle errors
     try:
+        if BENCHMARKING_SERVICE is not None:
+            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_PROCESSING.value)
         audio_data = readAudioData(file.file_name, conf.getfloat('OVERLAP'), model.sample_rate, model.chunk_duration)
+        if BENCHMARKING_SERVICE is not None:
+            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.AUDIO_PROCESSING.value)
     except (NameError, TypeError) as e:
         log.error("Error with the following info: %s", e)
         return []
@@ -156,6 +178,10 @@ def run_analysis(file):
     # Process audio data and get detections
     raw_detections, predicted_species_list = analyzeAudioData(audio_data, conf.getfloat('OVERLAP'), conf.getfloat('LATITUDE'),
                                                               conf.getfloat('LONGITUDE'), file.week)
+    
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.POST_PROCESSING_DETECTIONS.value)
+
     confident_detections = []
     for time_slot, entries in raw_detections.items():
         sci_name, confidence = entries[0]
@@ -179,6 +205,10 @@ def run_analysis(file):
                         confidence,
                     )
                     confident_detections.append(d)
+
+    if BENCHMARKING_SERVICE is not None:
+        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.POST_PROCESSING_DETECTIONS.value)
+
     return confident_detections
 
 
