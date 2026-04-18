@@ -41,6 +41,22 @@ echo "[3/5] Installing benchmark config to ${CONF_TARGET}..."
 sudo mkdir -p "${CONF_TARGET_DIR}"
 sudo install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
 
+echo "[3b/5] Adjusting config paths for current user..."
+CURRENT_USER=$(whoami)
+CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+BIRD_SONGS_DIR="${CURRENT_HOME}/BirdSongs"
+
+# Create the required directories
+mkdir -p "${BIRD_SONGS_DIR}/Extracted/By_Date"
+mkdir -p "${BIRD_SONGS_DIR}/Processed"
+
+# Update paths in the config file
+sudo sed -i "s|RECS_DIR=.*|RECS_DIR=${BIRD_SONGS_DIR}|" "${CONF_TARGET}"
+sudo sed -i "s|EXTRACTED=.*|EXTRACTED=${BIRD_SONGS_DIR}/Extracted|" "${CONF_TARGET}"
+sudo sed -i "s|PROCESSED=.*|PROCESSED=${BIRD_SONGS_DIR}/Processed|" "${CONF_TARGET}"
+
+echo "Paths updated for user ${CURRENT_USER}: ${BIRD_SONGS_DIR}"
+
 echo "[4/5] Setting scenario in constants.py..."
 python - "${CONSTANTS_FILE}" "${SCENARIO_NAME}" <<'PY'
 import pathlib
