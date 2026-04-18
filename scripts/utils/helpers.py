@@ -23,6 +23,9 @@ class BenchmarkingServiceProxy:
     def set(self, service: BenchmarkService | None) -> None:
         self._service = service
 
+    def __bool__(self):
+        return self._service is not None
+
     def __getattr__(self, name):
         if self._service is None:
             raise RuntimeError("Benchmarking service has not been initialized")
