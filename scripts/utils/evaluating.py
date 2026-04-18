@@ -1,0 +1,582 @@
+from __future__ import annotations
+
+import argparse
+import csv
+import html
+import math
+from pathlib import Path
+from typing import Dict, List, Optional
+
+
+def _to_float(value: str) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _percentile(values: List[float], q: float) -> Optional[float]:
+    if not values:
+        return None
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * q
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return ordered[lower]
+    weight = position - lower
+    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
+
+
+def _stats(values: List[float]) -> Dict[str, Optional[float]]:
+    if not values:
+        return {
+            "avg": None,
+            "min": None,
+            "max": None,
+            "median": None,
+            "p95": None,
+        }
+    return {
+        "avg": sum(values) / len(values),
+        "min": min(values),
+        "max": max(values),
+        "median": _percentile(values, 0.5),
+        "p95": _percentile(values, 0.95),
+    }
+
+
+def _fmt(value: Optional[float], digits: int = 2) -> str:
+    if value is None:
+        return "NA"
+    return f"{value:.{digits}f}"
+
+
+def _timestamp_to_curve_filename(timestamp: str) -> str:
+    return timestamp.replace(":", '"') + "_performance_curve.csv"
+
+
+def _extract_time_and_series(curve_rows: List[Dict[str, str]], field: str) -> tuple[List[float], List[float]]:
+    times: List[float] = []
+    values: List[float] = []
+    for idx, row in enumerate(curve_rows):
+        value = _to_float(row.get(field, ""))
+        if value is None:
+            continue
+        t = _to_float(row.get("timestamp_s", ""))
+        if t is None:
+            t = float(idx)
+        times.append(t)
+        values.append(value)
+    return times, values
+
+
+def _scaled_range(min_v: float, max_v: float, pad_fraction: float = 0.05) -> tuple[float, float]:
+    if math.isclose(min_v, max_v):
+        base = abs(min_v) if min_v else 1.0
+        delta = max(0.1, base * 0.05)
+        return min_v - delta, max_v + delta
+    span = max_v - min_v
+    pad = span * pad_fraction
+    return min_v - pad, max_v + pad
+
+
+def _build_path(xs: List[float], ys: List[float], map_x, map_y) -> str:
+    if not xs or not ys or len(xs) != len(ys):
+        return ""
+    points = [f"{map_x(x):.2f},{map_y(y):.2f}" for x, y in zip(xs, ys)]
+    return "M" + " L".join(points)
+
+
+def _generate_single_metric_svg(
+    times: List[float],
+    values: List[float],
+    title: str,
+    y_label: str,
+    line_color: str,
+    width: int = 520,
+    height: int = 260,
+) -> str:
+    if not times or not values:
+        return '<div class="chart-missing">Keine Kurvendaten</div>'
+
+    left, right, top, bottom = 68, 20, 28, 54
+    plot_w = width - left - right
+    plot_h = height - top - bottom
+
+    x_min, x_max = min(times), max(times)
+    if math.isclose(x_min, x_max):
+        x_max = x_min + 1.0
+    y_min, y_max = _scaled_range(min(values), max(values), 0.08)
+
+    def map_x(x: float) -> float:
+        return left + ((x - x_min) / (x_max - x_min)) * plot_w
+
+    def map_y(y: float) -> float:
+        return top + ((y_max - y) / (y_max - y_min)) * plot_h
+
+    path = _build_path(times, values, map_x, map_y)
+    elements = [
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{html.escape(title)}">',
+        f'<rect x="0" y="0" width="{width}" height="{height}" fill="#fff" stroke="#ccd2da"/>',
+    ]
+
+    x_ticks = 6
+    y_ticks = 5
+    for i in range(x_ticks):
+        ratio = i / (x_ticks - 1)
+        x = left + ratio * plot_w
+        x_val = x_min + ratio * (x_max - x_min)
+        elements.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="#ecf0f4"/>')
+        elements.append(
+            f'<text x="{x:.2f}" y="{height - 24}" text-anchor="middle" font-size="11" fill="#4b5a6a">{x_val:.1f}</text>'
+        )
+
+    for i in range(y_ticks):
+        ratio = i / (y_ticks - 1)
+        y = top + ratio * plot_h
+        y_val = y_max - ratio * (y_max - y_min)
+        elements.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_w}" y2="{y:.2f}" stroke="#ecf0f4"/>')
+        elements.append(
+            f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#4b5a6a">{y_val:.1f}</text>'
+        )
+
+    elements.extend(
+        [
+            f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
+            f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
+            f'<path d="{path}" fill="none" stroke="{line_color}" stroke-width="2.4"/>',
+            f'<text x="{width / 2:.2f}" y="18" text-anchor="middle" font-size="13" fill="#2f3f4f">{html.escape(title)}</text>',
+            f'<text x="{width / 2:.2f}" y="{height - 6}" text-anchor="middle" font-size="12" fill="#2f3f4f">Zeit (s)</text>',
+            f'<text x="16" y="{height / 2:.2f}" transform="rotate(-90 16 {height / 2:.2f})" text-anchor="middle" font-size="12" fill="#2f3f4f">{html.escape(y_label)}</text>',
+            "</svg>",
+        ]
+    )
+    return "".join(elements)
+
+
+def _generate_combined_svg(
+    times_ram: List[float],
+    ram_values: List[float],
+    times_cpu: List[float],
+    cpu_values: List[float],
+    width: int = 520,
+    height: int = 260,
+) -> str:
+    if not ram_values and not cpu_values:
+        return '<div class="chart-missing">Keine Kurvendaten</div>'
+
+    left, right, top, bottom = 68, 68, 28, 54
+    plot_w = width - left - right
+    plot_h = height - top - bottom
+
+    all_times = (times_ram or []) + (times_cpu or [])
+    x_min = min(all_times) if all_times else 0.0
+    x_max = max(all_times) if all_times else 1.0
+    if math.isclose(x_min, x_max):
+        x_max = x_min + 1.0
+
+    ram_min, ram_max = _scaled_range(min(ram_values), max(ram_values), 0.08) if ram_values else (0.0, 1.0)
+    cpu_min, cpu_max = _scaled_range(min(cpu_values), max(cpu_values), 0.08) if cpu_values else (0.0, 1.0)
+
+    def map_x(x: float) -> float:
+        return left + ((x - x_min) / (x_max - x_min)) * plot_w
+
+    def map_ram(y: float) -> float:
+        return top + ((ram_max - y) / (ram_max - ram_min)) * plot_h
+
+    def map_cpu(y: float) -> float:
+        return top + ((cpu_max - y) / (cpu_max - cpu_min)) * plot_h
+
+    ram_path = _build_path(times_ram, ram_values, map_x, map_ram)
+    cpu_path = _build_path(times_cpu, cpu_values, map_x, map_cpu)
+
+    elements = [
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RAM und CPU kombiniert">',
+        f'<rect x="0" y="0" width="{width}" height="{height}" fill="#fff" stroke="#ccd2da"/>',
+    ]
+
+    x_ticks = 6
+    y_ticks = 5
+    for i in range(x_ticks):
+        ratio = i / (x_ticks - 1)
+        x = left + ratio * plot_w
+        x_val = x_min + ratio * (x_max - x_min)
+        elements.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="#ecf0f4"/>')
+        elements.append(
+            f'<text x="{x:.2f}" y="{height - 24}" text-anchor="middle" font-size="11" fill="#4b5a6a">{x_val:.1f}</text>'
+        )
+
+    for i in range(y_ticks):
+        ratio = i / (y_ticks - 1)
+        y = top + ratio * plot_h
+        ram_val = ram_max - ratio * (ram_max - ram_min)
+        cpu_val = cpu_max - ratio * (cpu_max - cpu_min)
+        elements.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_w}" y2="{y:.2f}" stroke="#ecf0f4"/>')
+        elements.append(
+            f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#0072B2">{ram_val:.1f}</text>'
+        )
+        elements.append(
+            f'<text x="{left + plot_w + 8}" y="{y + 4:.2f}" text-anchor="start" font-size="11" fill="#D55E00">{cpu_val:.1f}</text>'
+        )
+
+    elements.extend(
+        [
+            f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
+            f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
+            f'<line x1="{left + plot_w}" y1="{top}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
+        ]
+    )
+    if ram_path:
+        elements.append(f'<path d="{ram_path}" fill="none" stroke="#0072B2" stroke-width="2.4"/>')
+    if cpu_path:
+        elements.append(f'<path d="{cpu_path}" fill="none" stroke="#D55E00" stroke-width="2.4"/>')
+
+    elements.extend(
+        [
+            f'<text x="{width / 2:.2f}" y="18" text-anchor="middle" font-size="13" fill="#2f3f4f">RAM + CPU kombiniert</text>',
+            f'<text x="{width / 2:.2f}" y="{height - 6}" text-anchor="middle" font-size="12" fill="#2f3f4f">Zeit (s)</text>',
+            f'<text x="16" y="{height / 2:.2f}" transform="rotate(-90 16 {height / 2:.2f})" text-anchor="middle" font-size="12" fill="#0072B2">RAM (MB)</text>',
+            f'<text x="{width - 14}" y="{height / 2:.2f}" transform="rotate(90 {width - 14} {height / 2:.2f})" text-anchor="middle" font-size="12" fill="#D55E00">CPU (%)</text>',
+            f'<line x1="{left + 12}" y1="{top + 10}" x2="{left + 30}" y2="{top + 10}" stroke="#0072B2" stroke-width="2.4"/>',
+            f'<text x="{left + 34}" y="{top + 14}" font-size="11" fill="#2f3f4f">RAM</text>',
+            f'<line x1="{left + 78}" y1="{top + 10}" x2="{left + 96}" y2="{top + 10}" stroke="#D55E00" stroke-width="2.4"/>',
+            f'<text x="{left + 100}" y="{top + 14}" font-size="11" fill="#2f3f4f">CPU</text>',
+            "</svg>",
+        ]
+    )
+
+    return "".join(elements)
+
+
+def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
+    times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
+    times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
+
+    ram_svg = _generate_single_metric_svg(
+        times=times_ram,
+        values=ram_values,
+        title="RAM-Verlauf pro Testdurchlauf",
+        y_label="RAM (MB)",
+        line_color="#0072B2",
+    )
+    cpu_svg = _generate_single_metric_svg(
+        times=times_cpu,
+        values=cpu_values,
+        title="CPU-Verlauf pro Testdurchlauf",
+        y_label="CPU (%)",
+        line_color="#D55E00",
+    )
+    combined_svg = _generate_combined_svg(times_ram, ram_values, times_cpu, cpu_values)
+
+    return (
+        '<div class="charts-grid">'
+        f'<div class="chart-card">{ram_svg}</div>'
+        f'<div class="chart-card">{cpu_svg}</div>'
+        f'<div class="chart-card">{combined_svg}</div>'
+        "</div>"
+    )
+
+
+def _read_metrics_file(path: Path) -> tuple[str, List[Dict[str, str]], List[str]]:
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines()
+
+    header_idx = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith("Timestamp,"):
+            header_idx = i
+            break
+    if header_idx is None:
+        raise ValueError(f"Keine Metrik-Tabelle in {path} gefunden.")
+
+    metadata_lines = lines[:header_idx]
+    csv_text = "\n".join(lines[header_idx:])
+    reader = csv.DictReader(csv_text.splitlines())
+    rows = [dict(row) for row in reader]
+    columns = list(reader.fieldnames or [])
+    return "\n".join(metadata_lines), rows, columns
+
+
+def _read_curve_file(path: Path) -> List[Dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        return [dict(row) for row in reader]
+
+
+def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]:
+    timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
+    timestamps = [v for v in timestamps if v is not None]
+
+    ram_process = [_to_float(r.get("ram_mb_birdnet_process", "")) for r in curve_rows]
+    ram_process = [v for v in ram_process if v is not None]
+
+    total_used_percent = [_to_float(r.get("total_used_ram_percent", "")) for r in curve_rows]
+    total_used_percent = [v for v in total_used_percent if v is not None]
+
+    cpu_process = [_to_float(r.get("cpu_percent_birdnet_process", "")) for r in curve_rows]
+    cpu_process = [v for v in cpu_process if v is not None]
+
+    cpu_system = [_to_float(r.get("cpu_percent_system", "")) for r in curve_rows]
+    cpu_system = [v for v in cpu_system if v is not None]
+
+    phase_values = [r.get("phase", "").strip().lower() for r in curve_rows]
+    analysis_samples = sum(1 for p in phase_values if p == "analysis")
+    idle_samples = sum(1 for p in phase_values if p == "idle")
+
+    duration = None
+    if timestamps:
+        duration = max(timestamps) - min(timestamps)
+
+    ram_stats = _stats(ram_process)
+    used_stats = _stats(total_used_percent)
+    cpu_p_stats = _stats(cpu_process)
+    cpu_s_stats = _stats(cpu_system)
+
+    return {
+        "samples": str(len(curve_rows)),
+        "duration_s": _fmt(duration, 3),
+        "analysis_samples": str(analysis_samples),
+        "idle_samples": str(idle_samples),
+        "ram_avg_mb": _fmt(ram_stats["avg"]),
+        "ram_min_mb": _fmt(ram_stats["min"]),
+        "ram_max_mb": _fmt(ram_stats["max"]),
+        "ram_p95_mb": _fmt(ram_stats["p95"]),
+        "used_ram_avg_pct": _fmt(used_stats["avg"]),
+        "used_ram_max_pct": _fmt(used_stats["max"]),
+        "cpu_proc_avg_pct": _fmt(cpu_p_stats["avg"]),
+        "cpu_proc_max_pct": _fmt(cpu_p_stats["max"]),
+        "cpu_proc_p95_pct": _fmt(cpu_p_stats["p95"]),
+        "cpu_sys_avg_pct": _fmt(cpu_s_stats["avg"]),
+        "cpu_sys_max_pct": _fmt(cpu_s_stats["max"]),
+    }
+
+
+def _build_html_report(
+    metadata_block: str,
+    metric_columns: List[str],
+    merged_rows: List[Dict[str, str]],
+    output_path: Path,
+) -> None:
+    summary_columns = [
+        "samples",
+        "duration_s",
+        "analysis_samples",
+        "idle_samples",
+        "ram_avg_mb",
+        "ram_min_mb",
+        "ram_max_mb",
+        "ram_p95_mb",
+        "used_ram_avg_pct",
+        "used_ram_max_pct",
+        "cpu_proc_avg_pct",
+        "cpu_proc_max_pct",
+        "cpu_proc_p95_pct",
+        "cpu_sys_avg_pct",
+        "cpu_sys_max_pct",
+    ]
+
+    header_cells = "".join(f"<th>{html.escape(col)}</th>" for col in metric_columns + summary_columns)
+    header_cells += "<th>Curve Diagram</th>"
+
+    body_rows = []
+    for row in merged_rows:
+        values = [html.escape(row.get(col, "")) for col in metric_columns + summary_columns]
+        metric_cells = "".join(f"<td>{val}</td>" for val in values)
+        chart_cell = f"<td>{row.get('_curve_svg', '')}</td>"
+        body_rows.append(f"<tr>{metric_cells}{chart_cell}</tr>")
+
+    html_content = f"""<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BirdNET Benchmark Zusammenfassung</title>
+  <style>
+    :root {{
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --text: #1f2d3d;
+      --line: #d3dce6;
+      --head: #e8eef6;
+    }}
+    body {{
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DejaVu Sans", "Noto Sans", sans-serif;
+    }}
+    main {{
+      max-width: 1800px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }}
+    h1 {{
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;
+    }}
+    .panel {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    }}
+    pre {{
+      margin: 0;
+      white-space: pre-wrap;
+      font-family: "DejaVu Sans Mono", "Noto Sans Mono", monospace;
+      font-size: 0.92rem;
+    }}
+    .table-wrap {{
+      overflow-x: auto;
+    }}
+    table {{
+      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+    }}
+    th, td {{
+      border: 1px solid var(--line);
+      padding: 0.4rem 0.5rem;
+      vertical-align: top;
+      white-space: nowrap;
+      font-size: 0.86rem;
+    }}
+    th {{
+      background: var(--head);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }}
+        td:last-child {{
+            min-width: 1620px;
+        }}
+        .charts-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(520px, 1fr));
+            gap: 0.6rem;
+        }}
+        .chart-card {{
+            border: 1px solid #d7dee8;
+            border-radius: 6px;
+            background: #fafcff;
+            padding: 0.2rem;
+        }}
+        .chart-card svg {{
+            display: block;
+        }}
+    .chart-missing {{
+      color: #7f8c99;
+      font-style: italic;
+      padding: 0.5rem;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>BirdNET Benchmark Report</h1>
+    <section class="panel">
+      <h2>Header</h2>
+      <pre>{html.escape(metadata_block)}</pre>
+    </section>
+    <section class="panel table-wrap">
+      <h2>Details der Durchläufe mit Kennzahlen und Kurven</h2>
+      <table>
+        <thead>
+          <tr>{header_cells}</tr>
+        </thead>
+        <tbody>
+          {''.join(body_rows)}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
+"""
+
+    output_path.write_text(html_content, encoding="utf-8")
+
+
+def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> None:
+    metadata_block, metrics_rows, metric_columns = _read_metrics_file(metrics_file)
+
+    merged_rows: List[Dict[str, str]] = []
+    for metric_row in metrics_rows:
+        timestamp = metric_row.get("Timestamp", "").strip()
+        curve_name = _timestamp_to_curve_filename(timestamp)
+        curve_path = curves_dir / curve_name
+
+        row_data = dict(metric_row)
+        if curve_path.exists():
+            curve_rows = _read_curve_file(curve_path)
+            row_data.update(_calculate_curve_summary(curve_rows))
+            row_data["_curve_svg"] = _generate_svg(curve_rows)
+        else:
+            row_data.update(
+                {
+                    "samples": "0",
+                    "duration_s": "NA",
+                    "analysis_samples": "0",
+                    "idle_samples": "0",
+                    "ram_avg_mb": "NA",
+                    "ram_min_mb": "NA",
+                    "ram_max_mb": "NA",
+                    "ram_p95_mb": "NA",
+                    "used_ram_avg_pct": "NA",
+                    "used_ram_max_pct": "NA",
+                    "cpu_proc_avg_pct": "NA",
+                    "cpu_proc_max_pct": "NA",
+                    "cpu_proc_p95_pct": "NA",
+                    "cpu_sys_avg_pct": "NA",
+                    "cpu_sys_max_pct": "NA",
+                }
+            )
+            row_data["_curve_svg"] = '<div class="chart-missing">Curve-Datei nicht gefunden</div>'
+
+        merged_rows.append(row_data)
+
+    _build_html_report(metadata_block, metric_columns, merged_rows, output_file)
+
+
+def main() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    default_input_dir = project_root / "tests" / "testdata" / "evaluating" / "Pi4B"
+
+    parser = argparse.ArgumentParser(
+        description="Erstellt einen zusammengefassten BirdNET-Benchmark-Report aus metrics_log.csv und curves/*.csv"
+    )
+    parser.add_argument(
+        "--input-dir",
+        type=Path,
+        default=default_input_dir,
+        help="Ordner mit metrics_log.csv und curves/",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Ausgabe-Datei (default: <input-dir>/benchmark_summary.html)",
+    )
+    args = parser.parse_args()
+
+    input_dir = args.input_dir.resolve()
+    metrics_file = input_dir / "metrics_log.csv"
+    curves_dir = input_dir / "curves"
+    output_file = (args.output.resolve() if args.output else (input_dir / "benchmark_summary.html").resolve())
+
+    if not metrics_file.exists():
+        raise FileNotFoundError(f"Datei nicht gefunden: {metrics_file}")
+    if not curves_dir.exists():
+        raise FileNotFoundError(f"Ordner nicht gefunden: {curves_dir}")
+
+    create_summary(metrics_file, curves_dir, output_file)
+    print(f"Report erstellt: {output_file}")
+
+
+if __name__ == "__main__":
+    main()
