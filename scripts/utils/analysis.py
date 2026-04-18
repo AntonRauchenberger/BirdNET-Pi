@@ -66,21 +66,21 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
     start = time.time()
     log.info('ANALYZING AUDIO...')
     
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_ANALYSIS.value)
 
     model.set_meta_data(lat, lon, week)
     predicted_species_list = model.get_species_list()
 
     # Parse every chunk
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.INFERENCE.value)
     for chunk in chunks:
         p = model.predict(chunk)
         log.debug("PPPPP: %s", p)
         detections.append(p)
 
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.INFERENCE.value)
 
     labeled = {}
@@ -92,7 +92,7 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
 
         pred_start = pred_end - overlap
 
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.AUDIO_ANALYSIS.value)
 
     log.info('DONE! Time %.2f SECONDS', time.time() - start)
@@ -156,20 +156,20 @@ def run_analysis(file):
 
     conf = get_settings()
 
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.MODEL_LOADING.value)
-    model = load_global_model() 
-    if BENCHMARKING_SERVICE is not None:
+    model = load_global_model()
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.MODEL_LOADING.value)
 
     names = get_language(conf['DATABASE_LANG'])
 
     # Read audio data & handle errors
     try:
-        if BENCHMARKING_SERVICE is not None:
+        if BENCHMARKING_SERVICE:
             BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_PROCESSING.value)
         audio_data = readAudioData(file.file_name, conf.getfloat('OVERLAP'), model.sample_rate, model.chunk_duration)
-        if BENCHMARKING_SERVICE is not None:
+        if BENCHMARKING_SERVICE:
             BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.AUDIO_PROCESSING.value)
     except (NameError, TypeError) as e:
         log.error("Error with the following info: %s", e)
@@ -179,7 +179,7 @@ def run_analysis(file):
     raw_detections, predicted_species_list = analyzeAudioData(audio_data, conf.getfloat('OVERLAP'), conf.getfloat('LATITUDE'),
                                                               conf.getfloat('LONGITUDE'), file.week)
     
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.POST_PROCESSING_DETECTIONS.value)
 
     confident_detections = []
@@ -206,7 +206,7 @@ def run_analysis(file):
                     )
                     confident_detections.append(d)
 
-    if BENCHMARKING_SERVICE is not None:
+    if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.POST_PROCESSING_DETECTIONS.value)
 
     return confident_detections
