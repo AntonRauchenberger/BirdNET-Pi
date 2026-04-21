@@ -8,61 +8,57 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+################################################################################
+# Paths and scenario helpers
+################################################################################
 def _project_root() -> Path:
+    """Returns repository root based on this file location."""
     return Path(__file__).resolve().parents[2]
 
 
 def _scenario_input_dir(scenario_name: str) -> Path:
+    """Builds the scenario directory path under benchmarking_results."""
     return _project_root() / "benchmarking_results" / scenario_name
 
 
+################################################################################
+# Numeric helpers and statistics
+################################################################################
 def _to_float(value: str) -> Optional[float]:
+    """Safely converts a value to float, returning None on invalid input."""
     try:
         return float(value)
     except (TypeError, ValueError):
         return None
 
 
-def _percentile(values: List[float], q: float) -> Optional[float]:
-    if not values:
-        return None
-    ordered = sorted(values)
-    if len(ordered) == 1:
-        return ordered[0]
-    position = (len(ordered) - 1) * q
-    lower = math.floor(position)
-    upper = math.ceil(position)
-    if lower == upper:
-        return ordered[lower]
-    weight = position - lower
-    return ordered[lower] * (1.0 - weight) + ordered[upper] * weight
-
-
 def _stats(values: List[float]) -> Dict[str, Optional[float]]:
+    """Returns common descriptive stats for a numeric series."""
     if not values:
         return {
             "avg": None,
             "min": None,
             "max": None,
-            "median": None,
-            "p95": None,
         }
     return {
         "avg": sum(values) / len(values),
         "min": min(values),
         "max": max(values),
-        "median": _percentile(values, 0.5),
-        "p95": _percentile(values, 0.95),
     }
 
 
 def _fmt(value: Optional[float], digits: int = 2) -> str:
+    """Formats optional numeric values for report output."""
     if value is None:
         return "NA"
     return f"{value:.{digits}f}"
 
 
+################################################################################
+# Curve file resolution and extraction
+################################################################################
 def _timestamp_to_curve_filenames(timestamp: str) -> List[str]:
+    """Returns supported curve filename variants for one timestamp."""
     literal = timestamp + "_performance_curve.csv"
     legacy = timestamp.replace(":", '"') + "_performance_curve.csv"
     filenames = [literal]
@@ -72,6 +68,7 @@ def _timestamp_to_curve_filenames(timestamp: str) -> List[str]:
 
 
 def _resolve_curve_file(curves_dir: Path, timestamp: str) -> Path:
+    """Resolves the first existing curve file variant for a metric timestamp."""
     for filename in _timestamp_to_curve_filenames(timestamp):
         candidate = curves_dir / filename
         if candidate.exists():
@@ -80,6 +77,7 @@ def _resolve_curve_file(curves_dir: Path, timestamp: str) -> Path:
 
 
 def _extract_time_and_series(curve_rows: List[Dict[str, str]], field: str) -> tuple[List[float], List[float]]:
+    """Extracts timestamp/value pairs for one curve field."""
     times: List[float] = []
     values: List[float] = []
     for idx, row in enumerate(curve_rows):
@@ -94,7 +92,11 @@ def _extract_time_and_series(curve_rows: List[Dict[str, str]], field: str) -> tu
     return times, values
 
 
+################################################################################
+# SVG chart primitives
+################################################################################
 def _scaled_range(min_v: float, max_v: float, pad_fraction: float = 0.05) -> tuple[float, float]:
+    """Creates a y-axis range."""
     if math.isclose(min_v, max_v):
         base = abs(min_v) if min_v else 1.0
         delta = max(0.1, base * 0.05)
@@ -105,6 +107,7 @@ def _scaled_range(min_v: float, max_v: float, pad_fraction: float = 0.05) -> tup
 
 
 def _build_path(xs: List[float], ys: List[float], map_x, map_y) -> str:
+    """Builds an SVG path string from mapped x/y points."""
     if not xs or not ys or len(xs) != len(ys):
         return ""
     points = [f"{map_x(x):.2f},{map_y(y):.2f}" for x, y in zip(xs, ys)]
@@ -112,6 +115,7 @@ def _build_path(xs: List[float], ys: List[float], map_x, map_y) -> str:
 
 
 def _phase_color(phase_name: str) -> str:
+    """Maps a phase name to a color from a fixed palette."""
     palette = [
         "#7B61FF",
         "#17A398",
@@ -126,6 +130,7 @@ def _phase_color(phase_name: str) -> str:
 
 
 def _extract_phase_change_markers(curve_rows: List[Dict[str, str]]) -> List[tuple[float, str]]:
+    """Extracts timeline markers when phase changes occur."""
     markers: List[tuple[float, str]] = []
     prev_phase: Optional[str] = None
     for idx, row in enumerate(curve_rows):
@@ -154,6 +159,7 @@ def _generate_single_metric_svg(
     width: int = 520,
     height: int = 260,
 ) -> str:
+    """Generates one SVG line chart for a metric series."""
     if not times or not values:
         return '<div class="chart-missing">Keine Kurvendaten</div>'
 
@@ -178,6 +184,7 @@ def _generate_single_metric_svg(
         f'<rect x="0" y="0" width="{width}" height="{height}" fill="#fff" stroke="#ccd2da"/>',
     ]
 
+    # Draw chart grid and axis ticks first, then data and overlays
     x_ticks = 6
     y_ticks = 5
     for i in range(x_ticks):
@@ -198,6 +205,7 @@ def _generate_single_metric_svg(
             f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#4b5a6a">{y_val:.1f}</text>'
         )
 
+    # Add vertical phase transition markers to correlate metric changes with phases
     if phase_markers:
         for idx, (phase_t, phase_name) in enumerate(phase_markers):
             if phase_t < x_min or phase_t > x_max:
@@ -226,7 +234,11 @@ def _generate_single_metric_svg(
     return "".join(elements)
 
 
+################################################################################
+# Chart composition
+################################################################################
 def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
+    """Builds the 4-chart block for one benchmark run."""
     times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
     times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
     times_cpu_system, cpu_system_values = _extract_time_and_series(curve_rows, "cpu_percent_system")
@@ -275,7 +287,11 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     )
 
 
+################################################################################
+# CSV reading and per-run summary extraction
+################################################################################
 def _read_metrics_file(path: Path) -> tuple[str, List[Dict[str, str]], List[str]]:
+    """Reads metrics_log.csv and returns metadata block, rows, and column names."""
     content = path.read_text(encoding="utf-8")
     lines = content.splitlines()
 
@@ -285,7 +301,7 @@ def _read_metrics_file(path: Path) -> tuple[str, List[Dict[str, str]], List[str]
             header_idx = i
             break
     if header_idx is None:
-        raise ValueError(f"Keine Metrik-Tabelle in {path} gefunden.")
+        raise ValueError(f"No metrics table found in {path}.")
 
     metadata_lines = lines[:header_idx]
     csv_text = "\n".join(lines[header_idx:])
@@ -296,12 +312,14 @@ def _read_metrics_file(path: Path) -> tuple[str, List[Dict[str, str]], List[str]
 
 
 def _read_curve_file(path: Path) -> List[Dict[str, str]]:
+    """Reads one performance curve CSV into a row list."""
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         return [dict(row) for row in reader]
 
 
 def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]:
+    """Computes per-run values from raw curve samples."""
     timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
     timestamps = [v for v in timestamps if v is not None]
 
@@ -336,17 +354,18 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
         "ram_avg_mb": _fmt(ram_stats["avg"]),
         "ram_min_mb": _fmt(ram_stats["min"]),
         "ram_max_mb": _fmt(ram_stats["max"]),
-        "ram_p95_mb": _fmt(ram_stats["p95"]),
         "used_ram_avg_pct": _fmt(used_stats["avg"]),
         "used_ram_max_pct": _fmt(used_stats["max"]),
         "cpu_proc_avg_pct": _fmt(cpu_p_stats["avg"]),
         "cpu_proc_max_pct": _fmt(cpu_p_stats["max"]),
-        "cpu_proc_p95_pct": _fmt(cpu_p_stats["p95"]),
         "cpu_sys_avg_pct": _fmt(cpu_s_stats["avg"]),
         "cpu_sys_max_pct": _fmt(cpu_s_stats["max"]),
     }
 
 
+################################################################################
+# Aggregation across multiple runs
+################################################################################
 def _aggregate_all_curves(
     curve_files: List[Path],
 ) -> tuple[
@@ -360,7 +379,7 @@ def _aggregate_all_curves(
     List[float],
     List[tuple[float, str]],
 ]:
-    """Aggregates all curve data by computing average values at normalized time positions."""
+    """Aggregates curves by normalizing each run and averaging aligned points."""
     all_times_ram: List[List[float]] = []
     all_values_ram: List[List[float]] = []
     all_times_cpu: List[List[float]] = []
@@ -403,7 +422,7 @@ def _aggregate_all_curves(
             normalized_markers = [((t - t_min) / duration, phase) for t, phase in markers]
             all_phase_markers_normalized.append(normalized_markers)
 
-    # Normalize curves to 100 points each and compute averages
+    # Normalize each run to a fixed number of points, then average point-wise
     def normalize_and_average(times_list: List[List[float]], values_list: List[List[float]]) -> tuple[List[float], List[float], float]:
         if not times_list:
             return [], [], 0.0
@@ -420,8 +439,8 @@ def _aggregate_all_curves(
                 t_max = t_min + 1.0
             durations.append(t_max - t_min)
             
-            # Interpolate to num_points
-            interp_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]
+            # Interpolate raw run data to a common normalized timeline
+            interp_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]  # Generate normalized time points
             interp_values = []
             for t in interp_times:
                 idx = next((i for i, tm in enumerate(times) if tm >= t), len(times) - 1)
@@ -433,14 +452,14 @@ def _aggregate_all_curves(
                     if math.isclose(t0, t1):
                         interp_values.append(v0)
                     else:
-                        frac = (t - t0) / (t1 - t0)
-                        interp_values.append(v0 * (1 - frac) + v1 * frac)
+                        frac = (t - t0) / (t1 - t0) # Calculate interpolation factor
+                        interp_values.append(v0 * (1 - frac) + v1 * frac)   # Real linear interpolation calculation
             normalized_values.append(interp_values)
 
         if not normalized_values:
             return [], [], 0.0
 
-        # Average across runs
+        # Average all normalized runs point-by-point
         avg_values = [sum(col) / len(col) for col in zip(*normalized_values)]
         avg_duration = sum(durations) / len(durations) if durations else 0.0
         avg_times = [i * avg_duration / (num_points - 1) for i in range(num_points)]
@@ -489,8 +508,9 @@ def _aggregate_all_curves(
 
 
 def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
-    """Generates summary statistics across all test runs."""
+    """Generates summary table statistics across all test runs."""
 
+    # Helper to robustly extract float values from rows, trying both exact and stripped field names
     def get_row_float(row: Dict[str, str], field: str) -> Optional[float]:
         value = row.get(field, "")
         if value in (None, ""):
@@ -501,7 +521,7 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
                     break
         return _to_float(value)
 
-    # Extract numeric values from merged_rows for each metric
+    # Extract and aggregate key metrics used in the summary table
     metric_fields = [
         ("Avg Confidence (%)", "Avg Confidence (%)"),
         ("Total Analysis (s)", "Total Analysis (s)"),
@@ -511,10 +531,8 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
         ("Total Reporting (s)", "Total Reporting (s)"),
         ("ram_avg_mb", "RAM Average (MB)"),
         ("ram_max_mb", "RAM Peak (MB)"),
-        ("ram_p95_mb", "RAM p95 (MB)"),
         ("cpu_proc_avg_pct", "CPU Process Avg (%)"),
         ("cpu_proc_max_pct", "CPU Process Peak (%)"),
-        ("cpu_proc_p95_pct", "CPU Process p95 (%)"),
         ("cpu_sys_avg_pct", "CPU System Avg (%)"),
         ("cpu_sys_max_pct", "CPU System Peak (%)"),
         ("duration_s", "Test Duration (s)"),
@@ -535,6 +553,9 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
     return stats
 
 
+################################################################################
+# HTML report assembly
+################################################################################
 def _build_html_report(
     metadata_block: str,
     metric_columns: List[str],
@@ -542,6 +563,9 @@ def _build_html_report(
     curves_dir: Path,
     output_path: Path,
 ) -> None:
+    """Builds and writes the final HTML report with tables and SVG charts."""
+    metric_columns = [col for col in metric_columns if "p95" not in col.lower()]    # ignore percentile columns, maybe used for later
+
     summary_columns = [
         "samples",
         "duration_s",
@@ -549,20 +573,18 @@ def _build_html_report(
         "ram_avg_mb",
         "ram_min_mb",
         "ram_max_mb",
-        "ram_p95_mb",
         "used_ram_avg_pct",
         "used_ram_max_pct",
         "cpu_proc_avg_pct",
         "cpu_proc_max_pct",
-        "cpu_proc_p95_pct",
         "cpu_sys_avg_pct",
         "cpu_sys_max_pct",
     ]
 
-    # Generate summary section with aggregated stats and graphs
+    # Build aggregated statistics and averaged curves for the summary section
     summary_stats = _generate_aggregated_summary_stats(merged_rows)
     
-    # Get all curve files for aggregation
+    # Load all curve files so summary charts represent all runs
     curve_files = sorted(curves_dir.glob("*_performance_curve.csv")) if curves_dir.exists() else []
     (
         avg_times_ram,
@@ -576,7 +598,7 @@ def _build_html_report(
         aggregated_phase_markers,
     ) = _aggregate_all_curves(curve_files)
     
-    # Generate aggregated SVGs
+    # Render aggregated summary charts
     ram_svg = _generate_single_metric_svg(
         times=avg_times_ram,
         values=avg_ram,
@@ -609,7 +631,8 @@ def _build_html_report(
         line_color="#CC79A7",
         phase_markers=aggregated_phase_markers,
     )
-    # Build summary table HTML
+    
+    # Build summary metrics table
     summary_table_rows = []
     metric_labels = {
         "Avg Confidence (%)": "Avg Confidence (%)",
@@ -620,10 +643,8 @@ def _build_html_report(
         "Total Reporting (s)": "Total Reporting (s)",
         "ram_avg_mb": "RAM Avg (MB)",
         "ram_max_mb": "RAM Max (MB)",
-        "ram_p95_mb": "RAM p95 (MB)",
         "cpu_proc_avg_pct": "CPU Proc Avg (%)",
         "cpu_proc_max_pct": "CPU Proc Max (%)",
-        "cpu_proc_p95_pct": "CPU Proc p95 (%)",
         "cpu_sys_avg_pct": "CPU Sys Avg (%)",
         "cpu_sys_max_pct": "CPU Sys Max (%)",
         "duration_s": "Duration (s)",
@@ -670,7 +691,7 @@ def _build_html_report(
     </section>
     """
 
-    # Generate detail rows
+    # Build detailed run table including per-run chart cells
     header_cells = "".join(f"<th>{html.escape(col)}</th>" for col in metric_columns + summary_columns)
     header_cells += "<th>Curve Diagram</th>"
 
@@ -702,7 +723,6 @@ def _build_html_report(
       font-family: "DejaVu Sans", "Noto Sans", sans-serif;
     }}
     main {{
-      max-width: 1800px;
       margin: 1rem auto;
       padding: 0 1rem;
     }}
@@ -818,7 +838,11 @@ def _build_html_report(
     output_path.write_text(html_content, encoding="utf-8")
 
 
+################################################################################
+# Entry points for bash script
+################################################################################
 def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> None:
+    """Loads metric/curve csv files and produces one benchmark summary report."""
     metadata_block, metrics_rows, metric_columns = _read_metrics_file(metrics_file)
 
     merged_rows: List[Dict[str, str]] = []
@@ -840,12 +864,10 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
                     "ram_avg_mb": "NA",
                     "ram_min_mb": "NA",
                     "ram_max_mb": "NA",
-                    "ram_p95_mb": "NA",
                     "used_ram_avg_pct": "NA",
                     "used_ram_max_pct": "NA",
                     "cpu_proc_avg_pct": "NA",
                     "cpu_proc_max_pct": "NA",
-                    "cpu_proc_p95_pct": "NA",
                     "cpu_sys_avg_pct": "NA",
                     "cpu_sys_max_pct": "NA",
                 }
@@ -858,8 +880,10 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
 
 
 def main() -> None:
+    """Entry point for generating the benchmark summary HTML."""
     default_input_dir = _project_root() / "tests" / "testdata" / "evaluating" / "Pi4B"
 
+    # CLI parameters so it can be started with the bash script
     parser = argparse.ArgumentParser(
         description="Erstellt einen zusammengefassten BirdNET-Benchmark-Report aus metrics_log.csv und curves/*.csv"
     )
@@ -889,12 +913,12 @@ def main() -> None:
     output_file = (args.output.resolve() if args.output else (input_dir / "benchmark_summary.html").resolve())
 
     if not metrics_file.exists():
-        raise FileNotFoundError(f"Datei nicht gefunden: {metrics_file}")
+        raise FileNotFoundError(f"File not found: {metrics_file}")
     if not curves_dir.exists():
-        raise FileNotFoundError(f"Ordner nicht gefunden: {curves_dir}")
+        raise FileNotFoundError(f"Directory not found: {curves_dir}")
 
     create_summary(metrics_file, curves_dir, output_file)
-    print(f"Report erstellt: {output_file}")
+    print(f"Report created: {output_file}")
 
 
 if __name__ == "__main__":
