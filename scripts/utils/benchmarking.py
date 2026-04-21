@@ -113,7 +113,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 60.0, idle_max_samples: int = 800, results_dir: str | None = None) -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 300.0, idle_max_samples: int = 4000, results_dir: str | None = None) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
