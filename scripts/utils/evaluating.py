@@ -8,6 +8,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+def _project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _scenario_input_dir(scenario_name: str) -> Path:
+    return _project_root() / "benchmarking_results" / scenario_name
+
+
 def _to_float(value: str) -> Optional[float]:
     try:
         return float(value)
@@ -54,8 +62,21 @@ def _fmt(value: Optional[float], digits: int = 2) -> str:
     return f"{value:.{digits}f}"
 
 
-def _timestamp_to_curve_filename(timestamp: str) -> str:
-    return timestamp.replace(":", '"') + "_performance_curve.csv"
+def _timestamp_to_curve_filenames(timestamp: str) -> List[str]:
+    literal = timestamp + "_performance_curve.csv"
+    legacy = timestamp.replace(":", '"') + "_performance_curve.csv"
+    filenames = [literal]
+    if legacy != literal:
+        filenames.append(legacy)
+    return filenames
+
+
+def _resolve_curve_file(curves_dir: Path, timestamp: str) -> Path:
+    for filename in _timestamp_to_curve_filenames(timestamp):
+        candidate = curves_dir / filename
+        if candidate.exists():
+            return candidate
+    return curves_dir / _timestamp_to_curve_filenames(timestamp)[0]
 
 
 def _extract_time_and_series(curve_rows: List[Dict[str, str]], field: str) -> tuple[List[float], List[float]]:
@@ -835,8 +856,7 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
     merged_rows: List[Dict[str, str]] = []
     for metric_row in metrics_rows:
         timestamp = metric_row.get("Timestamp", "").strip()
-        curve_name = _timestamp_to_curve_filename(timestamp)
-        curve_path = curves_dir / curve_name
+        curve_path = _resolve_curve_file(curves_dir, timestamp)
 
         row_data = dict(metric_row)
         if curve_path.exists():
@@ -871,11 +891,16 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
 
 
 def main() -> None:
-    project_root = Path(__file__).resolve().parents[2]
-    default_input_dir = project_root / "tests" / "testdata" / "evaluating" / "Pi4B"
+    default_input_dir = _project_root() / "tests" / "testdata" / "evaluating" / "Pi4B"
 
     parser = argparse.ArgumentParser(
         description="Erstellt einen zusammengefassten BirdNET-Benchmark-Report aus metrics_log.csv und curves/*.csv"
+    )
+    parser.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="Szenario-Name unter benchmarking_results/<scenario>/",
     )
     parser.add_argument(
         "--input-dir",
@@ -891,7 +916,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    input_dir = args.input_dir.resolve()
+    input_dir = _scenario_input_dir(args.scenario).resolve() if args.scenario else args.input_dir.resolve()
     metrics_file = input_dir / "metrics_log.csv"
     curves_dir = input_dir / "curves"
     output_file = (args.output.resolve() if args.output else (input_dir / "benchmark_summary.html").resolve())
