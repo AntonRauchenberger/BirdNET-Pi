@@ -226,143 +226,51 @@ def _generate_single_metric_svg(
     return "".join(elements)
 
 
-def _generate_combined_svg(
-    times_ram: List[float],
-    ram_values: List[float],
-    times_cpu: List[float],
-    cpu_values: List[float],
-    phase_markers: Optional[List[tuple[float, str]]] = None,
-    width: int = 520,
-    height: int = 260,
-) -> str:
-    if not ram_values and not cpu_values:
-        return '<div class="chart-missing">Keine Kurvendaten</div>'
-
-    left, right, top, bottom = 68, 68, 28, 54
-    plot_w = width - left - right
-    plot_h = height - top - bottom
-
-    all_times = (times_ram or []) + (times_cpu or [])
-    x_min = min(all_times) if all_times else 0.0
-    x_max = max(all_times) if all_times else 1.0
-    if math.isclose(x_min, x_max):
-        x_max = x_min + 1.0
-
-    ram_min, ram_max = _scaled_range(min(ram_values), max(ram_values), 0.08) if ram_values else (0.0, 1.0)
-    cpu_min, cpu_max = _scaled_range(min(cpu_values), max(cpu_values), 0.08) if cpu_values else (0.0, 1.0)
-
-    def map_x(x: float) -> float:
-        return left + ((x - x_min) / (x_max - x_min)) * plot_w
-
-    def map_ram(y: float) -> float:
-        return top + ((ram_max - y) / (ram_max - ram_min)) * plot_h
-
-    def map_cpu(y: float) -> float:
-        return top + ((cpu_max - y) / (cpu_max - cpu_min)) * plot_h
-
-    ram_path = _build_path(times_ram, ram_values, map_x, map_ram)
-    cpu_path = _build_path(times_cpu, cpu_values, map_x, map_cpu)
-
-    elements = [
-        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RAM und CPU kombiniert">',
-        f'<rect x="0" y="0" width="{width}" height="{height}" fill="#fff" stroke="#ccd2da"/>',
-    ]
-
-    x_ticks = 6
-    y_ticks = 5
-    for i in range(x_ticks):
-        ratio = i / (x_ticks - 1)
-        x = left + ratio * plot_w
-        x_val = x_min + ratio * (x_max - x_min)
-        elements.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="#ecf0f4"/>')
-        elements.append(
-            f'<text x="{x:.2f}" y="{height - 24}" text-anchor="middle" font-size="11" fill="#4b5a6a">{x_val:.1f}</text>'
-        )
-
-    for i in range(y_ticks):
-        ratio = i / (y_ticks - 1)
-        y = top + ratio * plot_h
-        ram_val = ram_max - ratio * (ram_max - ram_min)
-        cpu_val = cpu_max - ratio * (cpu_max - cpu_min)
-        elements.append(f'<line x1="{left}" y1="{y:.2f}" x2="{left + plot_w}" y2="{y:.2f}" stroke="#ecf0f4"/>')
-        elements.append(
-            f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#0072B2">{ram_val:.1f}</text>'
-        )
-        elements.append(
-            f'<text x="{left + plot_w + 8}" y="{y + 4:.2f}" text-anchor="start" font-size="11" fill="#D55E00">{cpu_val:.1f}</text>'
-        )
-
-    if phase_markers:
-        for idx, (phase_t, phase_name) in enumerate(phase_markers):
-            if phase_t < x_min or phase_t > x_max:
-                continue
-            x = map_x(phase_t)
-            color = _phase_color(phase_name)
-            label_y = top + 12 + ((idx % 2) * 10)
-            elements.append(
-                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
-            )
-            elements.append(
-                f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(phase_name)}</text>'
-            )
-
-    elements.extend(
-        [
-            f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
-            f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
-            f'<line x1="{left + plot_w}" y1="{top}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
-        ]
-    )
-    if ram_path:
-        elements.append(f'<path d="{ram_path}" fill="none" stroke="#0072B2" stroke-width="2.4"/>')
-    if cpu_path:
-        elements.append(f'<path d="{cpu_path}" fill="none" stroke="#D55E00" stroke-width="2.4"/>')
-
-    elements.extend(
-        [
-            f'<text x="{width / 2:.2f}" y="18" text-anchor="middle" font-size="13" fill="#2f3f4f">RAM + CPU kombiniert</text>',
-            f'<text x="{width / 2:.2f}" y="{height - 6}" text-anchor="middle" font-size="12" fill="#2f3f4f">Zeit (s)</text>',
-            f'<text x="16" y="{height / 2:.2f}" transform="rotate(-90 16 {height / 2:.2f})" text-anchor="middle" font-size="12" fill="#0072B2">RAM (MB)</text>',
-            f'<text x="{width - 14}" y="{height / 2:.2f}" transform="rotate(90 {width - 14} {height / 2:.2f})" text-anchor="middle" font-size="12" fill="#D55E00">CPU (%)</text>',
-            f'<line x1="{left + 12}" y1="{top + 10}" x2="{left + 30}" y2="{top + 10}" stroke="#0072B2" stroke-width="2.4"/>',
-            f'<text x="{left + 34}" y="{top + 14}" font-size="11" fill="#2f3f4f">RAM</text>',
-            f'<line x1="{left + 78}" y1="{top + 10}" x2="{left + 96}" y2="{top + 10}" stroke="#D55E00" stroke-width="2.4"/>',
-            f'<text x="{left + 100}" y="{top + 14}" font-size="11" fill="#2f3f4f">CPU</text>',
-            "</svg>",
-        ]
-    )
-
-    return "".join(elements)
-
-
 def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
     times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
+    times_cpu_system, cpu_system_values = _extract_time_and_series(curve_rows, "cpu_percent_system")
+    times_used_ram, used_ram_values = _extract_time_and_series(curve_rows, "total_used_ram_percent")
     phase_markers = _extract_phase_change_markers(curve_rows)
 
     ram_svg = _generate_single_metric_svg(
         times=times_ram,
         values=ram_values,
-        title="RAM-Verlauf pro Testdurchlauf",
-        y_label="RAM (MB)",
+        title="RAM-Nutzung des BirdNET-Prozesses je Testdurchlauf",
+        y_label="RAM-Nutzung BirdNET-Prozess (MB)",
         line_color="#0072B2",
         phase_markers=phase_markers,
     )
     cpu_svg = _generate_single_metric_svg(
         times=times_cpu,
         values=cpu_values,
-        title="CPU-Verlauf pro Testdurchlauf",
-        y_label="CPU (%)",
+        title="CPU-Auslastung des BirdNET-Prozesses je Testdurchlauf",
+        y_label="CPU-Auslastung BirdNET-Prozess (%)",
         line_color="#D55E00",
         phase_markers=phase_markers,
     )
-    combined_svg = _generate_combined_svg(times_ram, ram_values, times_cpu, cpu_values, phase_markers=phase_markers)
-
+    cpu_system_svg = _generate_single_metric_svg(
+        times=times_cpu_system,
+        values=cpu_system_values,
+        title="Systemweite CPU-Auslastung je Testdurchlauf",
+        y_label="CPU-Auslastung gesamt (%)",
+        line_color="#009E73",
+        phase_markers=phase_markers,
+    )
+    used_ram_svg = _generate_single_metric_svg(
+        times=times_used_ram,
+        values=used_ram_values,
+        title="Systemweite RAM-Auslastung je Testdurchlauf",
+        y_label="RAM-Auslastung gesamt (%)",
+        line_color="#CC79A7",
+        phase_markers=phase_markers,
+    )
     return (
         '<div class="charts-grid">'
         f'<div class="chart-card">{ram_svg}</div>'
+        f'<div class="chart-card">{used_ram_svg}</div>'
         f'<div class="chart-card">{cpu_svg}</div>'
-        f'<div class="chart-card">{combined_svg}</div>'
+        f'<div class="chart-card">{cpu_system_svg}</div>'
         "</div>"
     )
 
@@ -410,7 +318,6 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     cpu_system = [v for v in cpu_system if v is not None]
 
     phase_values = [r.get("phase", "").strip().lower() for r in curve_rows]
-    analysis_samples = sum(1 for p in phase_values if p == "analysis")
     idle_samples = sum(1 for p in phase_values if p == "idle")
 
     duration = None
@@ -425,7 +332,6 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     return {
         "samples": str(len(curve_rows)),
         "duration_s": _fmt(duration, 3),
-        "analysis_samples": str(analysis_samples),
         "idle_samples": str(idle_samples),
         "ram_avg_mb": _fmt(ram_stats["avg"]),
         "ram_min_mb": _fmt(ram_stats["min"]),
@@ -441,12 +347,28 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     }
 
 
-def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[float], List[float], List[float], List[tuple[float, str]]]:
+def _aggregate_all_curves(
+    curve_files: List[Path],
+) -> tuple[
+    List[float],
+    List[float],
+    List[float],
+    List[float],
+    List[float],
+    List[float],
+    List[float],
+    List[float],
+    List[tuple[float, str]],
+]:
     """Aggregates all curve data by computing average values at normalized time positions."""
     all_times_ram: List[List[float]] = []
     all_values_ram: List[List[float]] = []
     all_times_cpu: List[List[float]] = []
     all_values_cpu: List[List[float]] = []
+    all_times_cpu_system: List[List[float]] = []
+    all_values_cpu_system: List[List[float]] = []
+    all_times_used_ram: List[List[float]] = []
+    all_values_used_ram: List[List[float]] = []
     all_phase_markers_normalized: List[List[tuple[float, str]]] = []
 
     for curve_file in curve_files:
@@ -455,6 +377,8 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
         curve_rows = _read_curve_file(curve_file)
         times_ram, ram_vals = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
         times_cpu, cpu_vals = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
+        times_cpu_system, cpu_system_vals = _extract_time_and_series(curve_rows, "cpu_percent_system")
+        times_used_ram, used_ram_vals = _extract_time_and_series(curve_rows, "total_used_ram_percent")
 
         if times_ram and ram_vals:
             all_times_ram.append(times_ram)
@@ -462,6 +386,12 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
         if times_cpu and cpu_vals:
             all_times_cpu.append(times_cpu)
             all_values_cpu.append(cpu_vals)
+        if times_cpu_system and cpu_system_vals:
+            all_times_cpu_system.append(times_cpu_system)
+            all_values_cpu_system.append(cpu_system_vals)
+        if times_used_ram and used_ram_vals:
+            all_times_used_ram.append(times_used_ram)
+            all_values_used_ram.append(used_ram_vals)
 
         timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
         timestamps = [v for v in timestamps if v is not None]
@@ -535,11 +465,27 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
 
     avg_times_ram, avg_ram, avg_duration_ram = normalize_and_average(all_times_ram, all_values_ram)
     avg_times_cpu, avg_cpu, avg_duration_cpu = normalize_and_average(all_times_cpu, all_values_cpu)
+    avg_times_cpu_system, avg_cpu_system, avg_duration_cpu_system = normalize_and_average(
+        all_times_cpu_system, all_values_cpu_system
+    )
+    avg_times_used_ram, avg_used_ram, avg_duration_used_ram = normalize_and_average(
+        all_times_used_ram, all_values_used_ram
+    )
 
-    marker_duration = max(avg_duration_ram, avg_duration_cpu, 0.0)
+    marker_duration = max(avg_duration_ram, avg_duration_cpu, avg_duration_cpu_system, avg_duration_used_ram, 0.0)
     aggregated_phase_markers = aggregate_phase_markers(all_phase_markers_normalized, marker_duration)
 
-    return avg_times_ram, avg_ram, avg_times_cpu, avg_cpu, aggregated_phase_markers
+    return (
+        avg_times_ram,
+        avg_ram,
+        avg_times_cpu,
+        avg_cpu,
+        avg_times_cpu_system,
+        avg_cpu_system,
+        avg_times_used_ram,
+        avg_used_ram,
+        aggregated_phase_markers,
+    )
 
 
 def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
@@ -599,7 +545,6 @@ def _build_html_report(
     summary_columns = [
         "samples",
         "duration_s",
-        "analysis_samples",
         "idle_samples",
         "ram_avg_mb",
         "ram_min_mb",
@@ -619,33 +564,51 @@ def _build_html_report(
     
     # Get all curve files for aggregation
     curve_files = sorted(curves_dir.glob("*_performance_curve.csv")) if curves_dir.exists() else []
-    avg_times_ram, avg_ram, avg_times_cpu, avg_cpu, aggregated_phase_markers = _aggregate_all_curves(curve_files)
+    (
+        avg_times_ram,
+        avg_ram,
+        avg_times_cpu,
+        avg_cpu,
+        avg_times_cpu_system,
+        avg_cpu_system,
+        avg_times_used_ram,
+        avg_used_ram,
+        aggregated_phase_markers,
+    ) = _aggregate_all_curves(curve_files)
     
     # Generate aggregated SVGs
     ram_svg = _generate_single_metric_svg(
         times=avg_times_ram,
         values=avg_ram,
-        title="Durchschnittlicher RAM-Verlauf (über alle Durchläufe)",
-        y_label="RAM (MB)",
+        title="Durchschnittliche RAM-Nutzung des BirdNET-Prozesses (alle Durchläufe)",
+        y_label="RAM-Nutzung BirdNET-Prozess (MB)",
         line_color="#0072B2",
         phase_markers=aggregated_phase_markers,
     )
     cpu_svg = _generate_single_metric_svg(
         times=avg_times_cpu,
         values=avg_cpu,
-        title="Durchschnittlicher CPU-Verlauf (über alle Durchläufe)",
-        y_label="CPU (%)",
+        title="Durchschnittliche CPU-Auslastung des BirdNET-Prozesses (alle Durchläufe)",
+        y_label="CPU-Auslastung BirdNET-Prozess (%)",
         line_color="#D55E00",
         phase_markers=aggregated_phase_markers,
     )
-    combined_svg = _generate_combined_svg(
-        avg_times_ram,
-        avg_ram,
-        avg_times_cpu,
-        avg_cpu,
+    cpu_system_svg = _generate_single_metric_svg(
+        times=avg_times_cpu_system,
+        values=avg_cpu_system,
+        title="Durchschnittliche systemweite CPU-Auslastung (alle Durchläufe)",
+        y_label="CPU-Auslastung gesamt (%)",
+        line_color="#009E73",
         phase_markers=aggregated_phase_markers,
     )
-    
+    used_ram_svg = _generate_single_metric_svg(
+        times=avg_times_used_ram,
+        values=avg_used_ram,
+        title="Durchschnittliche systemweite RAM-Auslastung (alle Durchläufe)",
+        y_label="RAM-Auslastung gesamt (%)",
+        line_color="#CC79A7",
+        phase_markers=aggregated_phase_markers,
+    )
     # Build summary table HTML
     summary_table_rows = []
     metric_labels = {
@@ -698,10 +661,11 @@ def _build_html_report(
         {summary_table_html}
       </div>
       <h3 style="margin-top: 1.5rem;">Aggregierte Messwerte</h3>
-      <div class="charts-grid" style="display: flex; overflow: auto;">
+          <div class="charts-grid">
         <div class="chart-card">{ram_svg}</div>
+                <div class="chart-card">{used_ram_svg}</div>
         <div class="chart-card">{cpu_svg}</div>
-        <div class="chart-card">{combined_svg}</div>
+                <div class="chart-card">{cpu_system_svg}</div>
       </div>
     </section>
     """
@@ -803,15 +767,19 @@ def _build_html_report(
         }}
     .charts-grid {{
         display: grid;
-        grid-template-columns: repeat(3, minmax(520px, 1fr));
+        grid-template-columns: repeat(2, minmax(520px, 1fr));
         gap: 0.6rem;
         margin-top: 0.5rem;
+        overflow-x: auto;
     }}
     .chart-card {{
         border: 1px solid #d7dee8;
         border-radius: 6px;
         background: #fafcff;
         padding: 0.2rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }}
     .chart-card svg {{
         display: block;
@@ -868,7 +836,6 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
                 {
                     "samples": "0",
                     "duration_s": "NA",
-                    "analysis_samples": "0",
                     "idle_samples": "0",
                     "ram_avg_mb": "NA",
                     "ram_min_mb": "NA",
