@@ -90,12 +90,46 @@ def _build_path(xs: List[float], ys: List[float], map_x, map_y) -> str:
     return "M" + " L".join(points)
 
 
+def _phase_color(phase_name: str) -> str:
+    palette = [
+        "#7B61FF",
+        "#17A398",
+        "#F39C12",
+        "#E74C3C",
+        "#2E86DE",
+        "#8E44AD",
+        "#16A085",
+        "#C0392B",
+    ]
+    return palette[hash(phase_name.strip().lower()) % len(palette)]
+
+
+def _extract_phase_change_markers(curve_rows: List[Dict[str, str]]) -> List[tuple[float, str]]:
+    markers: List[tuple[float, str]] = []
+    prev_phase: Optional[str] = None
+    for idx, row in enumerate(curve_rows):
+        phase = row.get("phase", "").strip()
+        if not phase:
+            continue
+        if prev_phase is None:
+            prev_phase = phase
+            continue
+        if phase != prev_phase:
+            t = _to_float(row.get("timestamp_s", ""))
+            if t is None:
+                t = float(idx)
+            markers.append((t, phase))
+            prev_phase = phase
+    return markers
+
+
 def _generate_single_metric_svg(
     times: List[float],
     values: List[float],
     title: str,
     y_label: str,
     line_color: str,
+    phase_markers: Optional[List[tuple[float, str]]] = None,
     width: int = 520,
     height: int = 260,
 ) -> str:
@@ -143,6 +177,20 @@ def _generate_single_metric_svg(
             f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#4b5a6a">{y_val:.1f}</text>'
         )
 
+    if phase_markers:
+        for idx, (phase_t, phase_name) in enumerate(phase_markers):
+            if phase_t < x_min or phase_t > x_max:
+                continue
+            x = map_x(phase_t)
+            color = _phase_color(phase_name)
+            label_y = top + 12 + ((idx % 2) * 10)
+            elements.append(
+                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
+            )
+            elements.append(
+                f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(phase_name)}</text>'
+            )
+
     elements.extend(
         [
             f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
@@ -162,6 +210,7 @@ def _generate_combined_svg(
     ram_values: List[float],
     times_cpu: List[float],
     cpu_values: List[float],
+    phase_markers: Optional[List[tuple[float, str]]] = None,
     width: int = 520,
     height: int = 260,
 ) -> str:
@@ -222,6 +271,20 @@ def _generate_combined_svg(
             f'<text x="{left + plot_w + 8}" y="{y + 4:.2f}" text-anchor="start" font-size="11" fill="#D55E00">{cpu_val:.1f}</text>'
         )
 
+    if phase_markers:
+        for idx, (phase_t, phase_name) in enumerate(phase_markers):
+            if phase_t < x_min or phase_t > x_max:
+                continue
+            x = map_x(phase_t)
+            color = _phase_color(phase_name)
+            label_y = top + 12 + ((idx % 2) * 10)
+            elements.append(
+                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
+            )
+            elements.append(
+                f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(phase_name)}</text>'
+            )
+
     elements.extend(
         [
             f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#c8d2dd"/>',
@@ -254,6 +317,7 @@ def _generate_combined_svg(
 def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
     times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
+    phase_markers = _extract_phase_change_markers(curve_rows)
 
     ram_svg = _generate_single_metric_svg(
         times=times_ram,
@@ -261,6 +325,7 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
         title="RAM-Verlauf pro Testdurchlauf",
         y_label="RAM (MB)",
         line_color="#0072B2",
+        phase_markers=phase_markers,
     )
     cpu_svg = _generate_single_metric_svg(
         times=times_cpu,
@@ -268,8 +333,9 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
         title="CPU-Verlauf pro Testdurchlauf",
         y_label="CPU (%)",
         line_color="#D55E00",
+        phase_markers=phase_markers,
     )
-    combined_svg = _generate_combined_svg(times_ram, ram_values, times_cpu, cpu_values)
+    combined_svg = _generate_combined_svg(times_ram, ram_values, times_cpu, cpu_values, phase_markers=phase_markers)
 
     return (
         '<div class="charts-grid">'
@@ -354,12 +420,13 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     }
 
 
-def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[float], List[float], List[float]]:
+def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[float], List[float], List[float], List[tuple[float, str]]]:
     """Aggregates all curve data by computing average values at normalized time positions."""
     all_times_ram: List[List[float]] = []
     all_values_ram: List[List[float]] = []
     all_times_cpu: List[List[float]] = []
     all_values_cpu: List[List[float]] = []
+    all_phase_markers_normalized: List[List[tuple[float, str]]] = []
 
     for curve_file in curve_files:
         if not curve_file.exists():
@@ -375,13 +442,24 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
             all_times_cpu.append(times_cpu)
             all_values_cpu.append(cpu_vals)
 
+        timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
+        timestamps = [v for v in timestamps if v is not None]
+        if timestamps:
+            t_min = min(timestamps)
+            t_max = max(timestamps)
+            duration = max(1e-6, t_max - t_min)
+            markers = _extract_phase_change_markers(curve_rows)
+            normalized_markers = [((t - t_min) / duration, phase) for t, phase in markers]
+            all_phase_markers_normalized.append(normalized_markers)
+
     # Normalize curves to 100 points each and compute averages
-    def normalize_and_average(times_list: List[List[float]], values_list: List[List[float]]) -> tuple[List[float], List[float]]:
+    def normalize_and_average(times_list: List[List[float]], values_list: List[List[float]]) -> tuple[List[float], List[float], float]:
         if not times_list:
-            return [], []
+            return [], [], 0.0
 
         num_points = 100
         normalized_values = []
+        durations: List[float] = []
 
         for times, values in zip(times_list, values_list):
             if not times or not values:
@@ -389,6 +467,7 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
             t_min, t_max = min(times), max(times)
             if math.isclose(t_min, t_max):
                 t_max = t_min + 1.0
+            durations.append(t_max - t_min)
             
             # Interpolate to num_points
             interp_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]
@@ -407,15 +486,39 @@ def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[fl
                         interp_values.append(v0 * (1 - frac) + v1 * frac)
             normalized_values.append(interp_values)
 
+        if not normalized_values:
+            return [], [], 0.0
+
         # Average across runs
         avg_values = [sum(col) / len(col) for col in zip(*normalized_values)]
-        avg_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]
-        return avg_times, avg_values
+        avg_duration = sum(durations) / len(durations) if durations else 0.0
+        avg_times = [i * avg_duration / (num_points - 1) for i in range(num_points)]
+        return avg_times, avg_values, avg_duration
 
-    avg_times_ram, avg_ram = normalize_and_average(all_times_ram, all_values_ram)
-    avg_times_cpu, avg_cpu = normalize_and_average(all_times_cpu, all_values_cpu)
+    def aggregate_phase_markers(
+        normalized_sequences: List[List[tuple[float, str]]], duration: float
+    ) -> List[tuple[float, str]]:
+        buckets: Dict[tuple[int, str], List[float]] = {}
+        for sequence in normalized_sequences:
+            for idx, (norm_t, phase_name) in enumerate(sequence):
+                key = (idx, phase_name)
+                buckets.setdefault(key, []).append(norm_t)
 
-    return avg_times_ram, avg_ram, avg_times_cpu, avg_cpu
+        aggregated: List[tuple[float, str]] = []
+        for (idx, phase_name), values in buckets.items():
+            _ = idx
+            avg_norm_t = sum(values) / len(values)
+            aggregated.append((avg_norm_t * duration, phase_name))
+
+        return sorted(aggregated, key=lambda item: item[0])
+
+    avg_times_ram, avg_ram, avg_duration_ram = normalize_and_average(all_times_ram, all_values_ram)
+    avg_times_cpu, avg_cpu, avg_duration_cpu = normalize_and_average(all_times_cpu, all_values_cpu)
+
+    marker_duration = max(avg_duration_ram, avg_duration_cpu, 0.0)
+    aggregated_phase_markers = aggregate_phase_markers(all_phase_markers_normalized, marker_duration)
+
+    return avg_times_ram, avg_ram, avg_times_cpu, avg_cpu, aggregated_phase_markers
 
 
 def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
@@ -495,7 +598,7 @@ def _build_html_report(
     
     # Get all curve files for aggregation
     curve_files = sorted(curves_dir.glob("*_performance_curve.csv")) if curves_dir.exists() else []
-    avg_times_ram, avg_ram, avg_times_cpu, avg_cpu = _aggregate_all_curves(curve_files)
+    avg_times_ram, avg_ram, avg_times_cpu, avg_cpu, aggregated_phase_markers = _aggregate_all_curves(curve_files)
     
     # Generate aggregated SVGs
     ram_svg = _generate_single_metric_svg(
@@ -504,6 +607,7 @@ def _build_html_report(
         title="Durchschnittlicher RAM-Verlauf (über alle Durchläufe)",
         y_label="RAM (MB)",
         line_color="#0072B2",
+        phase_markers=aggregated_phase_markers,
     )
     cpu_svg = _generate_single_metric_svg(
         times=avg_times_cpu,
@@ -511,8 +615,15 @@ def _build_html_report(
         title="Durchschnittlicher CPU-Verlauf (über alle Durchläufe)",
         y_label="CPU (%)",
         line_color="#D55E00",
+        phase_markers=aggregated_phase_markers,
     )
-    combined_svg = _generate_combined_svg(avg_times_ram, avg_ram, avg_times_cpu, avg_cpu)
+    combined_svg = _generate_combined_svg(
+        avg_times_ram,
+        avg_ram,
+        avg_times_cpu,
+        avg_cpu,
+        phase_markers=aggregated_phase_markers,
+    )
     
     # Build summary table HTML
     summary_table_rows = []

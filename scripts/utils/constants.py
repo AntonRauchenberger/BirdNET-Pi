@@ -12,4 +12,4 @@ class BenchmarkTimerNames(Enum):
     AUDIO_PROCESSING = "audio processing"
     POST_PROCESSING_DETECTIONS = "post processing detections"
 
-BENCHMARKING_SCENARIO = "Local Laptop Development"
+BENCHMARKING_SCENARIO = "Local Laptop"
