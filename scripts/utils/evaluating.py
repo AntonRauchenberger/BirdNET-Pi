@@ -354,10 +354,122 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     }
 
 
+def _aggregate_all_curves(curve_files: List[Path]) -> tuple[List[float], List[float], List[float], List[float]]:
+    """Aggregates all curve data by computing average values at normalized time positions."""
+    all_times_ram: List[List[float]] = []
+    all_values_ram: List[List[float]] = []
+    all_times_cpu: List[List[float]] = []
+    all_values_cpu: List[List[float]] = []
+
+    for curve_file in curve_files:
+        if not curve_file.exists():
+            continue
+        curve_rows = _read_curve_file(curve_file)
+        times_ram, ram_vals = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
+        times_cpu, cpu_vals = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
+
+        if times_ram and ram_vals:
+            all_times_ram.append(times_ram)
+            all_values_ram.append(ram_vals)
+        if times_cpu and cpu_vals:
+            all_times_cpu.append(times_cpu)
+            all_values_cpu.append(cpu_vals)
+
+    # Normalize curves to 100 points each and compute averages
+    def normalize_and_average(times_list: List[List[float]], values_list: List[List[float]]) -> tuple[List[float], List[float]]:
+        if not times_list:
+            return [], []
+
+        num_points = 100
+        normalized_values = []
+
+        for times, values in zip(times_list, values_list):
+            if not times or not values:
+                continue
+            t_min, t_max = min(times), max(times)
+            if math.isclose(t_min, t_max):
+                t_max = t_min + 1.0
+            
+            # Interpolate to num_points
+            interp_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]
+            interp_values = []
+            for t in interp_times:
+                idx = next((i for i, tm in enumerate(times) if tm >= t), len(times) - 1)
+                if idx == 0:
+                    interp_values.append(values[0])
+                else:
+                    t0, t1 = times[idx - 1], times[idx]
+                    v0, v1 = values[idx - 1], values[idx]
+                    if math.isclose(t0, t1):
+                        interp_values.append(v0)
+                    else:
+                        frac = (t - t0) / (t1 - t0)
+                        interp_values.append(v0 * (1 - frac) + v1 * frac)
+            normalized_values.append(interp_values)
+
+        # Average across runs
+        avg_values = [sum(col) / len(col) for col in zip(*normalized_values)]
+        avg_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]
+        return avg_times, avg_values
+
+    avg_times_ram, avg_ram = normalize_and_average(all_times_ram, all_values_ram)
+    avg_times_cpu, avg_cpu = normalize_and_average(all_times_cpu, all_values_cpu)
+
+    return avg_times_ram, avg_ram, avg_times_cpu, avg_cpu
+
+
+def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
+    """Generates summary statistics across all test runs."""
+
+    def get_row_float(row: Dict[str, str], field: str) -> Optional[float]:
+        value = row.get(field, "")
+        if value in (None, ""):
+            field_norm = field.strip()
+            for key, raw in row.items():
+                if key.strip() == field_norm:
+                    value = raw
+                    break
+        return _to_float(value)
+
+    # Extract numeric values from merged_rows for each metric
+    metric_fields = [
+        ("Avg Confidence (%)", "Avg Confidence (%)"),
+        ("Total Analysis (s)", "Total Analysis (s)"),
+        ("Inference (s)", "Inference (s)"),
+        ("Model Load (s)", "Model Load (s)"),
+        ("Audio Processing (s)", "Audio Processing (s)"),
+        ("Total Reporting (s)", "Total Reporting (s)"),
+        ("ram_avg_mb", "RAM Average (MB)"),
+        ("ram_max_mb", "RAM Peak (MB)"),
+        ("ram_p95_mb", "RAM p95 (MB)"),
+        ("cpu_proc_avg_pct", "CPU Process Avg (%)"),
+        ("cpu_proc_max_pct", "CPU Process Peak (%)"),
+        ("cpu_proc_p95_pct", "CPU Process p95 (%)"),
+        ("cpu_sys_avg_pct", "CPU System Avg (%)"),
+        ("cpu_sys_max_pct", "CPU System Peak (%)"),
+        ("duration_s", "Test Duration (s)"),
+    ]
+
+    stats = {}
+    for field, label in metric_fields:
+        values = [get_row_float(row, field) for row in merged_rows]
+        values = [v for v in values if v is not None]
+        field_stats = _stats(values)
+        stats[f"{field}_avg"] = _fmt(field_stats["avg"])
+        stats[f"{field}_min"] = _fmt(field_stats["min"])
+        stats[f"{field}_max"] = _fmt(field_stats["max"])
+
+    total_runs = len(merged_rows)
+    stats["total_runs"] = str(total_runs)
+
+    return stats
+
+
 def _build_html_report(
     metadata_block: str,
     metric_columns: List[str],
     merged_rows: List[Dict[str, str]],
+    curves_dir: Path,
     output_path: Path,
 ) -> None:
     summary_columns = [
@@ -378,6 +490,91 @@ def _build_html_report(
         "cpu_sys_max_pct",
     ]
 
+    # Generate summary section with aggregated stats and graphs
+    summary_stats = _generate_aggregated_summary_stats(merged_rows)
+    
+    # Get all curve files for aggregation
+    curve_files = sorted(curves_dir.glob("*_performance_curve.csv")) if curves_dir.exists() else []
+    avg_times_ram, avg_ram, avg_times_cpu, avg_cpu = _aggregate_all_curves(curve_files)
+    
+    # Generate aggregated SVGs
+    ram_svg = _generate_single_metric_svg(
+        times=avg_times_ram,
+        values=avg_ram,
+        title="Durchschnittlicher RAM-Verlauf (über alle Durchläufe)",
+        y_label="RAM (MB)",
+        line_color="#0072B2",
+    )
+    cpu_svg = _generate_single_metric_svg(
+        times=avg_times_cpu,
+        values=avg_cpu,
+        title="Durchschnittlicher CPU-Verlauf (über alle Durchläufe)",
+        y_label="CPU (%)",
+        line_color="#D55E00",
+    )
+    combined_svg = _generate_combined_svg(avg_times_ram, avg_ram, avg_times_cpu, avg_cpu)
+    
+    # Build summary table HTML
+    summary_table_rows = []
+    metric_labels = {
+        "Avg Confidence (%)": "Avg Confidence (%)",
+        "Total Analysis (s)": "Total Analysis (s)",
+        "Inference (s)": "Inference (s)",
+        "Model Load (s)": "Model Load (s)",
+        "Audio Processing (s)": "Audio Processing (s)",
+        "Total Reporting (s)": "Total Reporting (s)",
+        "ram_avg_mb": "RAM Avg (MB)",
+        "ram_max_mb": "RAM Max (MB)",
+        "ram_p95_mb": "RAM p95 (MB)",
+        "cpu_proc_avg_pct": "CPU Proc Avg (%)",
+        "cpu_proc_max_pct": "CPU Proc Max (%)",
+        "cpu_proc_p95_pct": "CPU Proc p95 (%)",
+        "cpu_sys_avg_pct": "CPU Sys Avg (%)",
+        "cpu_sys_max_pct": "CPU Sys Max (%)",
+        "duration_s": "Duration (s)",
+    }
+    
+    for field, label in metric_labels.items():
+        avg_val = summary_stats.get(f"{field}_avg", "NA")
+        min_val = summary_stats.get(f"{field}_min", "NA")
+        max_val = summary_stats.get(f"{field}_max", "NA")
+        summary_table_rows.append(
+            f"<tr><td>{html.escape(label)}</td><td>{html.escape(avg_val)}</td><td>{html.escape(min_val)}</td><td>{html.escape(max_val)}</td></tr>"
+        )
+    
+    summary_table_html = f"""
+        <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Metrik</th>
+          <th>Durchschnitt</th>
+          <th>Minimum</th>
+          <th>Maximum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(summary_table_rows)}
+      </tbody>
+    </table>
+    """
+
+    summary_section_html = f"""
+    <section class="panel">
+      <h2>Zusammenfassung über alle Testdurchläufe</h2>
+      <p><strong>Anzahl Testdurchläufe:</strong> {summary_stats.get('total_runs', 'N/A')}</p>
+      <div class="table-wrap">
+        {summary_table_html}
+      </div>
+      <h3 style="margin-top: 1.5rem;">Aggregierte Messwerte</h3>
+      <div class="charts-grid" style="display: flex; overflow: auto;">
+        <div class="chart-card">{ram_svg}</div>
+        <div class="chart-card">{cpu_svg}</div>
+        <div class="chart-card">{combined_svg}</div>
+      </div>
+    </section>
+    """
+
+    # Generate detail rows
     header_cells = "".join(f"<th>{html.escape(col)}</th>" for col in metric_columns + summary_columns)
     header_cells += "<th>Curve Diagram</th>"
 
@@ -393,7 +590,7 @@ def _build_html_report(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BirdNET Benchmark Zusammenfassung</title>
+  <title>Benchmark Zusammenfassung</title>
   <style>
     :root {{
       --bg: #f4f7fb;
@@ -417,6 +614,19 @@ def _build_html_report(
       margin: 0 0 0.5rem;
       font-size: 1.5rem;
     }}
+    h2 {{
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }}
+    h3 {{
+      margin-top: 1rem;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }}
+    p {{
+      margin: 0.25rem 0;
+    }}
     .panel {{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -433,6 +643,7 @@ def _build_html_report(
     }}
     .table-wrap {{
       overflow-x: auto;
+      margin: 0.5rem 0;
     }}
     table {{
       border-collapse: collapse;
@@ -452,23 +663,27 @@ def _build_html_report(
       top: 0;
       z-index: 2;
     }}
-        td:last-child {{
-            min-width: 1620px;
+        .details-table td:last-child {{
+        min-width: 1620px;
+    }}
+        .summary-table {{
+            width: auto;
         }}
-        .charts-grid {{
-            display: grid;
-            grid-template-columns: repeat(3, minmax(520px, 1fr));
-            gap: 0.6rem;
-        }}
-        .chart-card {{
-            border: 1px solid #d7dee8;
-            border-radius: 6px;
-            background: #fafcff;
-            padding: 0.2rem;
-        }}
-        .chart-card svg {{
-            display: block;
-        }}
+    .charts-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(520px, 1fr));
+        gap: 0.6rem;
+        margin-top: 0.5rem;
+    }}
+    .chart-card {{
+        border: 1px solid #d7dee8;
+        border-radius: 6px;
+        background: #fafcff;
+        padding: 0.2rem;
+    }}
+    .chart-card svg {{
+        display: block;
+    }}
     .chart-missing {{
       color: #7f8c99;
       font-style: italic;
@@ -480,12 +695,13 @@ def _build_html_report(
   <main>
     <h1>BirdNET Benchmark Report</h1>
     <section class="panel">
-      <h2>Header</h2>
+      <h2>Allgemeine Informationen</h2>
       <pre>{html.escape(metadata_block)}</pre>
     </section>
+    {summary_section_html}
     <section class="panel table-wrap">
       <h2>Details der Durchläufe mit Kennzahlen und Kurven</h2>
-      <table>
+            <table class="details-table">
         <thead>
           <tr>{header_cells}</tr>
         </thead>
@@ -540,7 +756,7 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
 
         merged_rows.append(row_data)
 
-    _build_html_report(metadata_block, metric_columns, merged_rows, output_file)
+    _build_html_report(metadata_block, metric_columns, merged_rows, curves_dir, output_file)
 
 
 def main() -> None:
