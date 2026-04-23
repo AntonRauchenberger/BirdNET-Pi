@@ -67,6 +67,7 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
     log.info('ANALYZING AUDIO...')
     
     if BENCHMARKING_SERVICE:
+        BENCHMARKING_SERVICE.set_phase("audio analysis")
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_ANALYSIS.value)
 
     model.set_meta_data(lat, lon, week)
@@ -74,6 +75,7 @@ def analyzeAudioData(chunks, overlap, lat, lon, week):
 
     # Parse every chunk
     if BENCHMARKING_SERVICE:
+        BENCHMARKING_SERVICE.set_phase("inference")
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.INFERENCE.value)
     for chunk in chunks:
         p = model.predict(chunk)
@@ -157,6 +159,7 @@ def run_analysis(file):
     conf = get_settings()
 
     if BENCHMARKING_SERVICE:
+        BENCHMARKING_SERVICE.set_phase("model loading")
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.MODEL_LOADING.value)
     model = load_global_model()
     if BENCHMARKING_SERVICE:
@@ -167,6 +170,7 @@ def run_analysis(file):
     # Read audio data & handle errors
     try:
         if BENCHMARKING_SERVICE:
+            BENCHMARKING_SERVICE.set_phase("audio processing")
             BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.AUDIO_PROCESSING.value)
         audio_data = readAudioData(file.file_name, conf.getfloat('OVERLAP'), model.sample_rate, model.chunk_duration)
         if BENCHMARKING_SERVICE:
@@ -180,6 +184,7 @@ def run_analysis(file):
                                                               conf.getfloat('LONGITUDE'), file.week)
     
     if BENCHMARKING_SERVICE:
+        BENCHMARKING_SERVICE.set_phase("post-processing detections")
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.POST_PROCESSING_DETECTIONS.value)
 
     confident_detections = []

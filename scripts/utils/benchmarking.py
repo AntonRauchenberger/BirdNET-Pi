@@ -16,6 +16,7 @@ import time
 import datetime
 import threading
 import psutil
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Any
 import shutil
@@ -27,6 +28,14 @@ def _bytes_to_mb(num_bytes: float) -> float:
 
 def _bytes_to_gb(num_bytes: float) -> float:
     return num_bytes / (1024 * 1024 * 1024)
+
+
+def _resolve_default_project_path() -> str:
+    cwd_candidate = (Path.cwd() / "../../../BirdNET-Pi").resolve()
+    if cwd_candidate.exists():
+        return str(cwd_candidate)
+
+    return str(Path(__file__).resolve().parents[2])
 
 class _PerformanceSampler(threading.Thread):
     def __init__(self, service_ref: "BenchmarkService", interval_s: float = 0.1):
@@ -104,7 +113,7 @@ class BenchmarkService:
     A small service class to measure performance metrics during a run.
     """
 
-    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 60.0, idle_max_samples: int = 800, results_dir: str | None = None) -> None:
+    def __init__(self, *, model_path: str | None = None, project_path: str | None = None, scenario: str = 'original', sample_interval_s: float = 0.1, enable_cpu_metrics: bool = False, idle_history_s: float = 300.0, idle_max_samples: int = 4000, results_dir: str | None = None) -> None:
 
         self._proc = psutil.Process(os.getpid())
 
@@ -125,6 +134,10 @@ class BenchmarkService:
         self._timers: dict[str, _TimerStats] = {}
 
         self.set_model_path(model_path)
+
+        if project_path is None:
+            project_path = _resolve_default_project_path()
+
         self.set_project_path(project_path)
         self.set_os_sizes()
         self.set_total_ram_size_mb()
@@ -140,8 +153,7 @@ class BenchmarkService:
         self._idle_max_samples = idle_max_samples
         self._measurement_lock = threading.Lock()
         self._performance_samples: dict[str, list[dict[str, Any]]] = {
-            "idle": [],
-            "analysis": []
+            "idle": []
         }
         self._performance_curve: list[dict[str, Any]] = []
         self._current_phase = "idle"
@@ -298,9 +310,11 @@ class BenchmarkService:
                         del samples[:-self._idle_max_samples]
     
     def build_performance_curve(self):
-        """Combines idle and analysis performance samples into a single sorted timeline."""
+        """Combines all recorded phase samples into a single sorted timeline."""
         with self._measurement_lock:
-            combined = self._performance_samples.get("idle", []) + self._performance_samples.get("analysis", [])
+            combined: list[dict[str, Any]] = []
+            for samples in self._performance_samples.values():
+                combined.extend(samples)
             self._performance_curve = sorted(combined, key=lambda x: x["timestamp_s"])
 
 
@@ -448,7 +462,7 @@ class BenchmarkService:
         """Resets all collected data. Useful for multiple runs in the same process."""
         self._active_starts.clear()
         self._timers.clear()
-        self._performance_samples = {"idle": [], "analysis": []}
+        self._performance_samples = {"idle": []}
         self._performance_curve = []
         self._current_phase = "idle"
         self._start_time = time.perf_counter()

@@ -106,7 +106,7 @@ class TestFullBenchmark(unittest.TestCase):
 
         # Phase 2: Start analysis (full pipeline)
         print("Starting analysis phase (full pipeline)...")
-        BENCHMARKING_SERVICE.set_phase("analysis")  # Explicitly switch phase before timing analysis
+        BENCHMARKING_SERVICE.set_phase("total analysis")
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_ANALYSIS.value)
 
         test_file = ParseFileName(self.test_file)
