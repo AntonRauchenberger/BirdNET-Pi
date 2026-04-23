@@ -364,149 +364,8 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
 
 
 ################################################################################
-# Aggregation across multiple runs
+# Summary statistics aggregation
 ################################################################################
-def _aggregate_all_curves(
-    curve_files: List[Path],
-) -> tuple[
-    List[float],
-    List[float],
-    List[float],
-    List[float],
-    List[float],
-    List[float],
-    List[float],
-    List[float],
-    List[tuple[float, str]],
-]:
-    """Aggregates curves by normalizing each run and averaging aligned points."""
-    all_times_ram: List[List[float]] = []
-    all_values_ram: List[List[float]] = []
-    all_times_cpu: List[List[float]] = []
-    all_values_cpu: List[List[float]] = []
-    all_times_cpu_system: List[List[float]] = []
-    all_values_cpu_system: List[List[float]] = []
-    all_times_used_ram: List[List[float]] = []
-    all_values_used_ram: List[List[float]] = []
-    all_phase_markers_normalized: List[List[tuple[float, str]]] = []
-
-    for curve_file in curve_files:
-        if not curve_file.exists():
-            continue
-        curve_rows = _read_curve_file(curve_file)
-        times_ram, ram_vals = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
-        times_cpu, cpu_vals = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
-        times_cpu_system, cpu_system_vals = _extract_time_and_series(curve_rows, "cpu_percent_system")
-        times_used_ram, used_ram_vals = _extract_time_and_series(curve_rows, "total_used_ram_percent")
-
-        if times_ram and ram_vals:
-            all_times_ram.append(times_ram)
-            all_values_ram.append(ram_vals)
-        if times_cpu and cpu_vals:
-            all_times_cpu.append(times_cpu)
-            all_values_cpu.append(cpu_vals)
-        if times_cpu_system and cpu_system_vals:
-            all_times_cpu_system.append(times_cpu_system)
-            all_values_cpu_system.append(cpu_system_vals)
-        if times_used_ram and used_ram_vals:
-            all_times_used_ram.append(times_used_ram)
-            all_values_used_ram.append(used_ram_vals)
-
-        timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
-        timestamps = [v for v in timestamps if v is not None]
-        if timestamps:
-            t_min = min(timestamps)
-            t_max = max(timestamps)
-            duration = max(1e-6, t_max - t_min)
-            markers = _extract_phase_change_markers(curve_rows)
-            normalized_markers = [((t - t_min) / duration, phase) for t, phase in markers]
-            all_phase_markers_normalized.append(normalized_markers)
-
-    # Normalize each run to a fixed number of points, then average point-wise
-    def normalize_and_average(times_list: List[List[float]], values_list: List[List[float]]) -> tuple[List[float], List[float], float]:
-        if not times_list:
-            return [], [], 0.0
-
-        num_points = 100
-        normalized_values = []
-        durations: List[float] = []
-
-        for times, values in zip(times_list, values_list):
-            if not times or not values:
-                continue
-            t_min, t_max = min(times), max(times)
-            if math.isclose(t_min, t_max):
-                t_max = t_min + 1.0
-            durations.append(t_max - t_min)
-            
-            # Interpolate raw run data to a common normalized timeline
-            interp_times = [t_min + i * (t_max - t_min) / (num_points - 1) for i in range(num_points)]  # Generate normalized time points
-            interp_values = []
-            for t in interp_times:
-                idx = next((i for i, tm in enumerate(times) if tm >= t), len(times) - 1)
-                if idx == 0:
-                    interp_values.append(values[0])
-                else:
-                    t0, t1 = times[idx - 1], times[idx]
-                    v0, v1 = values[idx - 1], values[idx]
-                    if math.isclose(t0, t1):
-                        interp_values.append(v0)
-                    else:
-                        frac = (t - t0) / (t1 - t0) # Calculate interpolation factor
-                        interp_values.append(v0 * (1 - frac) + v1 * frac)   # Real linear interpolation calculation
-            normalized_values.append(interp_values)
-
-        if not normalized_values:
-            return [], [], 0.0
-
-        # Average all normalized runs point-by-point
-        avg_values = [sum(col) / len(col) for col in zip(*normalized_values)]
-        avg_duration = sum(durations) / len(durations) if durations else 0.0
-        avg_times = [i * avg_duration / (num_points - 1) for i in range(num_points)]
-        return avg_times, avg_values, avg_duration
-
-    def aggregate_phase_markers(
-        normalized_sequences: List[List[tuple[float, str]]], duration: float
-    ) -> List[tuple[float, str]]:
-        buckets: Dict[tuple[int, str], List[float]] = {}
-        for sequence in normalized_sequences:
-            for idx, (norm_t, phase_name) in enumerate(sequence):
-                key = (idx, phase_name)
-                buckets.setdefault(key, []).append(norm_t)
-
-        aggregated: List[tuple[float, str]] = []
-        for (idx, phase_name), values in buckets.items():
-            _ = idx
-            avg_norm_t = sum(values) / len(values)
-            aggregated.append((avg_norm_t * duration, phase_name))
-
-        return sorted(aggregated, key=lambda item: item[0])
-
-    avg_times_ram, avg_ram, avg_duration_ram = normalize_and_average(all_times_ram, all_values_ram)
-    avg_times_cpu, avg_cpu, avg_duration_cpu = normalize_and_average(all_times_cpu, all_values_cpu)
-    avg_times_cpu_system, avg_cpu_system, avg_duration_cpu_system = normalize_and_average(
-        all_times_cpu_system, all_values_cpu_system
-    )
-    avg_times_used_ram, avg_used_ram, avg_duration_used_ram = normalize_and_average(
-        all_times_used_ram, all_values_used_ram
-    )
-
-    marker_duration = max(avg_duration_ram, avg_duration_cpu, avg_duration_cpu_system, avg_duration_used_ram, 0.0)
-    aggregated_phase_markers = aggregate_phase_markers(all_phase_markers_normalized, marker_duration)
-
-    return (
-        avg_times_ram,
-        avg_ram,
-        avg_times_cpu,
-        avg_cpu,
-        avg_times_cpu_system,
-        avg_cpu_system,
-        avg_times_used_ram,
-        avg_used_ram,
-        aggregated_phase_markers,
-    )
-
-
 def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
     """Generates summary table statistics across all test runs."""
 
@@ -581,56 +440,8 @@ def _build_html_report(
         "cpu_sys_max_pct",
     ]
 
-    # Build aggregated statistics and averaged curves for the summary section
+    # Build aggregated statistics for the summary section
     summary_stats = _generate_aggregated_summary_stats(merged_rows)
-    
-    # Load all curve files so summary charts represent all runs
-    curve_files = sorted(curves_dir.glob("*_performance_curve.csv")) if curves_dir.exists() else []
-    (
-        avg_times_ram,
-        avg_ram,
-        avg_times_cpu,
-        avg_cpu,
-        avg_times_cpu_system,
-        avg_cpu_system,
-        avg_times_used_ram,
-        avg_used_ram,
-        aggregated_phase_markers,
-    ) = _aggregate_all_curves(curve_files)
-    
-    # Render aggregated summary charts
-    ram_svg = _generate_single_metric_svg(
-        times=avg_times_ram,
-        values=avg_ram,
-        title="Durchschnittliche RAM-Nutzung des BirdNET-Prozesses (alle Durchläufe)",
-        y_label="RAM-Nutzung BirdNET-Prozess (MB)",
-        line_color="#0072B2",
-        phase_markers=aggregated_phase_markers,
-    )
-    cpu_svg = _generate_single_metric_svg(
-        times=avg_times_cpu,
-        values=avg_cpu,
-        title="Durchschnittliche CPU-Auslastung des BirdNET-Prozesses (alle Durchläufe)",
-        y_label="CPU-Auslastung BirdNET-Prozess (%)",
-        line_color="#D55E00",
-        phase_markers=aggregated_phase_markers,
-    )
-    cpu_system_svg = _generate_single_metric_svg(
-        times=avg_times_cpu_system,
-        values=avg_cpu_system,
-        title="Durchschnittliche systemweite CPU-Auslastung (alle Durchläufe)",
-        y_label="CPU-Auslastung gesamt (%)",
-        line_color="#009E73",
-        phase_markers=aggregated_phase_markers,
-    )
-    used_ram_svg = _generate_single_metric_svg(
-        times=avg_times_used_ram,
-        values=avg_used_ram,
-        title="Durchschnittliche systemweite RAM-Auslastung (alle Durchläufe)",
-        y_label="RAM-Auslastung gesamt (%)",
-        line_color="#CC79A7",
-        phase_markers=aggregated_phase_markers,
-    )
     
     # Build summary metrics table
     summary_table_rows = []
@@ -680,13 +491,6 @@ def _build_html_report(
       <p><strong>Anzahl Testdurchläufe:</strong> {summary_stats.get('total_runs', 'N/A')}</p>
       <div class="table-wrap">
         {summary_table_html}
-      </div>
-      <h3 style="margin-top: 1.5rem;">Aggregierte Messwerte</h3>
-          <div class="charts-grid">
-        <div class="chart-card">{ram_svg}</div>
-                <div class="chart-card">{used_ram_svg}</div>
-        <div class="chart-card">{cpu_svg}</div>
-                <div class="chart-card">{cpu_system_svg}</div>
       </div>
     </section>
     """
