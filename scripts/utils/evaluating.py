@@ -364,6 +364,259 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
 
 
 ################################################################################
+# Electricity measurement reading and analysis
+################################################################################
+def _read_electricity_file(path: Path) -> List[Dict[str, str]]:
+    """Reads an electricity CSV (with # comment header lines) into a row list."""
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        lines = [line for line in handle if not line.startswith("#")]
+    reader = csv.DictReader(lines)
+    return [dict(row) for row in reader]
+
+
+def _extract_electricity_series(
+    rows: List[Dict[str, str]], time_field: str, value_field: str
+) -> tuple[List[float], List[float]]:
+    """Extracts time/value pairs from electricity CSV rows."""
+    times: List[float] = []
+    values: List[float] = []
+    for idx, row in enumerate(rows):
+        value = _to_float(row.get(value_field, ""))
+        if value is None:
+            continue
+        t = _to_float(row.get(time_field, ""))
+        if t is None:
+            t = float(idx)
+        times.append(t)
+        values.append(value)
+    return times, values
+
+
+def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
+    """Computes summary statistics for one electricity measurement."""
+    times = [_to_float(r.get("Time", "")) for r in rows]
+    times = [v for v in times if v is not None]
+
+    currents = [_to_float(r.get("Current", "")) for r in rows]
+    currents = [v for v in currents if v is not None]
+
+    voltages = [_to_float(r.get("Voltage", "")) for r in rows]
+    voltages = [v for v in voltages if v is not None]
+
+    powers = [_to_float(r.get("Power", "")) for r in rows]
+    powers = [v for v in powers if v is not None]
+
+    duration_seconds = (max(times) - min(times)) if times else None
+    duration_minutes = (duration_seconds / 60.0) if duration_seconds is not None else None
+
+    current_stats = _stats(currents)
+    voltage_stats = _stats(voltages)
+    power_stats = _stats(powers)
+
+    avg_power = power_stats["avg"]
+    # Calculate energy in Wh: P_avg (W) * t (h) = Wh, with t in hours = seconds / 3600
+    energy_wh = (avg_power * duration_seconds / 3600.0) if (avg_power is not None and duration_seconds is not None) else None
+
+    return {
+        "avg_current_a": _fmt(current_stats["avg"], 4),
+        "min_current_a": _fmt(current_stats["min"], 4),
+        "max_current_a": _fmt(current_stats["max"], 4),
+        "avg_voltage_v": _fmt(voltage_stats["avg"], 4),
+        "min_voltage_v": _fmt(voltage_stats["min"], 4),
+        "max_voltage_v": _fmt(voltage_stats["max"], 4),
+        "avg_power_w": _fmt(power_stats["avg"], 4),
+        "min_power_w": _fmt(power_stats["min"], 4),
+        "max_power_w": _fmt(power_stats["max"], 4),
+        "duration_min": _fmt(duration_minutes, 2),
+        "energy_wh": _fmt(energy_wh, 4),
+    }
+
+
+def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str]]]) -> str:
+    """Builds a load-profile summary table for battery sizing at the top of the electricity section."""
+    header_notes = [
+        ("U_nom (V)",
+         "Nennspannung: Welche Spannung benötigt das System? (z.B. 5V, 12V). "
+         "Die Batterie muss diesen Bereich abdecken."),
+        ("I_avg (A)",
+         "Durchschnittsstrom"),
+        ("I_max (A)",
+         "Spitzenstrom: Kann die Batterie diesen Strom liefern, ohne dass die Spannung einbricht?"),
+        ("E (Wh)",
+         "Energiebedarf: Berechnet aus P_avg * Zeit. Ergibt die benötigten Wattstunden."),
+    ]
+
+    th_cells = "".join(
+        f'<th title="{html.escape(note)}">{html.escape(col)}</th>'
+        for col, note in header_notes
+    )
+
+    body_rows = []
+    for label, s in measurement_stats:
+        body_rows.append(
+            f"<tr>"
+            f"<td><strong>{html.escape(label)}</strong></td>"
+            f"<td>{html.escape(s['avg_voltage_v'])}</td>"
+            f"<td>{html.escape(s['avg_current_a'])}</td>"
+            f"<td>{html.escape(s['max_current_a'])}</td>"
+            f"<td>{html.escape(s['energy_wh'])}</td>"
+            f"</tr>"
+        )
+
+    legend_items = "".join(
+        f"<li><strong>{html.escape(col)}</strong> \u2013 {html.escape(note)}</li>"
+        for col, note in header_notes
+    )
+
+    return f"""
+    <div class="load-profile-block">
+      <h3>Lastprofil (für die Batterie-Auslegung)</h3>
+      <div class="table-wrap">
+        <table class="summary-table electricity-summary-table">
+          <thead>
+            <tr>
+              <th>Messszenario</th>
+              {th_cells}
+            </tr>
+          </thead>
+          <tbody>
+            {''.join(body_rows)}
+          </tbody>
+        </table>
+      </div>
+      <ul class="load-profile-legend">
+        {legend_items}
+      </ul>
+    </div>
+    """
+
+
+def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
+    """Builds 3 SVG charts (Ampere, Volt, Watt) for one electricity measurement."""
+    times_a, current_values = _extract_electricity_series(rows, "Time", "Current")
+    times_v, voltage_values = _extract_electricity_series(rows, "Time", "Voltage")
+    times_w, power_values = _extract_electricity_series(rows, "Time", "Power")
+
+    amp_svg = _generate_single_metric_svg(
+        times=times_a,
+        values=current_values,
+        title=f"Stromstärke – {label}",
+        y_label="Stromstärke (A)",
+        line_color="#E67E22",
+    )
+    volt_svg = _generate_single_metric_svg(
+        times=times_v,
+        values=voltage_values,
+        title=f"Spannung – {label}",
+        y_label="Spannung (V)",
+        line_color="#2980B9",
+    )
+    watt_svg = _generate_single_metric_svg(
+        times=times_w,
+        values=power_values,
+        title=f"Leistung – {label}",
+        y_label="Leistung (W)",
+        line_color="#27AE60",
+    )
+    return (
+        '<div class="elec-charts-grid">'
+        f'<div class="chart-card">{amp_svg}</div>'
+        f'<div class="chart-card">{volt_svg}</div>'
+        f'<div class="chart-card">{watt_svg}</div>'
+        "</div>"
+    )
+
+
+def _build_electricity_section(electricity_dir: Path) -> str:
+    """Builds the HTML section for electricity measurements."""
+    if not electricity_dir.exists():
+        return ""
+
+    measurements = [
+        ("real_log.csv", "Normalbetrieb draußen (Real)"),
+        ("active_log.csv", "Durchgehende Analyse (Active)"),
+        ("idle_log.csv", "Ruhemodus (Idle)"),
+    ]
+
+    # First pass: collect all stats for the load profile table
+    all_stats: List[tuple[str, Dict[str, str]]] = []
+    for filename, label in measurements:
+        path = electricity_dir / filename
+        if path.exists():
+            all_stats.append((label, _electricity_stats(_read_electricity_file(path))))
+
+    load_profile_html = _generate_load_profile_html(all_stats) if all_stats else ""
+
+    blocks = []
+    for filename, label in measurements:
+        path = electricity_dir / filename
+        if not path.exists():
+            blocks.append(
+                f'<h3>{html.escape(label)}</h3>'
+                f'<p class="chart-missing">Datei nicht gefunden: {html.escape(filename)}</p>'
+            )
+            continue
+        rows = _read_electricity_file(path)
+        stats = _electricity_stats(rows)
+        charts_html = _generate_electricity_svgs(rows, label)
+        stats_html = f"""
+        <table class="summary-table electricity-summary-table">
+          <thead>
+            <tr>
+              <th>Messwert</th>
+              <th>Durchschnitt</th>
+              <th>Minimum</th>
+              <th>Maximum</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Stromstärke I (Ampere)</td>
+              <td>{stats['avg_current_a']}</td>
+              <td>{stats['min_current_a']}</td>
+              <td>{stats['max_current_a']}</td>
+            </tr>
+            <tr>
+              <td>Spannung U (Volt)</td>
+              <td>{stats['avg_voltage_v']}</td>
+              <td>{stats['min_voltage_v']}</td>
+              <td>{stats['max_voltage_v']}</td>
+            </tr>
+            <tr>
+              <td>Leistung P (Watt)</td>
+              <td>{stats['avg_power_w']}</td>
+              <td>{stats['min_power_w']}</td>
+              <td>{stats['max_power_w']}</td>
+            </tr>
+            <tr>
+              <td>Messdauer (min)</td>
+              <td>{stats['duration_min']}</td>
+              <td>-</td>
+              <td>-</td>
+            </tr>
+          </tbody>
+        </table>
+        """
+        blocks.append(
+            f'<h3>{html.escape(label)}</h3>'
+            f'<div class="table-wrap">{stats_html}</div>'
+            f'{charts_html}'
+        )
+
+    if not blocks:
+        return ""
+
+    return (
+        '<section class="panel">'
+        '<h2>Strommessung</h2>'
+        + load_profile_html
+        + "<hr style='margin:1rem 0;border:none;border-top:1px solid var(--line)'>"
+        + "".join(blocks)
+        + "</section>"
+    )
+
+
+################################################################################
 # Summary statistics aggregation
 ################################################################################
 def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dict[str, str]:
@@ -421,6 +674,7 @@ def _build_html_report(
     merged_rows: List[Dict[str, str]],
     curves_dir: Path,
     output_path: Path,
+    electricity_dir: Optional[Path] = None,
 ) -> None:
     """Builds and writes the final HTML report with tables and SVG charts."""
     metric_columns = [col for col in metric_columns if "p95" not in col.lower()]    # ignore percentile columns, maybe used for later
@@ -505,6 +759,8 @@ def _build_html_report(
         metric_cells = "".join(f"<td>{val}</td>" for val in values)
         chart_cell = f"<td>{row.get('_curve_svg', '')}</td>"
         body_rows.append(f"<tr>{metric_cells}{chart_cell}</tr>")
+
+    electricity_section_html = _build_electricity_section(electricity_dir) if electricity_dir else ""
 
     html_content = f"""<!doctype html>
 <html lang="de">
@@ -613,6 +869,27 @@ def _build_html_report(
       font-style: italic;
       padding: 0.5rem;
     }}
+    .elec-charts-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(520px, 1fr));
+        gap: 0.6rem;
+        margin-top: 0.5rem;
+        overflow-x: auto;
+    }}
+    .load-profile-block {{
+        margin-bottom: 0.5rem;
+    }}
+    .load-profile-block h3 {{
+        margin-top: 0;
+    }}
+    .load-profile-legend {{
+        margin: 0.5rem 0 0 1rem;
+        padding: 0;
+        font-size: 0.83rem;
+        color: #4b5a6a;
+        list-style: disc;
+        line-height: 1.6;
+    }}
   </style>
 </head>
 <body>
@@ -622,6 +899,7 @@ def _build_html_report(
       <h2>Allgemeine Informationen</h2>
       <pre>{html.escape(metadata_block)}</pre>
     </section>
+    {electricity_section_html}
     {summary_section_html}
     <section class="panel table-wrap">
       <h2>Details der Durchläufe mit Kennzahlen und Kurven</h2>
@@ -648,6 +926,8 @@ def _build_html_report(
 def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> None:
     """Loads metric/curve csv files and produces one benchmark summary report."""
     metadata_block, metrics_rows, metric_columns = _read_metrics_file(metrics_file)
+
+    electricity_dir = curves_dir.parent / "electricity"
 
     merged_rows: List[Dict[str, str]] = []
     for metric_row in metrics_rows:
@@ -680,7 +960,8 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
 
         merged_rows.append(row_data)
 
-    _build_html_report(metadata_block, metric_columns, merged_rows, curves_dir, output_file)
+
+    _build_html_report(metadata_block, metric_columns, merged_rows, curves_dir, output_file, electricity_dir)
 
 
 def main() -> None:
