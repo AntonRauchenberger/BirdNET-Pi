@@ -414,8 +414,8 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
     power_stats = _stats(powers)
 
     avg_power = power_stats["avg"]
-    # Calculate energy in Wh: P_avg (W) * t (h) = Wh, with t in hours = seconds / 3600
-    energy_wh = (avg_power * duration_seconds / 3600.0) if (avg_power is not None and duration_seconds is not None) else None
+    # Simple 1-hour projection: E(Wh) = P_avg(W) * 1h.
+    energy_wh = avg_power
 
     return {
         "avg_current_a": _fmt(current_stats["avg"], 4),
@@ -443,7 +443,7 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
         ("I_max (A)",
          "Spitzenstrom: Kann die Batterie diesen Strom liefern, ohne dass die Spannung einbricht?"),
         ("E (Wh)",
-         "Energiebedarf: Berechnet aus P_avg * Zeit. Ergibt die benötigten Wattstunden."),
+            "Energiebedarf: Auf 1 Stunde hochgerechnet (E = P_avg * 1h)."),
     ]
 
     th_cells = "".join(
