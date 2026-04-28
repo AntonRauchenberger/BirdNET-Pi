@@ -50,6 +50,9 @@ class Waveshare2in13V4Device:
         bw_image = image.convert("1")
         self._epd.display(self._epd.getbuffer(bw_image))
 
+    def clear(self):
+        self._epd.Clear(0xFF)
+
     def sleep(self):
         self._epd.sleep()
 
