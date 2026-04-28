@@ -47,7 +47,7 @@ def render_analyze_screen(state_data):
         Line(0.4 * WIDTH, 10, 0.4 * WIDTH, HEIGHT - 10, color="black", width=1),
         Text(0.4 * WIDTH + 5, 15, bird_common_name, font_size=16, color="black"),
         Text(0.4 * WIDTH + 5, 30, bird_scientific_name, font_size=12, color="black"),
-        Text(0.4 * WIDTH + 5, 47, "Konfidenz", font_size=12, color="black"),
+        Text(0.4 * WIDTH + 5, 47, "Confidence", font_size=12, color="black"),
         Rectangle(0.4 * WIDTH + 5, 60, 90, 10, outline=1, fill=None),
         Rectangle(0.4 * WIDTH + 5, 60, confidence * 90, 10, outline=1, fill="black"),
         Text(0.4 * WIDTH + 5, 70, f"{confidence * 100:.0f} %", font_size=12, color="black"),
