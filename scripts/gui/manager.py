@@ -19,8 +19,11 @@ def __main__():
 
     device = create_device(backend=args.backend, clear=not args.no_clear)
 
-    if args.clear and hasattr(device, "clear"):
+    if args.clear and hasattr(device, "clear") and getattr(device, "backend", "") == "waveshare":
         device.clear()
+        time.sleep(2)
+        device.sleep()
+        return
     
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     bird_name = "Common chaffinch (Fringilla coelebs)"
