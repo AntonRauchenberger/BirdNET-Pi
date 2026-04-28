@@ -61,6 +61,57 @@ def render_analyze_screen(state_data):
     return image
 
 
+def _get_header_components(header_text):
+    components = [
+        Rectangle(0, 0, WIDTH, 20, fill="black"),
+        CenteredText(WIDTH, 2, header_text, font_size=16, color="white"),
+    ]
+    return components
+
+def _get_pagination_components(current_page, total_pages=3):
+    components = []
+    dot_spacing = 12
+    start_x = 10
+
+    for i in range(total_pages):
+        is_active = (i == current_page - 1)
+        components.append(StatusDot(cx=start_x + i * dot_spacing, cy=HEIGHT - 12, r=3, fill="black" if is_active else "white", outline="black"))
+
+    return components
+
+def _get_footer_components(footer_text):
+    components = [
+        Divider(WIDTH, HEIGHT - 25, color="black", width=1),
+        CenteredText(WIDTH, HEIGHT - 20, footer_text, font_size=12, color="black"),
+        *_get_pagination_components(current_page=1, total_pages=3),
+    ]
+    return components
+
+
+def render_sync_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    wlan_ssid = str(state_data.get("wlan_ssid", "Unknown Wi-Fi"))
+    status = str(state_data.get("status", "Unknown Status"))
+    last_sync = str(state_data.get("last_sync", "Unknown Time"))
+    entries_to_sync = int(state_data.get("entries_to_sync", 0) or 0)
+
+    components = [
+        *_get_header_components("SYNC"),
+        *_get_footer_components(footer_text="OK: Start sync"),
+        Text(10, 27, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
+        Text(10, 42, f"Status: {status}", font_size=16, color="black"),
+        Text(10, 57, f"Last Sync: {last_sync}", font_size=16, color="black"),
+        Text(10, 72, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
+
+
 def render(device, state_data=None, screen="analyze"):
     if state_data is None:
         state_data = {}
@@ -68,6 +119,8 @@ def render(device, state_data=None, screen="analyze"):
     match screen:
         case "analyze":
             image = render_analyze_screen(state_data)
+        case "sync":
+            image = render_sync_screen(state_data)
         case _:
             image = render_analyze_screen(state_data)
 
