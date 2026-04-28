@@ -2,8 +2,6 @@
 Draws the GUI and handles all rendering related tasks.
 """
 
-import os
-
 from PIL import Image, ImageDraw
 
 from components import *
@@ -31,7 +29,8 @@ def render_analyze_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
 
-    confidence = state_data.get("confidence")
+    confidence = float(state_data.get("confidence", 0.0) or 0.0)
+    confidence = max(0.0, min(1.0, confidence))
     bird_fullname = str(state_data.get("bird_name", "Unknown Bird"))
     bird_common_name = bird_fullname.split(" (")[0]
     bird_scientific_name = bird_fullname.split(" (")[1][:-1] if " (" in bird_fullname else ""
@@ -51,7 +50,7 @@ def render_analyze_screen(state_data):
         Text(0.4 * WIDTH + 5, 50, "Konfidenz", font_size=8, color="black"),
         Rectangle(0.4 * WIDTH + 5, 60, 90, 10, outline=1, fill=None),
         Rectangle(0.4 * WIDTH + 5, 60, confidence * 90, 10, outline=1, fill="black"),
-        Text(0.4 * WIDTH + 5, 72, f"{confidence * 100:.0f}%", font_size=8, color="black"),
+        Text(0.4 * WIDTH + 5, 72, f"{confidence * 100:.0f} %", font_size=8, color="black"),
         Line(0.4 * WIDTH, 85, WIDTH - 5, 85, color="black", width=1),
         Text(0.4 * WIDTH + 5, 90, f"{state_data.get('timestamp', '')}", font_size=8, color="black"),
     ]
