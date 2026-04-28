@@ -6,7 +6,7 @@ import os
 
 from PIL import Image, ImageDraw
 
-from components import CenteredText, Divider, ScaledImage
+from components import *
 
 WIDTH = 250
 HEIGHT = 122
@@ -31,18 +31,29 @@ def render_analyze_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
 
-    bird_name = str(state_data.get("bird_name", "Unknown Bird"))
+    confidence = state_data.get("confidence")
+    bird_fullname = str(state_data.get("bird_name", "Unknown Bird"))
+    bird_common_name = bird_fullname.split(" (")[0]
+    bird_scientific_name = bird_fullname.split(" (")[1][:-1] if " (" in bird_fullname else ""
+
     bird_img = _get_bird_image(state_data)
 
-    image_top = 4
-    image_bottom = HEIGHT - 22
-    max_width = WIDTH - 8
+    image_top = 2
+    image_bottom = HEIGHT - 2
+    max_width = int(WIDTH * 0.4 - 2)
     max_height = image_bottom - image_top
 
     components = [
         ScaledImage(4, image_top, max_width, max_height, bird_img, outline=0),
-        Divider(WIDTH, image_bottom, color=0),
-        CenteredText(WIDTH, image_bottom + 4, bird_name, color=0, font_size=10),
+        Line(0.4 * WIDTH, 10, 0.4 * WIDTH, HEIGHT - 10, color="black", width=1),
+        Text(0.4 * WIDTH + 5, 15, bird_common_name, font_size=16, color="black"),
+        Text(0.4 * WIDTH + 5, 30, bird_scientific_name, font_size=8, color="black"),
+        Text(0.4 * WIDTH + 5, 50, "Konfidenz", font_size=8, color="black"),
+        Rectangle(0.4 * WIDTH + 5, 60, 90, 10, outline=1, fill=None),
+        Rectangle(0.4 * WIDTH + 5, 60, confidence * 90, 10, outline=1, fill="black"),
+        Text(0.4 * WIDTH + 5, 72, f"{confidence * 100:.0f}%", font_size=8, color="black"),
+        Line(0.4 * WIDTH, 85, WIDTH - 5, 85, color="black", width=1),
+        Text(0.4 * WIDTH + 5, 90, f"{state_data.get('timestamp', '')}", font_size=8, color="black"),
     ]
 
     for component in components:

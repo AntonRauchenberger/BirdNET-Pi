@@ -15,6 +15,8 @@ def __main__():
     state_data = {
         "bird_name": bird_name,
         "bird_image_path": os.path.join(base_dir, "scripts", "gui", "assets", "images", "birds", bird_name + ".png"),
+        "confidence": 0.85,
+        "timestamp": "2024-06-01 12:34:56",
     }
     render(device=device, state_data=state_data, screen="analyze")
 

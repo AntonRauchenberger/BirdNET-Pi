@@ -2,7 +2,7 @@ import os
 from PIL import Image as PILImage, ImageFont
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FONT_PATH = os.path.join(BASE_DIR, "assets/fonts/monospace.ttf")
+FONT_PATH = os.path.join(BASE_DIR, "assets/fonts/FSEX300.ttf")
 
 
 def _load_font(size):
@@ -29,7 +29,7 @@ class Text(Component):
         self.font_size = font_size
 
     def draw(self, draw, canvas=None):
-        draw.text((self.x, self.y), self.text, fill=self.color, font=_load_font(self.font_size))
+        draw.text((self.x, self.y), self.text, fill=self.color, font=_load_font(self.font_size), antialiasing=False)
 
 
 class CenteredText(Component):
@@ -47,7 +47,7 @@ class CenteredText(Component):
         bbox = draw.textbbox((0, 0), self.text, font=font)
         text_w = bbox[2] - bbox[0]
         x = (self.canvas_w - text_w) // 2
-        draw.text((x, self.y), self.text, fill=self.color, font=font)
+        draw.text((x, self.y), self.text, fill=self.color, font=font, antialiasing=False)
 
 
 class Rectangle(Component):
@@ -166,7 +166,7 @@ class Label(Component):
             [self.x, self.y, self.x + text_w + 2 * p, self.y + text_h + 2 * p],
             fill=self.bg_color,
         )
-        draw.text((self.x + p, self.y + p), self.text, fill=self.text_color, font=font)
+        draw.text((self.x + p, self.y + p), self.text, fill=self.text_color, font=font, antialiasing=False)
 
 
 class Icon(Component):
