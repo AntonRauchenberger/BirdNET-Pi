@@ -75,14 +75,14 @@ def _get_pagination_components(current_page, total_pages=3):
 
     for i in range(total_pages):
         is_active = (i == current_page - 1)
-        components.append(StatusDot(cx=start_x + i * dot_spacing, cy=HEIGHT - 12, r=3, fill="black" if is_active else "white", outline="black"))
+        components.append(StatusDot(cx=start_x + i * dot_spacing, cy=HEIGHT - 10, r=3, fill="black" if is_active else "white", outline="black"))
 
     return components
 
 def _get_footer_components(footer_text):
     components = [
-        Divider(WIDTH, HEIGHT - 25, color="black", width=1),
-        CenteredText(WIDTH, HEIGHT - 20, footer_text, font_size=12, color="black"),
+        Divider(WIDTH, HEIGHT - 22, color="black", width=1),
+        CenteredText(WIDTH, HEIGHT - 17, footer_text, font_size=12, color="black"),
         *_get_pagination_components(current_page=1, total_pages=3),
     ]
     return components
