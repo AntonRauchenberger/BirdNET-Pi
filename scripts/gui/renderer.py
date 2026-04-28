@@ -100,10 +100,10 @@ def render_sync_screen(state_data):
     components = [
         *_get_header_components("SYNC"),
         *_get_footer_components(footer_text="OK: Start sync"),
-        Text(10, 27, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
-        Text(10, 42, f"Status: {status}", font_size=16, color="black"),
-        Text(10, 57, f"Last Sync: {last_sync}", font_size=16, color="black"),
-        Text(10, 72, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
+        Text(8, 29, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
+        Text(8, 44, f"Status: {status}", font_size=16, color="black"),
+        Text(8, 59, f"Last Sync: {last_sync}", font_size=16, color="black"),
+        Text(8, 74, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
     ]
 
     for component in components:
