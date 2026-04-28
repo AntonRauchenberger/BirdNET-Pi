@@ -46,13 +46,13 @@ def render_analyze_screen(state_data):
         ScaledImage(4, image_top, max_width, max_height, bird_img, outline=0),
         Line(0.4 * WIDTH, 10, 0.4 * WIDTH, HEIGHT - 10, color="black", width=1),
         Text(0.4 * WIDTH + 5, 15, bird_common_name, font_size=16, color="black"),
-        Text(0.4 * WIDTH + 5, 30, bird_scientific_name, font_size=8, color="black"),
-        Text(0.4 * WIDTH + 5, 50, "Konfidenz", font_size=8, color="black"),
+        Text(0.4 * WIDTH + 5, 30, bird_scientific_name, font_size=12, color="black"),
+        Text(0.4 * WIDTH + 5, 47, "Konfidenz", font_size=12, color="black"),
         Rectangle(0.4 * WIDTH + 5, 60, 90, 10, outline=1, fill=None),
         Rectangle(0.4 * WIDTH + 5, 60, confidence * 90, 10, outline=1, fill="black"),
-        Text(0.4 * WIDTH + 5, 72, f"{confidence * 100:.0f} %", font_size=8, color="black"),
+        Text(0.4 * WIDTH + 5, 70, f"{confidence * 100:.0f} %", font_size=12, color="black"),
         Line(0.4 * WIDTH, 85, WIDTH - 5, 85, color="black", width=1),
-        Text(0.4 * WIDTH + 5, 90, f"{state_data.get('timestamp', '')}", font_size=8, color="black"),
+        Text(0.4 * WIDTH + 5, 87, f"{state_data.get('timestamp', '')}", font_size=12, color="black"),
     ]
 
     for component in components:
