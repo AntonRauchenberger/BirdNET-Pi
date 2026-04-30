@@ -4,7 +4,15 @@ Draws the GUI and handles all rendering related tasks.
 
 from PIL import Image, ImageDraw
 
-from components import *
+from components import (
+    CenteredText,
+    Divider,
+    Line,
+    Rectangle,
+    ScaledImage,
+    StatusDot,
+    Text,
+)
 
 WIDTH = 250
 HEIGHT = 122
@@ -79,13 +87,45 @@ def _get_pagination_components(current_page, total_pages=3):
 
     return components
 
-def _get_footer_components(footer_text, current_page=1, total_pages=3):
+def _get_footer_components(footer_text, current_page=1, total_pages=4):
     components = [
         Divider(WIDTH, HEIGHT - 22, color="black", width=1),
         CenteredText(WIDTH, HEIGHT - 17, footer_text, font_size=12, color="black"),
         *_get_pagination_components(current_page=current_page, total_pages=total_pages),
     ]
     return components
+
+
+def render_start_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    last_detected_bird = str(state_data.get("last_detected_bird", "No detections yet"))
+    last_detected_confidence = str(state_data.get("last_detected_confidence", "0"))
+    total_detections = str(state_data.get("total_detections", "0"))
+    active_since_date = str(state_data.get("active since_date", "Unknown Date"))
+    active_since_days = str(state_data.get("active since_days", "0"))
+    system_name = str(state_data.get("system_name", "BirdNET-Pi"))
+
+    components = [
+        *_get_header_components(system_name),
+        *_get_footer_components(footer_text="", current_page=1),
+        Text(10, 25, "LAST DETECTION", font_size=12, color="black"),
+        Text(10, 35, f"{last_detected_bird}", font_size=16, color="black"),
+        Text(WIDTH - 35, 35, f"{last_detected_confidence}%", font_size=16, color="black"),
+        Line(8, 55, WIDTH - 8, 55, color="black", width=1),
+        Line(WIDTH / 2, 55, WIDTH / 2, HEIGHT - 22, color="black", width=1),
+        Text(10, 58, "TOTAL DETECTIONS", font_size=12, color="black"),
+        Text(10, 69, f"{total_detections}", font_size=16, color="black"),
+        Text(WIDTH / 2 + 10, 58, "ACTIVE SINCE", font_size=12, color="black"),
+        Text(WIDTH / 2 + 10, 69, f"{active_since_date}", font_size=16, color="black"),
+        Text(WIDTH / 2 + 10, 84, f"{active_since_days} days", font_size=12, color="black"),
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
 
 
 def render_list_screen(state_data):
@@ -119,7 +159,7 @@ def render_list_screen(state_data):
 
     components = [
         *_get_header_components("MY BIRDS"),
-        *_get_footer_components(footer_text="OK: Next page", current_page=1),
+        *_get_footer_components(footer_text="OK: Next page", current_page=2),
         Rectangle(scrollbar_x, scrollbar_y, 5, scrollbar_height, outline="black", fill="white"),
         Rectangle(scrollbar_x, scrollbar_y + thumb_offset, 5, thumb_height, outline="black", fill="black"),
         *bird_list_elements,
@@ -142,7 +182,7 @@ def render_sync_screen(state_data):
 
     components = [
         *_get_header_components("SYNC"),
-        *_get_footer_components(footer_text="OK: Start sync", current_page=2),
+        *_get_footer_components(footer_text="OK: Start sync", current_page=3),
         Text(8, 29, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
         Text(8, 44, f"Status: {status}", font_size=16, color="black"),
         Text(8, 59, f"Last Sync: {last_sync}", font_size=16, color="black"),
@@ -166,7 +206,7 @@ def render_gps_screen(state_data):
 
     components = [
         *_get_header_components("GPS"),
-        *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=3),
+        *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=4),
         Text(8, 29, f"Status: {status}", font_size=16, color="black"),
         Text(8, 44, f"Latitude: {latitude}", font_size=16, color="black"),
         Text(8, 59, f"Longitude: {longitude}", font_size=16, color="black"),
@@ -179,21 +219,31 @@ def render_gps_screen(state_data):
     return image
 
 
-def render(device, state_data=None, screen="analyze"):
+def render(device, state_data=None, screen="ANALYZE"):
     if state_data is None:
         state_data = {}
 
-    match screen:
-        case "analyze":
+    screen_name = screen
+    if hasattr(screen, "value"):
+        screen_name = screen.value
+    elif hasattr(screen, "name"):
+        screen_name = screen.name
+
+    screen_name = str(screen_name).upper()
+
+    match screen_name:
+        case "ANALYZE":
             image = render_analyze_screen(state_data)
-        case "list":
+        case "LIST":
             image = render_list_screen(state_data)
-        case "sync":
+        case "SYNC":
             image = render_sync_screen(state_data)
-        case "gps":
+        case "GPS":
             image = render_gps_screen(state_data)
+        case "START":
+            image = render_start_screen(state_data)
         case _:
-            image = render_analyze_screen(state_data)
+            image = render_start_screen(state_data)
 
     device.display(image)
 
