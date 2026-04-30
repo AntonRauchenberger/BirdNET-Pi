@@ -79,13 +79,40 @@ def _get_pagination_components(current_page, total_pages=3):
 
     return components
 
-def _get_footer_components(footer_text):
+def _get_footer_components(footer_text, current_page=1, total_pages=3):
     components = [
         Divider(WIDTH, HEIGHT - 22, color="black", width=1),
         CenteredText(WIDTH, HEIGHT - 17, footer_text, font_size=12, color="black"),
-        *_get_pagination_components(current_page=1, total_pages=3),
+        *_get_pagination_components(current_page=current_page, total_pages=total_pages),
     ]
     return components
+
+
+def render_list_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    bird_list_elements = []
+    limit = 4
+    bird_list = state_data.get("bird_list", [])
+    for idx, bird in enumerate(bird_list[:limit]):
+        common_name = bird.get("common_name", "Unknown")
+        amount = bird.get("amount", 0)
+
+        bird_list_elements.append(Text(10, 25 + idx * 17, f"{common_name}", font_size=16, color="black"))
+        bird_list_elements.append(Text(WIDTH - 30, 25 + idx * 17, f"x{amount}", font_size=16, color="black"))
+        bird_list_elements.append(Line(10, 41 + idx * 17, WIDTH - 10, 41 + idx * 17, color="lightgray", width=1))
+
+    components = [
+        *_get_header_components("MY BIRDS"),
+        *_get_footer_components(footer_text="OK: Next page", current_page=1),
+        *bird_list_elements,
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
 
 
 def render_sync_screen(state_data):
@@ -99,11 +126,35 @@ def render_sync_screen(state_data):
 
     components = [
         *_get_header_components("SYNC"),
-        *_get_footer_components(footer_text="OK: Start sync"),
+        *_get_footer_components(footer_text="OK: Start sync", current_page=2),
         Text(8, 29, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
         Text(8, 44, f"Status: {status}", font_size=16, color="black"),
         Text(8, 59, f"Last Sync: {last_sync}", font_size=16, color="black"),
         Text(8, 74, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
+
+
+def render_gps_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    status = str(state_data.get("status", "OFF"))
+    latitude = str(state_data.get("latitude", "Unknown Latitude"))
+    longitude = str(state_data.get("longitude", "Unknown Longitude"))
+    last_update = str(state_data.get("last_update", "Unknown Time"))
+
+    components = [
+        *_get_header_components("GPS"),
+        *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=3),
+        Text(8, 29, f"Status: {status}", font_size=16, color="black"),
+        Text(8, 44, f"Latitude: {latitude}", font_size=16, color="black"),
+        Text(8, 59, f"Longitude: {longitude}", font_size=16, color="black"),
+        Text(8, 74, f"Updated: {last_update}", font_size=16, color="black"),
     ]
 
     for component in components:
@@ -119,8 +170,12 @@ def render(device, state_data=None, screen="analyze"):
     match screen:
         case "analyze":
             image = render_analyze_screen(state_data)
+        case "list":
+            image = render_list_screen(state_data)
         case "sync":
             image = render_sync_screen(state_data)
+        case "gps":
+            image = render_gps_screen(state_data)
         case _:
             image = render_analyze_screen(state_data)
 

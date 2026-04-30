@@ -13,7 +13,7 @@ from display_driver import create_device
 def __main__():
     parser = argparse.ArgumentParser(description="BirdNET-Pi GUI test renderer")
     parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default=os.getenv("GUI_BACKEND", "auto"))
-    parser.add_argument("--screen", choices=["analyze", "sync"], default="analyze")
+    parser.add_argument("--screen", choices=["analyze", "sync", "gps", "list"], default="analyze")
     parser.add_argument("--no-clear", action="store_true", help="Do not clear the e-paper display before rendering")
     parser.add_argument("--clear", action="store_true", help="Clear the e-paper display")
     args = parser.parse_args()
@@ -37,12 +37,34 @@ def __main__():
                 "confidence": 0.85,
                 "timestamp": "2024-06-01 12:34:56",
             }
+        case "list":
+            state_data = {
+                "bird_list": [
+                    {"common_name": "Common chaffinch", "scientific_name": "Fringilla coelebs", "amount": 5},
+                    {"common_name": "European robin", "scientific_name": "Erithacus rubecula", "amount": 3},
+                    {"common_name": "Great tit", "scientific_name": "Parus major", "amount": 2},
+                    {"common_name": "Blue tit", "scientific_name": "Cyanistes caeruleus", "amount": 4},
+                    {"common_name": "Eurasian blackbird", "scientific_name": "Turdus merula", "amount": 1},
+                    {"common_name": "House sparrow", "scientific_name": "Passer domesticus", "amount": 6},
+                    {"common_name": "European goldfinch", "scientific_name": "Carduelis carduelis", "amount": 2},
+                    {"common_name": "Eurasian bluetit", "scientific_name": "Cyanistes caeruleus", "amount": 4},
+                    {"common_name": "Eurasian blackcap", "scientific_name": "Sylvia atricapilla", "amount": 1},
+                    {"common_name": "Common starling", "scientific_name": "Sturnus vulgaris", "amount": 3},
+                ],
+            }
         case "sync":
             state_data = {
                 "wlan_ssid": "MyWiFiNetwork_1",
                 "status": "Ready",
                 "last_sync": "2024-06-01 12:34:56",
                 "entries_to_sync": 42,
+            }
+        case "gps":
+            state_data = {
+                "status": "ON",
+                "latitude": "52.5200 N",
+                "longitude": "13.4050 E",
+                "last_update": "2024-06-01 12:34:56",
             }
         case _:
             state_data = {
