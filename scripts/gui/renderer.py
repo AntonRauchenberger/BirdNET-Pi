@@ -119,7 +119,7 @@ def render_list_screen(state_data):
 
     components = [
         *_get_header_components("MY BIRDS"),
-        *_get_footer_components(footer_text="OK: Next page", current_page=1),
+        *_get_footer_components(footer_text="OK: Next page", current_page=current_page, total_pages=total_pages),
         Rectangle(scrollbar_x, scrollbar_y, 5, scrollbar_height, outline="black", fill="white"),
         Rectangle(scrollbar_x, scrollbar_y + thumb_offset, 5, thumb_height, outline="black", fill="black"),
         *bird_list_elements,
@@ -179,18 +179,26 @@ def render_gps_screen(state_data):
     return image
 
 
-def render(device, state_data=None, screen="analyze"):
+def render(device, state_data=None, screen="ANALYZE"):
     if state_data is None:
         state_data = {}
 
-    match screen:
-        case "analyze":
+    screen_name = screen
+    if hasattr(screen, "value"):
+        screen_name = screen.value
+    elif hasattr(screen, "name"):
+        screen_name = screen.name
+
+    screen_name = str(screen_name).upper()
+
+    match screen_name:
+        case "ANALYZE":
             image = render_analyze_screen(state_data)
-        case "list":
+        case "LIST":
             image = render_list_screen(state_data)
-        case "sync":
+        case "SYNC":
             image = render_sync_screen(state_data)
-        case "gps":
+        case "GPS":
             image = render_gps_screen(state_data)
         case _:
             image = render_analyze_screen(state_data)
