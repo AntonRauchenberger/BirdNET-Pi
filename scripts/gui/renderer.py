@@ -109,7 +109,7 @@ def render_start_screen(state_data):
 
     components = [
         *_get_header_components(system_name),
-        *_get_footer_components(footer_text="", current_page=1),
+        *_get_footer_components(footer_text="OK: Refresh", current_page=1),
         Text(10, 25, "LAST DETECTION", font_size=12, color="black"),
         Text(10, 35, f"{last_detected_bird}", font_size=16, color="black"),
         Text(WIDTH - 35, 35, f"{last_detected_confidence}%", font_size=16, color="black"),
