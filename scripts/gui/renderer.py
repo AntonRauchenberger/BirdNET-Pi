@@ -92,20 +92,36 @@ def render_list_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
 
+    page_size = 4
     bird_list_elements = []
-    limit = 4
     bird_list = state_data.get("bird_list", [])
-    for idx, bird in enumerate(bird_list[:limit]):
+    total_pages = max(1, (len(bird_list) + page_size - 1) // page_size)
+    current_page = int(state_data.get("current_page", 1) or 1)
+    current_page = max(1, min(total_pages, current_page))
+
+    start_index = (current_page - 1) * page_size
+    end_index = start_index + page_size
+    visible_birds = bird_list[start_index:end_index]
+
+    scrollbar_x = WIDTH - 12
+    scrollbar_y = 28
+    scrollbar_height = 58
+    thumb_height = max(12, scrollbar_height // total_pages)
+    max_thumb_offset = max(0, scrollbar_height - thumb_height)
+    thumb_offset = 0 if total_pages == 1 else int(((current_page - 1) / (total_pages - 1)) * max_thumb_offset)
+
+    for idx, bird in enumerate(visible_birds):
         common_name = bird.get("common_name", "Unknown")
         amount = bird.get("amount", 0)
 
-        bird_list_elements.append(Text(10, 25 + idx * 17, f"{common_name}", font_size=16, color="black"))
-        bird_list_elements.append(Text(WIDTH - 30, 25 + idx * 17, f"x{amount}", font_size=16, color="black"))
-        bird_list_elements.append(Line(10, 41 + idx * 17, WIDTH - 10, 41 + idx * 17, color="lightgray", width=1))
+        bird_list_elements.append(Text(10, 27 + idx * 17, f"{common_name}", font_size=16, color="black"))
+        bird_list_elements.append(Text(WIDTH - 42, 27 + idx * 17, f"x{amount}", font_size=16, color="black"))
 
     components = [
         *_get_header_components("MY BIRDS"),
         *_get_footer_components(footer_text="OK: Next page", current_page=1),
+        Rectangle(scrollbar_x, scrollbar_y, 5, scrollbar_height, outline="black", fill="white"),
+        Rectangle(scrollbar_x, scrollbar_y + thumb_offset, 5, thumb_height, outline="black", fill="black"),
         *bird_list_elements,
     ]
 

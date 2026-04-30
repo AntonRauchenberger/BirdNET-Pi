@@ -14,6 +14,7 @@ def __main__():
     parser = argparse.ArgumentParser(description="BirdNET-Pi GUI test renderer")
     parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default=os.getenv("GUI_BACKEND", "auto"))
     parser.add_argument("--screen", choices=["analyze", "sync", "gps", "list"], default="analyze")
+    parser.add_argument("--list-page", type=int, default=1, help="Static page number for the My Birds screen")
     parser.add_argument("--no-clear", action="store_true", help="Do not clear the e-paper display before rendering")
     parser.add_argument("--clear", action="store_true", help="Clear the e-paper display")
     args = parser.parse_args()
@@ -39,6 +40,7 @@ def __main__():
             }
         case "list":
             state_data = {
+                "current_page": args.list_page,
                 "bird_list": [
                     {"common_name": "Common chaffinch", "scientific_name": "Fringilla coelebs", "amount": 5},
                     {"common_name": "European robin", "scientific_name": "Erithacus rubecula", "amount": 3},
