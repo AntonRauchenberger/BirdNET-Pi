@@ -13,7 +13,7 @@ from display_driver import create_device
 def __main__():
     parser = argparse.ArgumentParser(description="BirdNET-Pi GUI test renderer")
     parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default=os.getenv("GUI_BACKEND", "auto"))
-    parser.add_argument("--screen", choices=["analyze", "sync"], default="analyze")
+    parser.add_argument("--screen", choices=["analyze", "sync", "gps"], default="analyze")
     parser.add_argument("--no-clear", action="store_true", help="Do not clear the e-paper display before rendering")
     parser.add_argument("--clear", action="store_true", help="Clear the e-paper display")
     args = parser.parse_args()
@@ -43,6 +43,13 @@ def __main__():
                 "status": "Ready",
                 "last_sync": "2024-06-01 12:34:56",
                 "entries_to_sync": 42,
+            }
+        case "gps":
+            state_data = {
+                "status": "ON",
+                "latitude": "52.5200 N",
+                "longitude": "13.4050 E",
+                "last_update": "2024-06-01 12:34:56",
             }
         case _:
             state_data = {
