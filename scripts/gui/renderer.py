@@ -4,7 +4,15 @@ Draws the GUI and handles all rendering related tasks.
 
 from PIL import Image, ImageDraw
 
-from components import *
+from components import (
+    CenteredText,
+    Divider,
+    Line,
+    Rectangle,
+    ScaledImage,
+    StatusDot,
+    Text,
+)
 
 WIDTH = 250
 HEIGHT = 122

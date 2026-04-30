@@ -1,5 +1,5 @@
 """
-Handles simple terminal input for testing GUI interactions in the emulator.
+Handles input for GUI interactions.
 """
 
 
