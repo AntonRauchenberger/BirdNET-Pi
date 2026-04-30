@@ -88,6 +88,33 @@ def _get_footer_components(footer_text, current_page=1, total_pages=3):
     return components
 
 
+def render_list_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    bird_list_elements = []
+    limit = 4
+    bird_list = state_data.get("bird_list", [])
+    for idx, bird in enumerate(bird_list[:limit]):
+        common_name = bird.get("common_name", "Unknown")
+        amount = bird.get("amount", 0)
+
+        bird_list_elements.append(Text(10, 25 + idx * 17, f"{common_name}", font_size=16, color="black"))
+        bird_list_elements.append(Text(WIDTH - 30, 25 + idx * 17, f"x{amount}", font_size=16, color="black"))
+        bird_list_elements.append(Line(10, 41 + idx * 17, WIDTH - 10, 41 + idx * 17, color="lightgray", width=1))
+
+    components = [
+        *_get_header_components("MY BIRDS"),
+        *_get_footer_components(footer_text="OK: Next page", current_page=1),
+        *bird_list_elements,
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
+
+
 def render_sync_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
@@ -143,6 +170,8 @@ def render(device, state_data=None, screen="analyze"):
     match screen:
         case "analyze":
             image = render_analyze_screen(state_data)
+        case "list":
+            image = render_list_screen(state_data)
         case "sync":
             image = render_sync_screen(state_data)
         case "gps":
