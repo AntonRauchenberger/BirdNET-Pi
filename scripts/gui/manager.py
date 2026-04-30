@@ -88,7 +88,7 @@ class GUIManager:
 def main() -> None:
     parser = argparse.ArgumentParser(description="BirdNET-Pi GUI test renderer")
     parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default=os.getenv("GUI_BACKEND", "auto"))
-    parser.add_argument("--screen", choices=["start", "analyze", "sync", "gps", "list"], default="list")
+    parser.add_argument("--screen", choices=["start", "analyze", "sync", "gps", "list"], default="start")
     parser.add_argument("--list-page", type=int, default=1, help="Static page number for the My Birds screen")
     parser.add_argument("--no-clear", action="store_true", help="Do not clear the e-paper display before rendering")
     parser.add_argument("--clear", action="store_true", help="Clear the e-paper display")
@@ -111,8 +111,6 @@ def main() -> None:
         return
 
     if getattr(device, "backend", "") == "waveshare":
-        # Keep image visible briefly, then put panel to sleep.
-        time.sleep(2)
         device.sleep()
         return
 

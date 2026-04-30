@@ -7,7 +7,14 @@ import os
 
 class DataProvider:
     def fetch_initial_state_data(self) -> dict:
-        return {}
+        return {
+            "last_detected_bird": "Common chaffinch",
+            "last_detected_confidence": "87",
+            "total_detections": "148",
+            "active since_date": "2024-06-01",
+            "active since_days": "23",
+            "system_name": "BirdNET-Pi-01",
+        }
 
     def fetch_analyze_state_data(self) -> dict:
         # In a real implementation, this would fetch the latest detection result from the backend.
