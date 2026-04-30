@@ -135,8 +135,8 @@ def render_live_analyze_screen(state_data):
 
     components = [
         *_get_header_components("Live Analyze"),
-        *_get_footer_components(footer_text="OK: Live analyze ON/OFF", current_page=2),
-        Text(8, 35, f"Status: {'ON' if live_analyze_active else 'OFF'}", font_size=16, color="black"),
+        *_get_footer_components(footer_text="OK: Switch ON/OFF", current_page=2),
+        Text(8, 35, f"Show live results: {'ON' if live_analyze_active else 'OFF'}", font_size=16, color="black"),
         CenteredText(WIDTH, 63, "Waiting for detection ...", font_size=12, color="black"),
     ]
 
