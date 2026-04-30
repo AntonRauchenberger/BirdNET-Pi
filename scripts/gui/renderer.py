@@ -104,7 +104,7 @@ def render_list_screen(state_data):
     visible_birds = bird_list[start_index:end_index]
 
     scrollbar_x = WIDTH - 12
-    scrollbar_y = 28
+    scrollbar_y = 32
     scrollbar_height = 58
     thumb_height = max(12, scrollbar_height // total_pages)
     max_thumb_offset = max(0, scrollbar_height - thumb_height)
