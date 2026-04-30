@@ -28,6 +28,12 @@ class DataProvider:
             "confidence": 0.85,
             "timestamp": "2024-06-01 12:34:56",
         }
+    
+    def fetch_live_analyze_state_data(self) -> dict:
+        # In a real implementation, this would fetch the current live analyze status and latest detection from the backend.
+        return {
+            "live_analyze_active": True,
+        }
 
     def fetch_list_state_data(self, current_page: int = 1) -> dict:
         # In a real implementation, this would fetch the list of detected birds from the backend.

@@ -87,7 +87,7 @@ def _get_pagination_components(current_page, total_pages=3):
 
     return components
 
-def _get_footer_components(footer_text, current_page=1, total_pages=4):
+def _get_footer_components(footer_text, current_page=1, total_pages=5):
     components = [
         Divider(WIDTH, HEIGHT - 22, color="black", width=1),
         CenteredText(WIDTH, HEIGHT - 17, footer_text, font_size=12, color="black"),
@@ -127,6 +127,23 @@ def render_start_screen(state_data):
 
     return image
 
+def render_live_analyze_screen(state_data):
+    image = Image.new("RGB", (WIDTH, HEIGHT), "white")
+    draw = ImageDraw.Draw(image)
+
+    live_analyze_active = bool(state_data.get("live_analyze_active", False))
+
+    components = [
+        *_get_header_components("Live Analyze"),
+        *_get_footer_components(footer_text="OK: Live analyze ON/OFF", current_page=2),
+        Text(8, 35, f"Status: {'ON' if live_analyze_active else 'OFF'}", font_size=16, color="black"),
+        CenteredText(WIDTH, 63, "Waiting for detection ...", font_size=12, color="black"),
+    ]
+
+    for component in components:
+        component.draw(draw, image)
+
+    return image
 
 def render_list_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
@@ -159,7 +176,7 @@ def render_list_screen(state_data):
 
     components = [
         *_get_header_components("MY BIRDS"),
-        *_get_footer_components(footer_text="OK: Next page", current_page=2),
+        *_get_footer_components(footer_text="OK: Next page", current_page=3),
         Rectangle(scrollbar_x, scrollbar_y, 5, scrollbar_height, outline="black", fill="white"),
         Rectangle(scrollbar_x, scrollbar_y + thumb_offset, 5, thumb_height, outline="black", fill="black"),
         *bird_list_elements,
@@ -182,7 +199,7 @@ def render_sync_screen(state_data):
 
     components = [
         *_get_header_components("SYNC"),
-        *_get_footer_components(footer_text="OK: Start sync", current_page=3),
+        *_get_footer_components(footer_text="OK: Start sync", current_page=4),
         Text(8, 29, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
         Text(8, 44, f"Status: {status}", font_size=16, color="black"),
         Text(8, 59, f"Last Sync: {last_sync}", font_size=16, color="black"),
@@ -206,7 +223,7 @@ def render_gps_screen(state_data):
 
     components = [
         *_get_header_components("GPS"),
-        *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=4),
+        *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=5),
         Text(8, 29, f"Status: {status}", font_size=16, color="black"),
         Text(8, 44, f"Latitude: {latitude}", font_size=16, color="black"),
         Text(8, 59, f"Longitude: {longitude}", font_size=16, color="black"),
@@ -232,8 +249,10 @@ def render(device, state_data=None, screen="ANALYZE"):
     screen_name = str(screen_name).upper()
 
     match screen_name:
-        case "ANALYZE":
+        case "ANALYZE_RESULT":
             image = render_analyze_screen(state_data)
+        case "LIVE_ANALYZE":
+            image = render_live_analyze_screen(state_data)
         case "LIST":
             image = render_list_screen(state_data)
         case "SYNC":
