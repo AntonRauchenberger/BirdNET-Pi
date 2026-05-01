@@ -13,13 +13,23 @@ CONF_TARGET_DIR="/etc/birdnet"
 CONF_TARGET="${CONF_TARGET_DIR}/birdnet.conf"
 CONSTANTS_FILE="${REPO_DIR}/scripts/utils/constants.py"
 
+if [[ "${EUID}" -ne 0 ]]; then
+	exec sudo bash "$0" "$@"
+fi
+
 SCENARIO_NAME="${1:-}"
+BENCHMARK_RUNS="${2:-10}"
 if [[ -z "${SCENARIO_NAME}" ]]; then
 	read -r -p "Enter benchmark scenario name (e.g. Pi4, Pi Zero, Local Laptop): " SCENARIO_NAME
 fi
 
 if [[ -z "${SCENARIO_NAME}" ]]; then
 	echo "Error: scenario name must not be empty." >&2
+	exit 1
+fi
+
+if ! [[ "${BENCHMARK_RUNS}" =~ ^[1-9][0-9]*$ ]]; then
+	echo "Error: repeats must be a positive integer." >&2
 	exit 1
 fi
 
@@ -34,16 +44,19 @@ if [[ ! -f "${CONSTANTS_FILE}" ]]; then
 fi
 
 echo "[2/5] Installing sox..."
-sudo apt-get update
-sudo apt-get install -y sox
+apt-get update
+apt-get install -y sox
 
 echo "[3/5] Installing benchmark config to ${CONF_TARGET}..."
-sudo mkdir -p "${CONF_TARGET_DIR}"
-sudo install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
+mkdir -p "${CONF_TARGET_DIR}"
+install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
 
 echo "[3b/5] Adjusting config paths for current user..."
-CURRENT_USER=$(whoami)
-CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+CURRENT_USER="${SUDO_USER:-$(id -un)}"
+CURRENT_HOME="$(getent passwd "${CURRENT_USER}" | cut -d: -f6)"
+if [[ -z "${CURRENT_HOME}" ]]; then
+	CURRENT_HOME="$(eval echo ~"${CURRENT_USER}")"
+fi
 BIRD_SONGS_DIR="${CURRENT_HOME}/BirdSongs"
 
 # Create the required directories
@@ -51,9 +64,9 @@ mkdir -p "${BIRD_SONGS_DIR}/Extracted/By_Date"
 mkdir -p "${BIRD_SONGS_DIR}/Processed"
 
 # Update paths in the config file
-sudo sed -i "s|RECS_DIR=.*|RECS_DIR=${BIRD_SONGS_DIR}|" "${CONF_TARGET}"
-sudo sed -i "s|EXTRACTED=.*|EXTRACTED=${BIRD_SONGS_DIR}/Extracted|" "${CONF_TARGET}"
-sudo sed -i "s|PROCESSED=.*|PROCESSED=${BIRD_SONGS_DIR}/Processed|" "${CONF_TARGET}"
+sed -i "s|RECS_DIR=.*|RECS_DIR=${BIRD_SONGS_DIR}|" "${CONF_TARGET}"
+sed -i "s|EXTRACTED=.*|EXTRACTED=${BIRD_SONGS_DIR}/Extracted|" "${CONF_TARGET}"
+sed -i "s|PROCESSED=.*|PROCESSED=${BIRD_SONGS_DIR}/Processed|" "${CONF_TARGET}"
 
 echo "Paths updated for user ${CURRENT_USER}: ${BIRD_SONGS_DIR}"
 
@@ -82,13 +95,13 @@ constants_file.write_text(updated, encoding="utf-8")
 print(f"Scenario set to: {scenario_name}")
 PY
 
-echo "[5/5] Running benchmark tests (10x full pipeline)..."
+echo "[5/5] Running benchmark tests (${BENCHMARK_RUNS}x full pipeline)..."
 cd "${REPO_DIR}"
 source birdnet/bin/activate
 
-for run in {1..10}; do
-	echo "----- Full benchmark run ${run}/10 -----"
+for ((run = 1; run <= BENCHMARK_RUNS; run++)); do
+	echo "----- Full benchmark run ${run}/${BENCHMARK_RUNS} -----"
 	python -m pytest -q -s tests/test_full_benchmark.py -k test_full_pipeline_benchmark
 done
 
-echo "Done: Benchmark setup + scenario update + 10 test runs completed successfully."
+echo "Done: Benchmark setup + scenario update + ${BENCHMARK_RUNS} test runs completed successfully."

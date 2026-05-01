@@ -5,6 +5,7 @@ Controls which screen is active and handles the transition between them.
 import argparse
 import os
 import time
+import threading
 
 from enum import Enum
 
@@ -47,6 +48,7 @@ class GUIManager:
         self.list_page = max(1, int(list_page or 1))
         self.data_provider = DataProvider()
         self.live_analyzation_active = False
+        self.screen_reset_timer = None
 
         self.states = {
             StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, None, self.data_provider.fetch_initial_state_data),
@@ -63,7 +65,7 @@ class GUIManager:
 
         # TODO adjust for waveshare input handling
         if getattr(self.device, "backend", "") != "waveshare":
-            InputHandler(self).run()
+            threading.Thread(target=InputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
@@ -122,6 +124,14 @@ class GUIManager:
         }
 
         render(self.device, state_data, StateNames.ANALYZE_RESULT)
+
+        # Reset screen
+        if self.screen_reset_timer is not None:
+            self.screen_reset_timer.cancel()
+
+        self.screen_reset_timer = threading.Timer(4.0, self.render_current_state)
+        self.screen_reset_timer.daemon = True
+        self.screen_reset_timer.start()
 
 
 def main() -> None:
