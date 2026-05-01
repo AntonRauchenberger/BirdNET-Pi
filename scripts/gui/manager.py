@@ -8,10 +8,10 @@ import time
 
 from enum import Enum
 
-from input_handler import InputHandler
-from renderer import render
-from display_driver import create_device
-from data_provider import DataProvider
+from scripts.gui.input_handler import InputHandler
+from scripts.gui.renderer import render
+from scripts.gui.display_driver import create_device
+from scripts.gui.data_provider import DataProvider
 
 class StateNames(Enum):
     START = "START"
@@ -41,8 +41,8 @@ class GUIState():
             self.ok_callback()
 
 class GUIManager:
-    def __init__(self, device, start_state: StateNames = StateNames.START, list_page: int = 1):
-        self.device = device
+    def __init__(self, start_state: StateNames = StateNames.START, list_page: int = 1, backend=None, clear=False):
+        self.device = create_device(backend=backend, clear=clear)
         self.page_size = 4
         self.list_page = max(1, int(list_page or 1))
         self.data_provider = DataProvider()
@@ -59,6 +59,12 @@ class GUIManager:
         self.current_state = self.states[start_state]
         self.last_detected_bird = None
 
+        self.start()
+
+        # TODO adjust for waveshare input handling
+        if getattr(self.device, "backend", "") != "waveshare":
+            InputHandler(self).run()
+
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
         render(self.device, self.current_state.state_data, self.current_state.name)
@@ -73,6 +79,11 @@ class GUIManager:
     def handle_next(self) -> None:
         if self.current_state.next_state is None:
             return
+        
+        # Deactivate live analyze mode if we are leaving it
+        if self.current_state.name == StateNames.LIVE_ANALYZE:
+            self.live_analyzation_active = False
+
         self.current_state = self.states[self.current_state.next_state]
         self.render_current_state()
 
@@ -93,6 +104,26 @@ class GUIManager:
         # In a real implementation, this would toggle the GPS state in the backend and fetch updated data for the GPS screen.
         pass
 
+    def render_live_analyze_result(self, detections) -> None:
+        # TODO remove comments
+        # if not self.live_analyzation_active:
+        #     return
+        
+        most_confident_detection = None
+        for detection in detections:
+            if most_confident_detection is None or detection.confidence > most_confident_detection.confidence:
+                most_confident_detection = detection
+
+        state_data = {
+            "bird_common_name": most_confident_detection.common_name if most_confident_detection else "No detections",
+            "bird_scientific_name": most_confident_detection.scientific_name if most_confident_detection else "",
+            "confidence": most_confident_detection.confidence if most_confident_detection else 0.0,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"), 
+        }
+
+        render(self.device, state_data, StateNames.ANALYZE_RESULT)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="BirdNET-Pi GUI test renderer")
     parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default=os.getenv("GUI_BACKEND", "auto"))
@@ -102,20 +133,15 @@ def main() -> None:
     parser.add_argument("--clear", action="store_true", help="Clear the e-paper display")
     args = parser.parse_args()
 
-    device = create_device(backend=args.backend, clear=not args.no_clear)
+    start_state = StateNames[args.screen.upper()]
+    manager = GUIManager(start_state=start_state, list_page=args.list_page, backend=args.backend, clear=not args.no_clear)
+
+    device = manager.device
 
     if args.clear and hasattr(device, "clear") and getattr(device, "backend", "") == "waveshare":
         device.clear()
         time.sleep(2)
         device.sleep()
-        return
-
-    start_state = StateNames[args.screen.upper()]
-    manager = GUIManager(device=device, start_state=start_state, list_page=args.list_page)
-    manager.start()
-
-    if getattr(device, "backend", "") == "emulator":
-        InputHandler(manager).run()
         return
 
     if getattr(device, "backend", "") == "waveshare":

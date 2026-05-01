@@ -12,7 +12,7 @@ import inotify.adapters
 from inotify.constants import IN_CLOSE_WRITE
 
 from utils.analysis import load_global_model, run_analysis
-from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW
+from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, GUI_MANAGER
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
     update_json_file
@@ -97,6 +97,11 @@ def process_file(file_name, report_queue):
             log.warning('reporting queue not yet empty')
         report_queue.join()
         report_queue.put((file, detections))
+
+        # Show live result on display
+        if GUI_MANAGER:
+            GUI_MANAGER.render_live_analyze_result(detections)
+
     except BaseException as e:
         stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
         log.exception(f'Unexpected error: {stderr}', exc_info=e)

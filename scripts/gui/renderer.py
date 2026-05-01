@@ -4,7 +4,7 @@ Draws the GUI and handles all rendering related tasks.
 
 from PIL import Image, ImageDraw
 
-from components import (
+from scripts.gui.components import (
     CenteredText,
     Divider,
     Line,
@@ -14,16 +14,22 @@ from components import (
     Text,
 )
 
+import os
+
 WIDTH = 250
 HEIGHT = 122
 
 
-def _get_bird_image(state_data):
-    image = state_data.get("bird_image")
-    if isinstance(image, Image.Image):
-        return image.convert("RGBA")
+def _get_bird_image(bird_common_name, bird_scientific_name):
+    formated_common_name = bird_common_name.lower()
+    formated_scientific_name = bird_scientific_name.lower()
 
-    image_path = state_data.get("bird_image_path")
+    image_path = os.path.join(
+        os.path.dirname(__file__),
+        "assets", "images", "birds",
+        f"{formated_common_name} ({formated_scientific_name}).png",
+    )
+
     if image_path:
         try:
             return Image.open(image_path).convert("RGBA")
@@ -39,11 +45,10 @@ def render_analyze_screen(state_data):
 
     confidence = float(state_data.get("confidence", 0.0) or 0.0)
     confidence = max(0.0, min(1.0, confidence))
-    bird_fullname = str(state_data.get("bird_name", "Unknown Bird"))
-    bird_common_name = bird_fullname.split(" (")[0]
-    bird_scientific_name = bird_fullname.split(" (")[1][:-1] if " (" in bird_fullname else ""
+    bird_common_name = str(state_data.get("bird_common_name", "Unknown Bird"))
+    bird_scientific_name = str(state_data.get("bird_scientific_name", ""))
 
-    bird_img = _get_bird_image(state_data)
+    bird_img = _get_bird_image(bird_common_name, bird_scientific_name)
 
     image_top = 2
     image_bottom = HEIGHT - 2
