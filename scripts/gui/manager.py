@@ -62,7 +62,12 @@ class GUIManager:
         self.states = {
             StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, None, self.data_provider.fetch_initial_state_data),
             StateNames.ANALYZE_RESULT: GUIState(StateNames.ANALYZE_RESULT, None, None, self.data_provider.fetch_analyze_state_data),
-            StateNames.LIVE_ANALYZE: GUIState(StateNames.LIVE_ANALYZE, StateNames.LIST, self.switch_live_analyze, self.data_provider.fetch_live_analyze_state_data),
+            StateNames.LIVE_ANALYZE: GUIState(
+                StateNames.LIVE_ANALYZE,
+                StateNames.LIST,
+                self.switch_live_analyze,
+                lambda: {"live_analyze_active": self.live_analyzation_active},
+            ),
             StateNames.LIST: GUIState(StateNames.LIST, StateNames.SYNC, self.next_list_page, lambda: self.data_provider.fetch_list_state_data(self.list_page)),
             StateNames.SYNC: GUIState(StateNames.SYNC, StateNames.GPS, self.start_sync, self.data_provider.fetch_sync_state_data),
             StateNames.GPS: GUIState(StateNames.GPS, StateNames.START, self.switch_gps_state, self.data_provider.fetch_gps_state_data),
@@ -73,8 +78,7 @@ class GUIManager:
         self.start()
 
         # TODO adjust for waveshare input handling
-        if getattr(self.device, "backend", "") != "waveshare":
-            threading.Thread(target=InputHandler(self).run, daemon=True).start()
+        threading.Thread(target=InputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
@@ -101,7 +105,6 @@ class GUIManager:
     def switch_live_analyze(self) -> None:
         # In a real implementation, this would toggle the live analyze state in the backend and fetch updated data for the live analyze screen.
         self.live_analyzation_active = not self.live_analyzation_active
-        pass
 
     def next_list_page(self) -> None:
         total_pages = self.data_provider.get_list_total_pages(self.page_size)
@@ -160,10 +163,6 @@ def main() -> None:
     if args.clear and hasattr(device, "clear") and getattr(device, "backend", "") == "waveshare":
         device.clear()
         time.sleep(2)
-        device.sleep()
-        return
-
-    if getattr(device, "backend", "") == "waveshare":
         device.sleep()
         return
 
