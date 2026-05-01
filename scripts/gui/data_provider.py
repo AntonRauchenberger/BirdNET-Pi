@@ -2,18 +2,45 @@
 Provides state data for the GUI screens.
 """
 
-import os
+import datetime
+import socket
+import sqlite3
+
+from pathlib import Path
 
 
 class DataProvider:
+
+    def __init__(self, db_path: str):
+        self._db_con = sqlite3.connect(db_path)
+
+    def _get_from_db(self, query: str, params: tuple = ()) -> list:
+        for attempt_number in range(3):
+            try:
+                cur = self._db_con.cursor()
+                cur.execute(query, params)
+                return cur.fetchall()
+            except BaseException as e:
+                pass
+
+    @staticmethod
+    def _get_boot_time() -> datetime.datetime:
+        uptime_seconds = float(Path("/proc/uptime").read_text().split()[0])
+        return datetime.datetime.now() - datetime.timedelta(seconds=uptime_seconds)
+
     def fetch_initial_state_data(self) -> dict:
+        last_detection = self._get_from_db("SELECT com_name, confidence, count(*) as total_detections FROM detections ORDER BY date DESC, time DESC LIMIT 1")
+
+        boot_time = self._get_boot_time()
+        uptime_days = (datetime.datetime.now() - boot_time).days
+
         return {
-            "last_detected_bird": "Common chaffinch",
-            "last_detected_confidence": "87",
-            "total_detections": "148",
-            "active since_date": "2024-06-01",
-            "active since_days": "23",
-            "system_name": "BirdNET-Pi-01",
+            "last_detected_bird": last_detection[0][0] if last_detection else "N/A",
+            "last_detected_confidence": int(last_detection[0][1] * 100) if last_detection else "N/A",
+            "total_detections": last_detection[0][2] if last_detection else "N/A",
+            "active since_date": boot_time.strftime("%Y-%m-%d"),
+            "active since_days": str(uptime_days),
+            "system_name": socket.gethostname(),
         }
 
     def fetch_analyze_state_data(self) -> dict:
