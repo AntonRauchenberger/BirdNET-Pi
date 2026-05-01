@@ -179,7 +179,7 @@ def render_list_screen(state_data):
         amount = bird.get("amount", 0)
 
         bird_list_elements.append(Text(10, 27 + idx * 17, f"{common_name}", font_size=16, color="black"))
-        bird_list_elements.append(Text(WIDTH - 42, 27 + idx * 17, f"x{amount}", font_size=16, color="black"))
+        bird_list_elements.append(Text(WIDTH - 45, 27 + idx * 17, f"x{amount}", font_size=16, color="black"))
 
     components = [
         *_get_header_components("MY BIRDS"),

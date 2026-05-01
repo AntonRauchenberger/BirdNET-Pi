@@ -23,6 +23,10 @@ from scripts.gui.renderer import render
 from scripts.gui.display_driver import create_device
 from scripts.gui.data_provider import DataProvider
 
+# Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = str(_REPO_ROOT / "scripts" / "birds.db")
+
 class StateNames(Enum):
     START = "START"
     ANALYZE_RESULT = "ANALYZE_RESULT"
@@ -55,13 +59,13 @@ class GUIManager:
         self.device = create_device(backend=backend, clear=clear)
         self.page_size = 4
         self.list_page = max(1, int(list_page or 1))
-        self.data_provider = DataProvider()
+        self.data_provider = DataProvider(DB_PATH)
         self.live_analyzation_active = False
         self.screen_reset_timer = None
 
         self.states = {
-            StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, None, self.data_provider.fetch_initial_state_data),
-            StateNames.ANALYZE_RESULT: GUIState(StateNames.ANALYZE_RESULT, None, None, self.data_provider.fetch_analyze_state_data),
+            StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, self.refresh_start_screen_data, self.data_provider.fetch_initial_state_data),
+            StateNames.ANALYZE_RESULT: GUIState(StateNames.ANALYZE_RESULT, None, None, None),
             StateNames.LIVE_ANALYZE: GUIState(
                 StateNames.LIVE_ANALYZE,
                 StateNames.LIST,
@@ -102,8 +106,11 @@ class GUIManager:
         self.current_state = self.states[self.current_state.next_state]
         self.render_current_state()
 
+    def refresh_start_screen_data(self) -> None:
+        self.current_state.reset_state_data()
+        self.render_current_state()
+
     def switch_live_analyze(self) -> None:
-        # In a real implementation, this would toggle the live analyze state in the backend and fetch updated data for the live analyze screen.
         self.live_analyzation_active = not self.live_analyzation_active
 
     def next_list_page(self) -> None:
