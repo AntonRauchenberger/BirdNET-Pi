@@ -5,6 +5,7 @@ Provides state data for the GUI screens.
 import datetime
 import socket
 import sqlite3
+import threading
 
 from pathlib import Path
 
@@ -12,14 +13,16 @@ from pathlib import Path
 class DataProvider:
 
     def __init__(self, db_path: str):
-        self._db_con = sqlite3.connect(db_path)
+        self._db_con = sqlite3.connect(db_path, check_same_thread=False)
+        self._db_lock = threading.Lock()
 
     def _get_from_db(self, query: str, params: tuple = ()) -> list:
         for attempt_number in range(3):
             try:
-                cur = self._db_con.cursor()
-                cur.execute(query, params)
-                return cur.fetchall()
+                with self._db_lock:
+                    cur = self._db_con.cursor()
+                    cur.execute(query, params)
+                    return cur.fetchall()
             except BaseException as e:
                 pass
 
@@ -43,37 +46,17 @@ class DataProvider:
             "system_name": socket.gethostname(),
         }
 
-    def fetch_analyze_state_data(self) -> dict:
-        # In a real implementation, this would fetch the latest detection result from the backend.
-        return {
-            "bird_common_name": "Common chaffinch",
-            "bird_scientific_name": "Fringilla coelebs",
-            "confidence": 0.85,
-            "timestamp": "2024-06-01 12:34:56",
-        }
-    
-    def fetch_live_analyze_state_data(self) -> dict:
-        # In a real implementation, this would fetch the current live analyze status and latest detection from the backend.
-        return {
-            "live_analyze_active": True,
-        }
-
     def fetch_list_state_data(self, current_page: int = 1) -> dict:
-        # In a real implementation, this would fetch the list of detected birds from the backend.
+        bird_list = self._get_from_db("SELECT com_name, COUNT(*) AS amount FROM detections GROUP BY Com_Name ORDER BY amount DESC")
+
+        if bird_list is None:
+            formated_bird_list = [{"common_name": "Nothing found yet", "amount": 0}]
+        else:
+            formated_bird_list = [{"common_name": row[0], "amount": row[1]} for row in bird_list]
+
         return {
             "current_page": current_page,
-            "bird_list": [
-                {"common_name": "Common chaffinch", "scientific_name": "Fringilla coelebs", "amount": 5},
-                {"common_name": "European robin", "scientific_name": "Erithacus rubecula", "amount": 3},
-                {"common_name": "Great tit", "scientific_name": "Parus major", "amount": 2},
-                {"common_name": "Blue tit", "scientific_name": "Cyanistes caeruleus", "amount": 4},
-                {"common_name": "Eurasian blackbird", "scientific_name": "Turdus merula", "amount": 1},
-                {"common_name": "House sparrow", "scientific_name": "Passer domesticus", "amount": 6},
-                {"common_name": "European goldfinch", "scientific_name": "Carduelis carduelis", "amount": 2},
-                {"common_name": "Eurasian bluetit", "scientific_name": "Cyanistes caeruleus", "amount": 4},
-                {"common_name": "Eurasian blackcap", "scientific_name": "Sylvia atricapilla", "amount": 1},
-                {"common_name": "Common starling", "scientific_name": "Sturnus vulgaris", "amount": 3},
-            ],
+            "bird_list": formated_bird_list,
         }
 
     def fetch_sync_state_data(self) -> dict:
