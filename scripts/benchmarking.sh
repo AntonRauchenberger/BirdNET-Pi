@@ -13,6 +13,10 @@ CONF_TARGET_DIR="/etc/birdnet"
 CONF_TARGET="${CONF_TARGET_DIR}/birdnet.conf"
 CONSTANTS_FILE="${REPO_DIR}/scripts/utils/constants.py"
 
+if [[ "${EUID}" -ne 0 ]]; then
+	exec sudo bash "$0" "$@"
+fi
+
 SCENARIO_NAME="${1:-}"
 BENCHMARK_RUNS="${2:-10}"
 if [[ -z "${SCENARIO_NAME}" ]]; then
@@ -40,16 +44,19 @@ if [[ ! -f "${CONSTANTS_FILE}" ]]; then
 fi
 
 echo "[2/5] Installing sox..."
-sudo apt-get update
-sudo apt-get install -y sox
+apt-get update
+apt-get install -y sox
 
 echo "[3/5] Installing benchmark config to ${CONF_TARGET}..."
-sudo mkdir -p "${CONF_TARGET_DIR}"
-sudo install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
+mkdir -p "${CONF_TARGET_DIR}"
+install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
 
 echo "[3b/5] Adjusting config paths for current user..."
-CURRENT_USER=$(whoami)
-CURRENT_HOME=$(eval echo ~$CURRENT_USER)
+CURRENT_USER="${SUDO_USER:-$(id -un)}"
+CURRENT_HOME="$(getent passwd "${CURRENT_USER}" | cut -d: -f6)"
+if [[ -z "${CURRENT_HOME}" ]]; then
+	CURRENT_HOME="$(eval echo ~"${CURRENT_USER}")"
+fi
 BIRD_SONGS_DIR="${CURRENT_HOME}/BirdSongs"
 
 # Create the required directories
@@ -57,9 +64,9 @@ mkdir -p "${BIRD_SONGS_DIR}/Extracted/By_Date"
 mkdir -p "${BIRD_SONGS_DIR}/Processed"
 
 # Update paths in the config file
-sudo sed -i "s|RECS_DIR=.*|RECS_DIR=${BIRD_SONGS_DIR}|" "${CONF_TARGET}"
-sudo sed -i "s|EXTRACTED=.*|EXTRACTED=${BIRD_SONGS_DIR}/Extracted|" "${CONF_TARGET}"
-sudo sed -i "s|PROCESSED=.*|PROCESSED=${BIRD_SONGS_DIR}/Processed|" "${CONF_TARGET}"
+sed -i "s|RECS_DIR=.*|RECS_DIR=${BIRD_SONGS_DIR}|" "${CONF_TARGET}"
+sed -i "s|EXTRACTED=.*|EXTRACTED=${BIRD_SONGS_DIR}/Extracted|" "${CONF_TARGET}"
+sed -i "s|PROCESSED=.*|PROCESSED=${BIRD_SONGS_DIR}/Processed|" "${CONF_TARGET}"
 
 echo "Paths updated for user ${CURRENT_USER}: ${BIRD_SONGS_DIR}"
 
