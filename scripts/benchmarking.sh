@@ -14,12 +14,18 @@ CONF_TARGET="${CONF_TARGET_DIR}/birdnet.conf"
 CONSTANTS_FILE="${REPO_DIR}/scripts/utils/constants.py"
 
 SCENARIO_NAME="${1:-}"
+BENCHMARK_RUNS="${2:-10}"
 if [[ -z "${SCENARIO_NAME}" ]]; then
 	read -r -p "Enter benchmark scenario name (e.g. Pi4, Pi Zero, Local Laptop): " SCENARIO_NAME
 fi
 
 if [[ -z "${SCENARIO_NAME}" ]]; then
 	echo "Error: scenario name must not be empty." >&2
+	exit 1
+fi
+
+if ! [[ "${BENCHMARK_RUNS}" =~ ^[1-9][0-9]*$ ]]; then
+	echo "Error: repeats must be a positive integer." >&2
 	exit 1
 fi
 
@@ -82,13 +88,13 @@ constants_file.write_text(updated, encoding="utf-8")
 print(f"Scenario set to: {scenario_name}")
 PY
 
-echo "[5/5] Running benchmark tests (10x full pipeline)..."
+echo "[5/5] Running benchmark tests (${BENCHMARK_RUNS}x full pipeline)..."
 cd "${REPO_DIR}"
 source birdnet/bin/activate
 
-for run in {1..10}; do
-	echo "----- Full benchmark run ${run}/10 -----"
+for ((run = 1; run <= BENCHMARK_RUNS; run++)); do
+	echo "----- Full benchmark run ${run}/${BENCHMARK_RUNS} -----"
 	python -m pytest -q -s tests/test_full_benchmark.py -k test_full_pipeline_benchmark
 done
 
-echo "Done: Benchmark setup + scenario update + 10 test runs completed successfully."
+echo "Done: Benchmark setup + scenario update + ${BENCHMARK_RUNS} test runs completed successfully."
