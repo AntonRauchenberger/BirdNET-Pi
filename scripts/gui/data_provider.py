@@ -19,12 +19,8 @@ class DataProvider:
     def fetch_analyze_state_data(self) -> dict:
         # In a real implementation, this would fetch the latest detection result from the backend.
         return {
-            "bird_name": "Common chaffinch (Fringilla coelebs)",
-            "bird_image_path": os.path.join(
-                os.path.dirname(__file__),
-                "assets", "images", "birds",
-                "Common chaffinch (Fringilla coelebs).png",
-            ),
+            "bird_common_name": "Common chaffinch",
+            "bird_scientific_name": "Fringilla coelebs",
             "confidence": 0.85,
             "timestamp": "2024-06-01 12:34:56",
         }
