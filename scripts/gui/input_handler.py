@@ -4,8 +4,8 @@ Handles input for GUI interactions.
 
 from gpiozero import Button
 
-GPIO_OK_BUTTON = 6
-GPIO_NEXT_BUTTON = 23
+GPIO_OK_BUTTON = 26
+GPIO_NEXT_BUTTON = 16
 
 
 class KeyboardInputHandler:
@@ -35,12 +35,11 @@ class ButtonInputHandler:
     def __init__(self, manager):
         self.manager = manager
         
-        # GPIO 23 und 6
         self.btn_next = Button(GPIO_NEXT_BUTTON, bounce_time=0.1)
-        # self.btn_ok = Button(GPIO_OK_BUTTON, bounce_time=0.1)
+        self.btn_ok = Button(GPIO_OK_BUTTON, bounce_time=0.1)
         
         self.btn_next.when_pressed = self._next_clicked
-        # self.btn_ok.when_pressed = self._ok_clicked
+        self.btn_ok.when_pressed = self._ok_clicked
 
     def _next_clicked(self):
         self.manager.handle_next()
