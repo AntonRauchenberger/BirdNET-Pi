@@ -3,11 +3,16 @@ import json
 import os
 import re
 import subprocess
+from typing import TYPE_CHECKING, Any
 from collections import OrderedDict
 from configparser import ConfigParser
 from itertools import chain
 from .benchmarking import BenchmarkService
-from ..gui.manager import GUIManager
+
+if TYPE_CHECKING:
+    from gui.manager import GUIManager
+else:
+    GUIManager = Any
 
 _settings = None
 

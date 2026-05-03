@@ -18,10 +18,16 @@ if __package__ is None or __package__ == "":
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-from scripts.gui.input_handler import ButtonInputHandler, KeyboardInputHandler
-from scripts.gui.renderer import render
-from scripts.gui.display_driver import create_device
-from scripts.gui.data_provider import DataProvider
+try:
+    from gui.input_handler import ButtonInputHandler, KeyboardInputHandler
+    from gui.renderer import render
+    from gui.display_driver import create_device
+    from gui.data_provider import DataProvider
+except ModuleNotFoundError:
+    from scripts.gui.input_handler import ButtonInputHandler, KeyboardInputHandler
+    from scripts.gui.renderer import render
+    from scripts.gui.display_driver import create_device
+    from scripts.gui.data_provider import DataProvider
 
 # Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
 _REPO_ROOT = Path(__file__).resolve().parents[2]
