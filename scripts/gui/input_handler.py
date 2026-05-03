@@ -2,13 +2,18 @@
 Handles input for GUI interactions.
 """
 
+from gpiozero import Button
 
-class InputHandler:
+GPIO_OK_BUTTON = 6
+GPIO_NEXT_BUTTON = 23
+
+
+class KeyboardInputHandler:
     def __init__(self, manager):
         self.manager = manager
 
     def run(self):
-        print("Input handler active: 'o' = OK, 'n' = NEXT, 'q' = quit")
+        print("Keyboard input handler active: 'o' = OK, 'n' = NEXT, 'q' = quit")
 
         while True:
             try:
@@ -24,3 +29,21 @@ class InputHandler:
                 break
             elif user_input:
                 print("Unknown input. Use 'o', 'n', or 'q'.")
+
+
+class ButtonInputHandler:
+    def __init__(self, manager):
+        self.manager = manager
+        
+        # GPIO 23 und 6
+        self.btn_next = Button(GPIO_NEXT_BUTTON, bounce_time=0.1)
+        # self.btn_ok = Button(GPIO_OK_BUTTON, bounce_time=0.1)
+        
+        self.btn_next.when_pressed = self._next_clicked
+        # self.btn_ok.when_pressed = self._ok_clicked
+
+    def _next_clicked(self):
+        self.manager.handle_next()
+
+    def _ok_clicked(self):
+        self.manager.handle_ok()

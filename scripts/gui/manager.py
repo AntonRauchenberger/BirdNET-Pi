@@ -18,7 +18,7 @@ if __package__ is None or __package__ == "":
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 
-from scripts.gui.input_handler import InputHandler
+from scripts.gui.input_handler import ButtonInputHandler, KeyboardInputHandler
 from scripts.gui.renderer import render
 from scripts.gui.display_driver import create_device
 from scripts.gui.data_provider import DataProvider
@@ -78,11 +78,17 @@ class GUIManager:
         }
         self.current_state = self.states[start_state]
         self.last_detected_bird = None
+        self.button_input_handler = None
 
         self.start()
 
+        try:
+            self.button_input_handler = ButtonInputHandler(self)
+        except Exception as exc:
+            print(f"Button input unavailable: {exc}")
+
         # TODO adjust for waveshare input handling
-        threading.Thread(target=InputHandler(self).run, daemon=True).start()
+        threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
