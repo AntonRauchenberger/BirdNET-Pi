@@ -16,6 +16,7 @@ from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, GUI_MANAGE
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
     update_json_file
+from gui.manager import GUIManager
 
 shutdown = False
 
@@ -31,6 +32,9 @@ def sig_handler(sig_num, curr_stack_frame):
 def main():
     load_global_model()
     conf = get_settings()
+
+    setup_gui()
+
     i = inotify.adapters.Inotify()
     i.add_watch(os.path.join(conf['RECS_DIR'], 'StreamData'), mask=IN_CLOSE_WRITE)
 
@@ -147,6 +151,15 @@ def setup_logging():
     logger.setLevel(logging.INFO)
     global log
     log = logging.getLogger('birdnet_analysis')
+
+def setup_gui():
+    try:
+        if not GUI_MANAGER:
+            GUI_MANAGER.set(
+                GUIManager(backend="waveshare", clear=False)
+            )
+    except BaseException as e:
+        log.exception(f"GUI setup failed: {e}")
 
 
 if __name__ == '__main__':

@@ -87,7 +87,6 @@ class GUIManager:
         except Exception as exc:
             print(f"Button input unavailable: {exc}")
 
-        # TODO adjust for waveshare input handling
         threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
@@ -132,9 +131,8 @@ class GUIManager:
         pass
 
     def render_live_analyze_result(self, detections) -> None:
-        # TODO remove comments
-        # if not self.live_analyzation_active:
-        #     return
+        if not self.live_analyzation_active:
+            return
         
         most_confident_detection = None
         for detection in detections:
