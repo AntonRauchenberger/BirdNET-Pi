@@ -3,6 +3,8 @@ Prints the GUI on the display and handles all interactions with the display driv
 """
 
 import os
+os.environ["GPIOZERO_PIN_FACTORY"] = "lgpio"
+
 import sys
 import importlib
 import importlib.util
