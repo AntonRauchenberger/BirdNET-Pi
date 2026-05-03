@@ -18,12 +18,12 @@ if __package__ is None or __package__ == "":
     if str(gui_dir) not in sys.path:
         sys.path.insert(0, str(gui_dir))
 
-    from input_handler import ButtonInputHandler, KeyboardInputHandler
+    from input_handler import ButtonInputHandler
     from renderer import render
     from display_driver import create_device
     from data_provider import DataProvider
 else:
-    from .input_handler import ButtonInputHandler, KeyboardInputHandler
+    from .input_handler import ButtonInputHandler
     from .renderer import render
     from .display_driver import create_device
     from .data_provider import DataProvider
@@ -92,7 +92,7 @@ class GUIManager:
         except Exception as exc:
             print(f"Button input unavailable: {exc}")
 
-        threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
+        # threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
