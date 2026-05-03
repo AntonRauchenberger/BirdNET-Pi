@@ -12,8 +12,8 @@ try:
     TEST_PIN = args.pin
 
     print(f"--- Button Test on GPIO {TEST_PIN} started ---")
-    print(f"Connect button wire 1 to GND (e.g., Pin 6)")
-    print(f"Connect button wire 2 to GPIO {TEST_PIN} (Pin 29)")
+    print(f"Connect button wire 1 to GND")
+    print(f"Connect button wire 2 to GPIO {TEST_PIN}")
     
     # pull_up=True is default: Button connects pin to GND when pressed
     btn = Button(TEST_PIN, pull_up=True)
