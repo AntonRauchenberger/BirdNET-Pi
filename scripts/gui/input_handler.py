@@ -2,7 +2,10 @@
 Handles input for GUI interactions.
 """
 
-from gpiozero import Button
+try:
+    from gpiozero import Button
+except ModuleNotFoundError:
+    Button = None
 
 GPIO_OK_BUTTON = 26
 GPIO_NEXT_BUTTON = 16
@@ -33,6 +36,9 @@ class KeyboardInputHandler:
 
 class ButtonInputHandler:
     def __init__(self, manager):
+        if Button is None:
+            raise RuntimeError("gpiozero is not installed")
+
         self.manager = manager
         
         self.btn_next = Button(GPIO_NEXT_BUTTON, bounce_time=0.1)

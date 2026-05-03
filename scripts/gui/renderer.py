@@ -4,15 +4,26 @@ Draws the GUI and handles all rendering related tasks.
 
 from PIL import Image, ImageDraw
 
-from scripts.gui.components import (
-    CenteredText,
-    Divider,
-    Line,
-    Rectangle,
-    ScaledImage,
-    StatusDot,
-    Text,
-)
+try:
+    from .components import (
+        CenteredText,
+        Divider,
+        Line,
+        Rectangle,
+        ScaledImage,
+        StatusDot,
+        Text,
+    )
+except ImportError:
+    from components import (
+        CenteredText,
+        Divider,
+        Line,
+        Rectangle,
+        ScaledImage,
+        StatusDot,
+        Text,
+    )
 
 import os
 
