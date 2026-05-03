@@ -42,17 +42,34 @@ install_birdnet_analysis() {
   cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_analysis.service
 [Unit]
 Description=BirdNET Analysis
+After=network.target
+
 [Service]
 Restart=always
 Type=simple
 RestartSec=2
+
 User=${USER}
-ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_analysis.py
+WorkingDirectory=$HOME/BirdNET-Pi
+
+Environment="PYTHONUNBUFFERED=1"
+Environment="TMPDIR=/tmp"
+Environment="GPIOZERO_PIN_FACTORY=lgpio"
+Environment="GPIOZERO_PIN_FACTORY_CLASS=lgpio"
+
+ExecStart=$PYTHON_VIRTUAL_ENV/bin/python3 /usr/local/bin/birdnet_analysis.py
+
+PrivateTmp=false
+ProtectHome=false
+
 [Install]
 WantedBy=multi-user.target
 EOF
-  ln -sf $HOME/BirdNET-Pi/templates/birdnet_analysis.service /usr/lib/systemd/system
-  systemctl enable birdnet_analysis.service
+
+  sudo ln -sf $HOME/BirdNET-Pi/templates/birdnet_analysis.service /etc/systemd/system/birdnet_analysis.service
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable birdnet_analysis.service
 }
 
 create_necessary_dirs() {
