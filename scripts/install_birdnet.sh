@@ -22,6 +22,13 @@ fi
 #Install/Configure /etc/birdnet/birdnet.conf
 ./install_config.sh || exit 1
 sudo -E HOME=$HOME USER=$USER ./install_services.sh || exit 1
+
+if [ -x "$my_dir/scripts/setup_hardware.sh" ] && command -v raspi-config >/dev/null 2>&1; then
+  sudo -E HOME=$HOME USER=$USER "$my_dir/scripts/setup_hardware.sh" || exit 1
+else
+  echo "Skipping hardware setup (setup_hardware.sh or raspi-config not available)."
+fi
+
 source /etc/birdnet/birdnet.conf
 
 install_birdnet() {
@@ -31,6 +38,17 @@ install_birdnet() {
     export TMPDIR=$HOME/bird_tmp
   fi
   cd ~/BirdNET-Pi || exit 1
+
+  if [ ! -d "$HOME/BirdNET-Pi/e-Paper/.git" ]; then
+    if [ ! -d "$HOME/BirdNET-Pi/e-Paper" ]; then
+      git clone https://github.com/waveshare/e-Paper.git "$HOME/BirdNET-Pi/e-Paper"
+    else
+      echo "Found existing $HOME/BirdNET-Pi/e-Paper directory without git metadata, skipping clone."
+    fi
+  else
+    git -C "$HOME/BirdNET-Pi/e-Paper" pull --ff-only || true
+  fi
+
   echo "Establishing a python virtual environment"
   python3 -m venv birdnet
   source ./birdnet/bin/activate
@@ -44,6 +62,7 @@ install_birdnet() {
     [ $LOOP_COUNT == 0 ] && exit 1
     sleep 5
   done
+  pip3 install pillow gpiozero lgpio spidev
   rm -rf $HOME/bird_tmp
 }
 

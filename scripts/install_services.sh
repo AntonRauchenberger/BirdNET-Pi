@@ -20,7 +20,7 @@ install_depends() {
   apt install --no-install-recommends -qqy caddy sqlite3 php-sqlite3 php-fpm php-curl php-xml php-zip php-mbstring php icecast2 \
     pulseaudio avahi-utils sox libsox-fmt-mp3 alsa-utils ffmpeg \
     wget curl unzip bc \
-    python3-pip python3-venv lsof net-tools inotify-tools
+    python3-pip python3-venv python3-dev swig build-essential lsof net-tools inotify-tools
 }
 
 set_hostname() {
