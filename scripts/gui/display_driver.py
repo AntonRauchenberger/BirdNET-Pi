@@ -3,11 +3,30 @@ Prints the GUI on the display and handles all interactions with the display driv
 """
 
 import os
+os.environ["GPIOZERO_PIN_FACTORY"] = "lgpio"
+
 import sys
 import importlib
+import importlib.util
 
 WIDTH = 250
 HEIGHT = 122
+
+
+def _configure_lgpio_pin_factory() -> bool:
+    """Try switching gpiozero to lgpio backend for more reliable edge detection."""
+    if importlib.util.find_spec("lgpio") is None:
+        return False
+
+    os.environ["GPIOZERO_PIN_FACTORY"] = "lgpio"
+
+    try:
+        gpiozero = importlib.import_module("gpiozero")
+        lgpio_module = importlib.import_module("gpiozero.pins.lgpio")
+        gpiozero.Device.pin_factory = lgpio_module.LGPIOFactory()
+        return True
+    except Exception:
+        return False
 
 
 def _add_local_waveshare_driver_path():
@@ -37,6 +56,9 @@ class Waveshare2in13V4Device:
 
     def __init__(self, clear=True):
         _add_local_waveshare_driver_path()
+        self._init_driver(clear=clear)
+
+    def _init_driver(self, clear=True):
         epd2in13_V4 = importlib.import_module("waveshare_epd.epd2in13_V4")
 
         self._driver = epd2in13_V4
@@ -64,7 +86,13 @@ def create_device(backend="auto", clear=True):
         return EmulatorDevice()
 
     if backend == "waveshare":
-        return Waveshare2in13V4Device(clear=clear)
+        try:
+            return Waveshare2in13V4Device(clear=clear)
+        except RuntimeError as exc:
+            # Retry with lgpio if RPi.GPIO edge detection fails.
+            if "Failed to add edge detection" in str(exc) and _configure_lgpio_pin_factory():
+                return Waveshare2in13V4Device(clear=clear)
+            raise
 
     if backend == "auto":
         try:

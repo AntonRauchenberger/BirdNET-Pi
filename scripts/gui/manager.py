@@ -14,14 +14,19 @@ from enum import Enum
 
 # Allow direct execution via "python3 manager.py"
 if __package__ is None or __package__ == "":
-    repo_root = Path(__file__).resolve().parents[2]
-    if str(repo_root) not in sys.path:
-        sys.path.insert(0, str(repo_root))
+    gui_dir = Path(__file__).resolve().parent
+    if str(gui_dir) not in sys.path:
+        sys.path.insert(0, str(gui_dir))
 
-from scripts.gui.input_handler import ButtonInputHandler, KeyboardInputHandler
-from scripts.gui.renderer import render
-from scripts.gui.display_driver import create_device
-from scripts.gui.data_provider import DataProvider
+    from input_handler import ButtonInputHandler
+    from renderer import render
+    from display_driver import create_device
+    from data_provider import DataProvider
+else:
+    from .input_handler import ButtonInputHandler
+    from .renderer import render
+    from .display_driver import create_device
+    from .data_provider import DataProvider
 
 # Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -87,7 +92,7 @@ class GUIManager:
         except Exception as exc:
             print(f"Button input unavailable: {exc}")
 
-        threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
+        # threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
         self.current_state.update_state_data()
