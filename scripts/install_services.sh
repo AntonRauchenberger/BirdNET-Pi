@@ -73,6 +73,7 @@ Environment="PYTHONUNBUFFERED=1"
 Environment="TMPDIR=/tmp"
 Environment="GPIOZERO_PIN_FACTORY=lgpio"
 Environment="GPIOZERO_PIN_FACTORY_CLASS=lgpio"
+Environment="PYTHONPATH=/usr/lib/python3/dist-packages"
 
 ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_display_gui.py
 

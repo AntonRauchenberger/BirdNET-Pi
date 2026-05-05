@@ -12,7 +12,7 @@ from pathlib import Path
 
 from enum import Enum
 
-# Allow direct execution via "python3 manager.py"
+# Allow direct execution via "python3 manager.py" for testing and debugging
 if __package__ is None or __package__ == "":
     gui_dir = Path(__file__).resolve().parent
     if str(gui_dir) not in sys.path:
@@ -143,6 +143,9 @@ class GUIManager:
         for detection in detections:
             if most_confident_detection is None or detection.confidence > most_confident_detection.confidence:
                 most_confident_detection = detection
+
+        if not most_confident_detection:
+            return
 
         state_data = {
             "bird_common_name": most_confident_detection.common_name if most_confident_detection else "No detections",
