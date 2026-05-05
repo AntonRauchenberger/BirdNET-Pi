@@ -37,9 +37,13 @@ class DataProvider:
         boot_time = self._get_boot_time()
         uptime_days = (datetime.datetime.now() - boot_time).days
 
+        confidence_value = "N/A"
+        if last_detection and last_detection[0][1] is not None:
+            confidence_value = int(last_detection[0][1] * 100)
+
         return {
             "last_detected_bird": last_detection[0][0] if last_detection else "N/A",
-            "last_detected_confidence": int(last_detection[0][1] * 100) if last_detection else "N/A",
+            "last_detected_confidence": confidence_value,
             "total_detections": last_detection[0][2] if last_detection else "N/A",
             "active since_date": boot_time.strftime("%Y-%m-%d"),
             "active since_days": str(uptime_days),
