@@ -1,8 +1,10 @@
 import logging
+import json
 import os
 import os.path
 import re
 import signal
+import socket
 import sys
 import threading
 from queue import Queue
@@ -12,15 +14,15 @@ import inotify.adapters
 from inotify.constants import IN_CLOSE_WRITE
 
 from utils.analysis import load_global_model, run_analysis
-from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW, GUI_MANAGER
+from utils.helpers import get_settings, get_wav_files, ANALYZING_NOW
 from utils.classes import ParseFileName
 from utils.reporting import extract_detection, summary, write_to_file, write_to_db, apprise, bird_weather, heartbeat, \
     update_json_file
-from gui.manager import GUIManager
 
 shutdown = False
 
 log = logging.getLogger(__name__)
+DISPLAY_GUI_SOCKET = '/tmp/birdnet_display_gui.sock'
 
 
 def sig_handler(sig_num, curr_stack_frame):
@@ -32,8 +34,6 @@ def sig_handler(sig_num, curr_stack_frame):
 def main():
     load_global_model()
     conf = get_settings()
-
-    setup_gui()
 
     i = inotify.adapters.Inotify()
     i.add_watch(os.path.join(conf['RECS_DIR'], 'StreamData'), mask=IN_CLOSE_WRITE)
@@ -102,13 +102,33 @@ def process_file(file_name, report_queue):
         report_queue.join()
         report_queue.put((file, detections))
 
-        # Show live result on display
-        if GUI_MANAGER:
-            GUI_MANAGER.render_live_analyze_result(detections)
+        send_live_analyze_result(detections)
 
     except BaseException as e:
         stderr = e.stderr.decode('utf-8') if isinstance(e, CalledProcessError) else ""
         log.exception(f'Unexpected error: {stderr}', exc_info=e)
+
+
+def send_live_analyze_result(detections):
+    payload = {
+        'detections': [
+            {
+                'common_name': getattr(det, 'common_name', ''),
+                'scientific_name': getattr(det, 'scientific_name', ''),
+                'confidence': float(getattr(det, 'confidence', 0.0)),
+            }
+            for det in detections
+        ]
+    }
+
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock:
+            sock.sendto(json.dumps(payload).encode('utf-8'), DISPLAY_GUI_SOCKET)
+    except FileNotFoundError:
+        # GUI service is optional and may be disabled.
+        pass
+    except OSError as exc:
+        log.debug('Failed to send live analyze result to GUI service: %s', exc)
 
 
 def handle_reporting_queue(queue):
@@ -151,15 +171,6 @@ def setup_logging():
     logger.setLevel(logging.INFO)
     global log
     log = logging.getLogger('birdnet_analysis')
-
-def setup_gui():
-    try:
-        if not GUI_MANAGER:
-            GUI_MANAGER.set(
-                GUIManager(backend="waveshare", clear=False)
-            )
-    except BaseException as e:
-        log.exception(f"GUI setup failed: {e}")
 
 
 if __name__ == '__main__':

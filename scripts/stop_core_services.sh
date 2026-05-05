@@ -5,6 +5,7 @@
 services=(birdnet_recording.service
 custom_recording.service
 birdnet_analysis.service
+birdnet_display_gui.service
 chart_viewer.service
 spectrogram_viewer.service)
 

@@ -3,16 +3,10 @@ import json
 import os
 import re
 import subprocess
-from typing import TYPE_CHECKING, Any
 from collections import OrderedDict
 from configparser import ConfigParser
 from itertools import chain
 from .benchmarking import BenchmarkService
-
-if TYPE_CHECKING:
-    from gui.manager import GUIManager
-else:
-    GUIManager = Any
 
 _settings = None
 
@@ -40,24 +34,6 @@ class BenchmarkingServiceProxy:
 BENCHMARKING_SERVICE: BenchmarkingServiceProxy = BenchmarkingServiceProxy()
 
 BENCHMARKING_RESULTS_DIR = os.path.join(BASE_PATH, 'benchmarking_results')
-
-
-class GUIManagerProxy:
-    def __init__(self):
-        self._manager: GUIManager | None = None
-
-    def set(self, manager: GUIManager | None) -> None:
-        self._manager = manager
-
-    def __bool__(self):
-        return self._manager is not None
-
-    def __getattr__(self, name):
-        if self._manager is None:
-            raise RuntimeError("GUI Manager has not been initialized")
-        return getattr(self._manager, name)
-    
-GUI_MANAGER: GUIManagerProxy = GUIManagerProxy()
 
 
 def get_font():

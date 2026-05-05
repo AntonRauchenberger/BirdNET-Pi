@@ -42,6 +42,23 @@ install_birdnet_analysis() {
   cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_analysis.service
 [Unit]
 Description=BirdNET Analysis
+[Service]
+Restart=always
+Type=simple
+RestartSec=2
+User=${USER}
+ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_analysis.py
+[Install]
+WantedBy=multi-user.target
+EOF
+  ln -sf $HOME/BirdNET-Pi/templates/birdnet_analysis.service /usr/lib/systemd/system
+  systemctl enable birdnet_analysis.service
+}
+
+install_display_gui_service() {
+  cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_display_gui.service
+[Unit]
+Description=BirdNET Display GUI
 After=network.target
 
 [Service]
@@ -57,7 +74,7 @@ Environment="TMPDIR=/tmp"
 Environment="GPIOZERO_PIN_FACTORY=lgpio"
 Environment="GPIOZERO_PIN_FACTORY_CLASS=lgpio"
 
-ExecStart=$PYTHON_VIRTUAL_ENV/bin/python3 /usr/local/bin/birdnet_analysis.py
+ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_display_gui.py
 
 PrivateTmp=false
 ProtectHome=false
@@ -66,10 +83,10 @@ ProtectHome=false
 WantedBy=multi-user.target
 EOF
 
-  sudo ln -sf $HOME/BirdNET-Pi/templates/birdnet_analysis.service /etc/systemd/system/birdnet_analysis.service
+  sudo ln -sf $HOME/BirdNET-Pi/templates/birdnet_display_gui.service /etc/systemd/system/birdnet_display_gui.service
 
   sudo systemctl daemon-reload
-  sudo systemctl enable birdnet_analysis.service
+  sudo systemctl enable birdnet_display_gui.service
 }
 
 create_necessary_dirs() {
@@ -430,6 +447,7 @@ install_services() {
   install_Caddyfile
   install_avahi_aliases
   install_birdnet_analysis
+  install_display_gui_service
   install_birdnet_stats_service
   install_recording_service
   install_custom_recording_service # But does not enable
