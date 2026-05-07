@@ -68,6 +68,13 @@ function service_status($name) {
     <button type="submit" name="submit" value="sudo systemctl disable --now birdnet_display_gui.service">Disable</button>
     <button type="submit" name="submit" value="sudo systemctl enable --now birdnet_display_gui.service">Enable</button>
   </div>
+    <h3>GUI FastAPI <?php echo service_status("birdnet_gui_api.service");?></h3>
+  <div role="group" class="btn-group-center">
+    <button type="submit" name="submit" value="sudo systemctl stop birdnet_gui_api.service">Stop</button>
+    <button type="submit" name="submit" value="sudo systemctl restart birdnet_gui_api.service">Restart</button>
+    <button type="submit" name="submit" value="sudo systemctl disable --now birdnet_gui_api.service">Disable</button>
+    <button type="submit" name="submit" value="sudo systemctl enable --now birdnet_gui_api.service">Enable</button>
+  </div>
     <h3>Streamlit Statistics <?php echo service_status("birdnet_stats.service");?></h3>
   <div role="group" class="btn-group-center">
     <button type="submit" name="submit" value="sudo systemctl stop birdnet_stats.service">Stop</button>
