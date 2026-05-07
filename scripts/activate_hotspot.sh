@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Configturation
+SSID="MeinBirdNet"
+PASSWORD="MeinPasswort123"
+IP_ADDR="192.168.4.1/24"
+CON_NAME="Hotspot"
+
+# Check if hotspot profile already exists, if not create it
+if ! nmcli connection show "$CON_NAME" > /dev/null 2>&1; then
+    echo "Creating hotspot profile..."
+    sudo nmcli device wifi hotspot ssid "$SSID" password "$PASSWORD" ifname wlan0 con-name "$CON_NAME"
+    sudo nmcli connection modify "$CON_NAME" ipv4.addresses "$IP_ADDR" ipv4.method shared
+    sudo nmcli connection modify "$CON_NAME" connection.autoconnect yes
+    sudo nmcli connection modify "$CON_NAME" connection.autoconnect-priority 50
+else
+    echo "Hotspot profile already exists."
+fi
+
+# Turn on hotspot
+echo "Activating hotspot..."
+sudo nmcli connection up "$CON_NAME"
