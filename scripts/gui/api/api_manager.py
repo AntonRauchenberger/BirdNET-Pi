@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 import uvicorn
@@ -15,14 +16,16 @@ else:
     from ..data_provider import DataProvider
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = str(_REPO_ROOT / "scripts" / "birds.db")
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.db"))
 
 
 class APIManager:
     def __init__(self, host: str = "0.0.0.0", port: int = 8000, allowed_origins: list[str] | None = None):
         self.db_path = DB_PATH
-        self.data_provider = DataProvider(DB_PATH)
+        if not Path(self.db_path).is_file():
+            raise FileNotFoundError(f"Database file not found: {self.db_path}")
+        self.data_provider = DataProvider(self.db_path)
         self.app = FastAPI(title="BirdNET-Pi GUI API")
 
         self._configure_cors(allowed_origins)
