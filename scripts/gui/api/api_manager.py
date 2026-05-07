@@ -5,6 +5,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any
 
 if __package__ is None or __package__ == "":
     gui_dir = Path(__file__).resolve().parent.parent
@@ -22,6 +23,8 @@ DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.
 
 class APIManager:
     def __init__(self, host: str = "0.0.0.0", port: int = 8000, allowed_origins: list[str] | None = None):
+        self.host = host
+        self.port = port
         self.db_path = DB_PATH
         if not Path(self.db_path).is_file():
             raise FileNotFoundError(f"Database file not found: {self.db_path}")
@@ -53,7 +56,7 @@ class APIManager:
             return {"status": "ok"}
 
         @self.app.get("/latestdetections")
-        async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[dict]:
+        async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:
             return self.data_provider.get_latest_bird_detections(limit=limit)
         
         @self.app.get("/sync/data")
@@ -68,6 +71,6 @@ class APIManager:
 
 if __name__ == "__main__":
     host = "0.0.0.0"
-    port = 8000
+    port = 2026
 
     api_manager = APIManager(host, port)

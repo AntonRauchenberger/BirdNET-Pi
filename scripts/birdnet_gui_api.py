@@ -22,7 +22,7 @@ def main():
     log.info('Starting BirdNET GUI FastAPI service')
 
     host = "0.0.0.0"
-    port = 8000
+    port = 2026
 
     APIManager(host, port)
 
