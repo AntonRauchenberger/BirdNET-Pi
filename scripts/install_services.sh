@@ -90,6 +90,29 @@ EOF
   sudo systemctl enable birdnet_display_gui.service
 }
 
+install_gui_api_service() {
+  cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_gui_api.service
+[Unit]
+Description=BirdNET FastAPI Service
+After=network.target
+
+[Service]
+User=${USER}
+WorkingDirectory=$HOME/BirdNET-Pi
+
+ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_gui_api.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo ln -sf $HOME/BirdNET-Pi/templates/birdnet_gui_api.service /etc/systemd/system/birdnet_gui_api.service
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable birdnet_gui_api.service
+}
+
 create_necessary_dirs() {
   echo "Creating necessary directories"
   [ -d ${EXTRACTED} ] || sudo -u ${USER} mkdir -p ${EXTRACTED}

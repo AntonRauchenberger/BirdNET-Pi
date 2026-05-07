@@ -18,3 +18,5 @@ pillow
 pyarrow==20.0.0
 soundfile
 psutil
+fastapi
+uvicorn

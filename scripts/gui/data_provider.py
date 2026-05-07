@@ -8,6 +8,7 @@ import sqlite3
 import threading
 
 from pathlib import Path
+from typing import Any
 
 
 class DataProvider:
@@ -83,3 +84,55 @@ class DataProvider:
 
     def get_list_total_pages(self, page_size: int) -> int:
         return max(1, (len(self.fetch_list_state_data()["bird_list"]) + page_size - 1) // page_size)
+    
+    def get_latest_bird_detections(self, limit=20) -> list[dict]:
+        latest_detections = self._get_from_db("SELECT * FROM detections ORDER BY date DESC, time DESC LIMIT ?", (limit,))
+
+        if latest_detections is None:
+            return []
+        
+        return latest_detections
+    
+    def get_sync_data(self) -> list[Any]:
+        # TODO get real sync data
+        return [
+            {
+                "date": "2024-06-01",
+                "time": "12:34:56",
+                "sci_name": "Turdus merula",
+                "com_name": "Common Blackbird",
+                "confidence": 0.95,
+                "lat": "52.5200",
+                "lon": "13.4050",
+                "cutoff": 0.7,
+                "week": 19,
+                "sens": 1.25,
+                "overlap": 0,
+            },
+            {
+                "date": "2024-06-01",
+                "time": "12:34:56",
+                "sci_name": "Turdus merula",
+                "com_name": "Common Blackbird",
+                "confidence": 0.95,
+                "lat": "52.5200",
+                "lon": "13.4050",
+                "cutoff": 0.7,
+                "week": 19,
+                "sens": 1.25,
+                "overlap": 0,
+            },
+            {
+                "date": "2024-06-01",
+                "time": "12:34:56",
+                "sci_name": "Turdus merula",
+                "com_name": "Common Blackbird",
+                "confidence": 0.95,
+                "lat": "52.5200",
+                "lon": "13.4050",
+                "cutoff": 0.7,
+                "week": 19,
+                "sens": 1.25,
+                "overlap": 0,
+            }
+        ]

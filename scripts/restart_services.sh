@@ -13,6 +13,7 @@ services=(chart_viewer.service
   birdnet_recording.service
   birdnet_analysis.service
   birdnet_display_gui.service
+  birdnet_gui_api.service
   birdnet_log.service
   birdnet_stats.service)
 
