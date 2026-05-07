@@ -21,7 +21,7 @@ def _handle_shutdown(sig_num, _stack_frame):
 def main():
     log.info('Starting BirdNET GUI FastAPI service')
 
-    host = "192.168.4.1"
+    host = "0.0.0.0"
     port = 2026
 
     APIManager(host, port)
