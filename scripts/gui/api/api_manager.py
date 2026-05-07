@@ -22,7 +22,7 @@ DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.
 
 
 class APIManager:
-    def __init__(self, host: str = "0.0.0.0", port: int = 8000, allowed_origins: list[str] | None = None):
+    def __init__(self, host: str = "192.168.4.1", port: int = 2026, allowed_origins: list[str] | None = None):
         self.host = host
         self.port = port
         self.db_path = DB_PATH
@@ -65,12 +65,12 @@ class APIManager:
         
     # TODO add missing routes for other state data
 
-    def run(self, host: str = "0.0.0.0", port: int = 8000) -> None:
+    def run(self, host: str = "192.168.4.1", port: int = 2026) -> None:
         uvicorn.run(self.app, host=host, port=port)
 
 
 if __name__ == "__main__":
-    host = "0.0.0.0"
+    host = "192.168.4.1"
     port = 2026
 
     api_manager = APIManager(host, port)
