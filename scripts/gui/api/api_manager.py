@@ -1,5 +1,6 @@
 import sys
 import os
+import logging
 from pathlib import Path
 
 import uvicorn
@@ -22,14 +23,15 @@ DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.
 
 
 class APIManager:
-    def __init__(self, host: str = "0.0.0.0", port: int = 2026, allowed_origins: list[str] | None = None):
+    def __init__(self, host: str = "0.0.0.0", port: int = 2026, allowed_origins: list[str] | None = None, debug: bool = False):
         self.host = host
         self.port = port
+        self.debug = debug
         self.db_path = DB_PATH
         if not Path(self.db_path).is_file():
             raise FileNotFoundError(f"Database file not found: {self.db_path}")
         self.data_provider = DataProvider(self.db_path)
-        self.app = FastAPI(title="BirdNET-Pi GUI API")
+        self.app = FastAPI(title="BirdNET-Pi GUI API", debug=debug)
 
         self._configure_cors(allowed_origins)
         self._register_routes()
@@ -66,11 +68,25 @@ class APIManager:
     # TODO add missing routes for other state data
 
     def run(self, host: str = "0.0.0.0", port: int = 2026) -> None:
-        uvicorn.run(self.app, host=host, port=port)
+        if self.debug:
+            # Show detailed server/application logs during local debugging.
+            logging.getLogger("uvicorn").setLevel(logging.DEBUG)
+            logging.getLogger("uvicorn.error").setLevel(logging.DEBUG)
+            logging.getLogger("uvicorn.access").setLevel(logging.DEBUG)
+            logging.getLogger("fastapi").setLevel(logging.DEBUG)
+
+        uvicorn.run(
+            self.app,
+            host=host,
+            port=port,
+            log_level="debug" if self.debug else "info",
+            access_log=True,
+            use_colors=self.debug,
+        )
 
 
 if __name__ == "__main__":
     host = "0.0.0.0"
     port = 2026
 
-    api_manager = APIManager(host, port)
+    api_manager = APIManager(host, port, debug=True)
