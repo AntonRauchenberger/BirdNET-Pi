@@ -5,6 +5,8 @@ const TabHeader = ({ tab, title, subTitle }) => {
             display: "flex",
             flexDirection: "column",
             gap: "5px",
+            position: "relative",
+            zIndex: "1",
         },
         tab: {
             fontWeight: "500",
