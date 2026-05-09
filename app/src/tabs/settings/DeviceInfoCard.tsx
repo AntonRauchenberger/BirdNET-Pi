@@ -10,6 +10,7 @@ const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
             marginTop: "30px",
             overflow: "hidden",
             padding: "1.25rem",
+            boxShadow: "var(--shadow-soft)",
         },
         deviceNameWrapper: {
             display: "flex",
