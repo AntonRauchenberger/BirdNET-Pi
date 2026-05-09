@@ -1,11 +1,16 @@
-const TabHeader = ({ tab, title, subTitle }) => {
+const TabHeader = (props: {
+    tab: string;
+    title: string;
+    subTitle?: string;
+}) => {
+    const { tab, title, subTitle } = props;
     const styles = {
         wrapper: {
-            textAlign: "left",
+            textAlign: "left" as const,
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "column" as const,
             gap: "5px",
-            position: "relative",
+            position: "relative" as const,
             zIndex: "1",
         },
         tab: {

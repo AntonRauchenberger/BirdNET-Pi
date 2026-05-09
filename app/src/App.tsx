@@ -3,6 +3,7 @@ import "./css/root.css";
 import Navbar from "./components/Navbar";
 import Sync from "./tabs/sync";
 import Map from "./tabs/map";
+import Settings from "./tabs/settings";
 
 function App() {
     const [activeTab, setActiveTab] = useState("MAP");
@@ -13,6 +14,8 @@ function App() {
                 return <Sync />;
             case "MAP":
                 return <Map />;
+            case "SETTINGS":
+                return <Settings />;
             default:
                 return <div>Tab not found</div>;
         }

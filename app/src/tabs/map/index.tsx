@@ -4,13 +4,8 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "../../css/map.css";
 
-const WIFI_ICON_SVG = `
-    <svg class="device-marker-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 20h.01"></path>
-        <path d="M2 8.82a15 15 0 0 1 20 0"></path>
-        <path d="M5 12.86a10 10 0 0 1 14 0"></path>
-        <path d="M8.5 16.43a5 5 0 0 1 7 0"></path>
-    </svg>
+const HARD_DRIVE_ICON_SVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hard-drive" aria-hidden="true"><path d="M10 16h.01"></path><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><path d="M21.946 12.013H2.054"></path><path d="M6 16h.01"></path></svg>
 `;
 
 const Map = () => {
@@ -82,11 +77,11 @@ const Map = () => {
 
             const markerElement = document.createElement("div");
             markerElement.className = "device-marker";
-            markerElement.innerHTML = `<div class="device-marker-pulse"></div><div class="device-marker-core">${WIFI_ICON_SVG}</div>`;
+            markerElement.innerHTML = `<div class="device-marker-pulse"></div><div class="device-marker-core"></div>`;
 
             const popupContent = `
                 <article class="device-popup-card">
-                    <div class="device-popup-icon" aria-hidden="true">${WIFI_ICON_SVG}</div>
+                    <div class="device-popup-icon" aria-hidden="true">${HARD_DRIVE_ICON_SVG}</div>
                     <div class="device-popup-main">
                         <div class="device-popup-title-row">
                             <strong>Your device</strong>
