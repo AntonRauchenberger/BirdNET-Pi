@@ -32,7 +32,7 @@ const Sync = () => {
     const styles = {
         contentWrapper: {
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "column" as const,
             alignItems: "center",
             marginTop: "90px",
         },
@@ -92,7 +92,7 @@ const Sync = () => {
             background: "var(--card)",
             padding: "13px",
             borderRadius: "20px",
-            textAlign: "left",
+            textAlign: "left" as const,
             fontSize: "12px",
             marginTop: "20px",
             border: "var(--card-border)",
@@ -102,12 +102,12 @@ const Sync = () => {
             background: "var(--card)",
             padding: "13px",
             borderRadius: "20px",
-            textAlign: "left",
+            textAlign: "left" as const,
             fontSize: "12px",
             marginTop: "20px",
             border: "var(--card-border)",
             width: "330px",
-            position: "absolute",
+            position: "absolute" as const,
             top: "437px",
         },
         syncStatusBarContainer: {

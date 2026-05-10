@@ -16,3 +16,14 @@ export interface Setting {
     icon?: React.ReactNode;
     disabled?: boolean;
 }
+
+export interface Species {
+    commonName: string;
+    scientificName: string;
+    avgConfidence: number;
+    detections: number;
+    lastCall: number;
+    latitude: number;
+    longitude: number;
+    firstSeen: number;
+}

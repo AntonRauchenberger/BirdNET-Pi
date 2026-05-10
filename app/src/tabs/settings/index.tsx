@@ -41,6 +41,25 @@ const Settings = () => {
             icon: <RefreshCw size={18} />,
         },
         {
+            id: "deleteSyncedData",
+            name: "Delete synced data",
+            description:
+                "Delete your data from the device after successful sync",
+            value: false,
+            setValue: (value: boolean | string | number) => {
+                setSettings((prevSettings) =>
+                    prevSettings.map((setting) =>
+                        setting.id === "deleteSyncedData"
+                            ? { ...setting, value }
+                            : setting,
+                    ),
+                );
+            },
+            tab: "SYNCING",
+            type: "boolean",
+            icon: <RefreshCw size={18} />,
+        },
+        {
             id: "mapTilerApiKey",
             name: "MapTiler API Key",
             description: "Manage your device's credentials",
