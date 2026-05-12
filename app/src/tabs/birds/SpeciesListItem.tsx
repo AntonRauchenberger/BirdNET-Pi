@@ -71,7 +71,7 @@ const SpeciesListItem = ({
     };
 
     return (
-        <div style={styles.speciesCard} key={species.commonName}>
+        <div style={styles.speciesCard} onClick={onClick}>
             <div style={styles.birdImnageContainer}>
                 <Bird size={35} />
             </div>

@@ -3,6 +3,7 @@ import TabHeader from "../../components/TabHeader";
 import { Species } from "../../../lib/types";
 import Filters from "./Filters";
 import SpeciesListItem from "./SpeciesListItem";
+import SpeciesDetails from "./SpeciesDetails";
 
 const Birds = () => {
     const [species, setSpecies] = useState<Species[]>([
@@ -15,6 +16,7 @@ const Birds = () => {
             latitude: 52.52,
             longitude: 13.405,
             firstSeen: Date.now() - 7200000,
+            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
         },
         {
             commonName: "Great Tit",
@@ -25,6 +27,7 @@ const Birds = () => {
             latitude: 52.52,
             longitude: 13.405,
             firstSeen: Date.now() - 3600000,
+            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
         },
         {
             commonName: "Blackbird",
@@ -35,6 +38,7 @@ const Birds = () => {
             latitude: 52.52,
             longitude: 13.405,
             firstSeen: Date.now() - 10800000,
+            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
         },
     ]);
     const [filter, setFilter] = useState<{
@@ -46,6 +50,8 @@ const Birds = () => {
         alphabeticSort: null,
         confidenceSort: null,
     });
+    const [currentSelectedSpecies, setCurrentSelectedSpecies] =
+        useState<Species | null>(null);
 
     const filteredSpecies = species
         .filter(
@@ -96,10 +102,19 @@ const Birds = () => {
                         key={specie.commonName}
                         species={specie}
                         onClick={() => {
-                            console.log("TODO");
+                            setCurrentSelectedSpecies(specie);
                         }}
                     />
                 ))}
+            </div>
+
+            <div>
+                {currentSelectedSpecies && (
+                    <SpeciesDetails
+                        species={currentSelectedSpecies}
+                        onClose={() => setCurrentSelectedSpecies(null)}
+                    />
+                )}
             </div>
         </div>
     );

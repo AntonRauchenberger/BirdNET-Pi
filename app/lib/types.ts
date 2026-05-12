@@ -26,4 +26,5 @@ export interface Species {
     latitude: number;
     longitude: number;
     firstSeen: number;
+    fileName: string;
 }
