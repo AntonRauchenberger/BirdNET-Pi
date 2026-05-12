@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from "react";
 import TabHeader from "../../components/TabHeader";
 import maplibregl from "maplibre-gl";
+import MapService from "../../lib/services/MapService";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "../../css/map.css";
 
@@ -44,17 +45,18 @@ const Map = () => {
 
     useEffect(() => {
         if (mapRef.current) return;
+        if (!mapContainer.current) return;
 
         const map = new maplibregl.Map({
             container: mapContainer.current,
-            style: MAP_STYLE,
+            style: MAP_STYLE as any,
             center: [position[1], position[0]], // [lon, lat]
             zoom: 13,
         });
 
-        mapRef.current = map;
+        mapRef.current = map as any;
 
-        map.on("load", () => {
+        map.on("load", async () => {
             if (MAP_KEY) {
                 try {
                     map.addSource("terrain", {
@@ -74,6 +76,70 @@ const Map = () => {
                     console.warn("Terrain konnte nicht geladen werden:", err);
                 }
             }
+
+            // Load and render detections
+            try {
+                const detections = await MapService.getDetectionsForMap();
+
+                const geojsonData = {
+                    type: "FeatureCollection" as const,
+                    features: detections.map((detection) => ({
+                        type: "Feature" as const,
+                        properties: {
+                            commonName: detection.commonName,
+                            scientificName: detection.scientificName,
+                        },
+                        geometry: {
+                            type: "Point" as const,
+                            coordinates: [
+                                detection.longitude,
+                                detection.latitude,
+                            ],
+                        },
+                    })),
+                };
+
+                map.addSource("detections", {
+                    type: "geojson",
+                    data: geojsonData,
+                });
+
+                map.addLayer({
+                    id: "detections-layer",
+                    type: "circle",
+                    source: "detections",
+                    paint: {
+                        "circle-radius": 3,
+                        "circle-color": "rgb(35, 50, 19)",
+                        "circle-opacity": 0.6,
+                    },
+                });
+            } catch (err) {
+                console.error("Error loading detections:", err);
+            }
+
+            // Add legend
+            const legendElement = document.createElement("div");
+            legendElement.className = "map-legend";
+            legendElement.innerHTML = `
+                <div style="background: var(--card); padding: 12px; border-radius: 8px; border: var(--card-border); box-shadow: 0 2px 8px rgba(40, 54, 24, 0.1); min-width: 200px; font-size: 13px;">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--black-forest);">Legend</div>
+                    <div style="display: flex; align-items: center; gap: 3px; margin-bottom: 6px;">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--copperwood); border: 2px solid var(--card);"></div>
+                        <span>Your device</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-left: 6px;">
+                        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--black-forest); opacity: 0.8;"></div>
+                        <span>Bird detections</span>
+                    </div>
+                </div>
+            `;
+            legendElement.style.position = "absolute";
+            legendElement.style.bottom = "100px";
+            legendElement.style.right = "20px";
+            legendElement.style.zIndex = "100";
+
+            mapContainer.current?.appendChild(legendElement);
 
             const markerElement = document.createElement("div");
             markerElement.className = "device-marker";
