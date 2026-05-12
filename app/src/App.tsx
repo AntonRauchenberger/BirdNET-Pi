@@ -7,7 +7,7 @@ import Settings from "./tabs/settings";
 import Birds from "./tabs/birds/indes";
 
 function App() {
-    const [activeTab, setActiveTab] = useState("BIRDS");
+    const [activeTab, setActiveTab] = useState("SYNC");
 
     const renderActiveTab = () => {
         switch (activeTab) {

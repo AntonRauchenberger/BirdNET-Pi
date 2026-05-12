@@ -28,3 +28,19 @@ export interface Species {
     firstSeen: number;
     fileName: string;
 }
+
+export interface Detection {
+    id?: number;
+    date: number;
+    time: number;
+    scientificName: string;
+    commonName: string;
+    confidence: number;
+    latitude: number;
+    longitude: number;
+    cutoff: number;
+    week: number;
+    sens: number;
+    overlap: number;
+    fileName: string;
+}

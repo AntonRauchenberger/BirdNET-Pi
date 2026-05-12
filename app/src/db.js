@@ -17,8 +17,6 @@ db.version(1).stores({
     Sens,
     Overlap,
     File_Name,
-    [Date+Time],
-    Com_Name,
-    Sci_Name
+    [Date+Time]
   `,
 });

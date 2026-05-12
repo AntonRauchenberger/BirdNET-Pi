@@ -93,46 +93,35 @@ class DataProvider:
         
         return latest_detections
     
-    def get_sync_data(self) -> list[Any]:
-        # TODO get real sync data
-        return [
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            },
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            },
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            }
-        ]
+    def get_sync_pending_detections_amount(self) -> int:
+        pending_detections = self._get_from_db("SELECT COUNT(*) FROM detections WHERE synced = FALSE")
+
+        if pending_detections is None:
+            return 0
+        
+        return pending_detections[0][0]
+    
+    def get_sync_data(self, offset: int = 0, limit: int = 50) -> list[Any]:
+        detections = self._get_from_db("SELECT * FROM detections LIMIT ? OFFSET ?", (limit, offset))
+
+        if detections is None:
+            return []
+
+        formated_detections = []
+        for row in detections:
+            formated_detections.append({
+                "date": row[0],
+                "time": row[1],
+                "sci_name": row[2],
+                "com_name": row[3],
+                "confidence": row[4],
+                "lat": row[5],
+                "lon": row[6],
+                "cutoff": row[7],
+                "weekday": row[8],
+                "sens": row[9],
+                "overlap": row[10],
+                "file_name": row[11],
+            })
+        
+        return formated_detections

@@ -1,5 +1,5 @@
 import { HardDrive } from "lucide-react";
-import { DeviceInfo } from "../../../lib/types";
+import { DeviceInfo } from "../../lib/types";
 
 const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
     const styles = {

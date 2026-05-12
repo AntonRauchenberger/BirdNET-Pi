@@ -1,4 +1,4 @@
-import { Species } from "../../../lib/types";
+import { Species } from "../../lib/types";
 import { ChevronRight, Bird } from "lucide-react";
 
 const SpeciesListItem = ({

@@ -1,32 +1,64 @@
 import { useState } from "react";
 import TabHeader from "../../components/TabHeader";
 import { Wifi, Download } from "lucide-react";
+import SyncService from "../../lib/services/SyncService";
+import { SYNC_ROW_LIMIT } from "../../lib/constants";
 
 const Sync = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncProgress, setSyncProgress] = useState(0);
 
-    const startSync = () => {
+    const startSync = async () => {
+        if (isSyncing) {
+            return; // Prevent multiple sync operations
+        }
+
         if (!isConnected) {
             // TODO remove comment
             // return;
         }
 
-        setIsConnected(true);
         setIsSyncing(true);
-        // Simulate sync progress
-        const interval = setInterval(() => {
-            setSyncProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setIsSyncing(false);
-                    setIsConnected(false);
-                    return 0;
+        setSyncProgress(0);
+
+        try {
+            const pendingAmount =
+                await SyncService.getPendingDetectionsAmount();
+            console.log("Pending detections amount:", pendingAmount);
+
+            if (pendingAmount === false || pendingAmount === 0) {
+                console.log("No pending detections to sync");
+                setIsSyncing(false);
+                return;
+            }
+
+            let offset = 0;
+            while (offset < pendingAmount) {
+                const syncSuccess = await SyncService.syncData(offset);
+                if (!syncSuccess) {
+                    console.error("Sync failed at offset:", offset);
+                    break;
                 }
-                return prev + 10;
-            });
-        }, 500);
+
+                offset += SYNC_ROW_LIMIT;
+
+                // Update progress based on offset and pendingAmount
+                setSyncProgress(
+                    Math.min(100, Math.round((offset / pendingAmount) * 100)),
+                );
+
+                console.log(
+                    `Synced ${Math.min(offset, pendingAmount)} of ${pendingAmount} detections`,
+                );
+            }
+
+            setSyncProgress(100);
+        } catch (error) {
+            console.error("Sync error:", error);
+        } finally {
+            setIsSyncing(false);
+        }
     };
 
     const styles = {
@@ -86,7 +118,6 @@ const Sync = () => {
             marginTop: "35%",
             fontSize: "15px",
             fontWeight: "500",
-            opacity: isConnected ? 1 : 0.6,
         },
         infoCard: {
             background: "var(--card)",
@@ -180,8 +211,14 @@ const Sync = () => {
                 )}
 
                 <div>
-                    <div style={styles.startButton} onClick={startSync}>
-                        Start Sync
+                    <div
+                        onClick={startSync}
+                        style={{
+                            ...styles.startButton,
+                            opacity: isSyncing || !isConnected ? 0.6 : 1,
+                        }}
+                    >
+                        {isSyncing ? "Syncing..." : "Start Sync"}
                     </div>
                 </div>
 

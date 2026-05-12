@@ -1,4 +1,4 @@
-import { Species } from "../../../lib/types";
+import { Species } from "../../lib/types";
 import { X, Bird, MapPin, Calendar, Volume2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 

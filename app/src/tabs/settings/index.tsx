@@ -1,5 +1,5 @@
 import TabHeader from "../../components/TabHeader";
-import { DeviceInfo, Setting } from "../../../lib/types";
+import { DeviceInfo, Setting } from "../../lib/types";
 import { useState } from "react";
 import DeviceInfoCard from "./DeviceInfoCard";
 import { Wifi, RefreshCw, KeyRound } from "lucide-react";

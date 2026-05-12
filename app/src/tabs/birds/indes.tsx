@@ -1,46 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TabHeader from "../../components/TabHeader";
-import { Species } from "../../../lib/types";
+import { Species } from "../../lib/types";
 import Filters from "./Filters";
 import SpeciesListItem from "./SpeciesListItem";
 import SpeciesDetails from "./SpeciesDetails";
+import ListService from "../../lib/services/ListService";
 
 const Birds = () => {
-    const [species, setSpecies] = useState<Species[]>([
-        {
-            commonName: "European Robin",
-            scientificName: "Erithacus rubecula",
-            avgConfidence: 85,
-            detections: 10,
-            lastCall: Date.now() - 3600000,
-            latitude: 52.52,
-            longitude: 13.405,
-            firstSeen: Date.now() - 7200000,
-            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
-        },
-        {
-            commonName: "Great Tit",
-            scientificName: "Parus major",
-            avgConfidence: 78,
-            detections: 5,
-            lastCall: Date.now() - 1800000,
-            latitude: 52.52,
-            longitude: 13.405,
-            firstSeen: Date.now() - 3600000,
-            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
-        },
-        {
-            commonName: "Blackbird",
-            scientificName: "Turdus merula",
-            avgConfidence: 90,
-            detections: 8,
-            lastCall: Date.now() - 5400000,
-            latitude: 52.52,
-            longitude: 13.405,
-            firstSeen: Date.now() - 10800000,
-            fileName: "erithacus_rubecula_2024-06-01_12-00-00.wav",
-        },
-    ]);
+    const [species, setSpecies] = useState<Species[]>([]);
     const [filter, setFilter] = useState<{
         searchInput: string;
         alphabeticSort: null | "asc" | "desc";
@@ -77,6 +44,16 @@ const Birds = () => {
             }
             return 0;
         });
+
+    const fetchSpecies = async () => {
+        // TODO add loading state
+        const speciesList = await ListService.getBirdsList();
+        setSpecies(speciesList);
+    };
+
+    useEffect(() => {
+        fetchSpecies();
+    }, []);
 
     const styles = {
         speciesCardsWrapper: {
