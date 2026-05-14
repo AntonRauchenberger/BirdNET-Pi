@@ -3,6 +3,7 @@ import { DeviceDetails, Setting } from "../../lib/types";
 import { useState, useEffect } from "react";
 import DeviceInfoCard from "./DeviceInfoCard";
 import Switch from "../../components/Switch";
+import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
 
@@ -129,126 +130,136 @@ const Settings = () => {
         },
     };
 
-    if (loading) {
-        return <div>Loading settings...</div>;
-    }
-
     // Get unique tabs from settings
     const tabs = Array.from(new Set(settings.map((s) => s.tab)));
 
     return (
-        <div>
-            <TabHeader tab={"SETTINGS"} title={"Preferences"} subTitle={""} />
-            <DeviceInfoCard
-                deviceInfo={deviceInfo}
-                loadSettings={loadSettings}
-            />
-            <div style={{ textAlign: "left" }}>
-                {tabs.map((tab) => (
-                    <div key={tab}>
-                        <div style={styles.tabHeader}>{tab}</div>
-                        <div style={styles.tabCard}>
-                            {settings
-                                .filter((setting) => setting.tab === tab)
-                                .map((setting, index, filteredSettings) => (
-                                    <div
-                                        key={setting.id}
-                                        style={{
-                                            ...styles.settingRow,
-                                            flexDirection:
-                                                setting.type === "boolean"
-                                                    ? "row"
-                                                    : "column",
-                                            borderBottom:
-                                                index <
-                                                filteredSettings.length - 1
-                                                    ? "1px solid rgba(40, 54, 24, 0.12)"
-                                                    : "none",
-                                            paddingBottom:
-                                                index <
-                                                filteredSettings.length - 1
-                                                    ? "16px"
-                                                    : "0",
-                                        }}
-                                    >
-                                        <div style={styles.settingNameWrapper}>
-                                            <div style={styles.settingIcon}>
-                                                {setting.icon}
-                                            </div>
-                                            <div>
-                                                <div>{setting.name}</div>
-                                                <div
-                                                    style={{
-                                                        fontSize: "12px",
-                                                        opacity: "0.6",
-                                                    }}
-                                                >
-                                                    {setting.description}
-                                                </div>
-                                            </div>
-                                        </div>
+        <div style={{ position: "relative", minHeight: "100vh" }}>
+            <div className={loading ? "loading-content-blurred" : ""}>
+                <TabHeader
+                    tab={"SETTINGS"}
+                    title={"Preferences"}
+                    subTitle={""}
+                />
+                <DeviceInfoCard
+                    deviceInfo={deviceInfo}
+                    loadSettings={loadSettings}
+                />
+                <div style={{ textAlign: "left" }}>
+                    {tabs.map((tab) => (
+                        <div key={tab}>
+                            <div style={styles.tabHeader}>{tab}</div>
+                            <div style={styles.tabCard}>
+                                {settings
+                                    .filter((setting) => setting.tab === tab)
+                                    .map((setting, index, filteredSettings) => (
                                         <div
+                                            key={setting.id}
                                             style={{
-                                                ...styles.settingValueWrapper,
-                                                width:
+                                                ...styles.settingRow,
+                                                flexDirection:
                                                     setting.type === "boolean"
-                                                        ? "auto"
-                                                        : "100%",
-                                                marginTop:
-                                                    setting.type === "boolean"
-                                                        ? "0"
-                                                        : "8px",
-                                                minWidth:
-                                                    setting.type === "boolean"
-                                                        ? "0px"
-                                                        : "120px",
+                                                        ? "row"
+                                                        : "column",
+                                                borderBottom:
+                                                    index <
+                                                    filteredSettings.length - 1
+                                                        ? "1px solid rgba(40, 54, 24, 0.12)"
+                                                        : "none",
+                                                paddingBottom:
+                                                    index <
+                                                    filteredSettings.length - 1
+                                                        ? "16px"
+                                                        : "0",
                                             }}
                                         >
-                                            {setting.type === "boolean" ? (
-                                                <Switch
-                                                    checked={Boolean(
-                                                        setting.value,
-                                                    )}
-                                                    onChange={(checked) =>
-                                                        handleSettingChange(
-                                                            setting.id,
-                                                            checked,
-                                                        )
-                                                    }
-                                                    ariaLabel={`Toggle ${setting.name}`}
-                                                />
-                                            ) : (
-                                                <input
-                                                    type="text"
-                                                    value={String(
-                                                        setting.value,
-                                                    )}
-                                                    onChange={(e) =>
-                                                        handleSettingChange(
-                                                            setting.id,
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    style={{
-                                                        ...styles.input,
-                                                        opacity:
-                                                            setting.disabled
-                                                                ? 0.6
-                                                                : 1,
-                                                    }}
-                                                    disabled={
-                                                        setting?.disabled ===
-                                                        true
-                                                    }
-                                                />
-                                            )}
+                                            <div
+                                                style={
+                                                    styles.settingNameWrapper
+                                                }
+                                            >
+                                                <div style={styles.settingIcon}>
+                                                    {setting.icon}
+                                                </div>
+                                                <div>
+                                                    <div>{setting.name}</div>
+                                                    <div
+                                                        style={{
+                                                            fontSize: "12px",
+                                                            opacity: "0.6",
+                                                        }}
+                                                    >
+                                                        {setting.description}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                style={{
+                                                    ...styles.settingValueWrapper,
+                                                    width:
+                                                        setting.type ===
+                                                        "boolean"
+                                                            ? "auto"
+                                                            : "100%",
+                                                    marginTop:
+                                                        setting.type ===
+                                                        "boolean"
+                                                            ? "0"
+                                                            : "8px",
+                                                    minWidth:
+                                                        setting.type ===
+                                                        "boolean"
+                                                            ? "0px"
+                                                            : "120px",
+                                                }}
+                                            >
+                                                {setting.type === "boolean" ? (
+                                                    <Switch
+                                                        checked={Boolean(
+                                                            setting.value,
+                                                        )}
+                                                        onChange={(checked) =>
+                                                            handleSettingChange(
+                                                                setting.id,
+                                                                checked,
+                                                            )
+                                                        }
+                                                        ariaLabel={`Toggle ${setting.name}`}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        value={String(
+                                                            setting.value,
+                                                        )}
+                                                        onChange={(e) =>
+                                                            handleSettingChange(
+                                                                setting.id,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        style={{
+                                                            ...styles.input,
+                                                            opacity:
+                                                                setting.disabled
+                                                                    ? 0.6
+                                                                    : 1,
+                                                        }}
+                                                        disabled={
+                                                            setting?.disabled ===
+                                                            true
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
+            {loading && <LoadingSpinner />}
         </div>
     );
 };

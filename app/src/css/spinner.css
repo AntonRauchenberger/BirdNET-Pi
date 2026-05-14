@@ -1,0 +1,35 @@
+.loading-spinner {
+    position: absolute;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(254, 250, 224, 0.38);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+
+.spinner {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 4px solid rgba(96, 108, 56, 0.2);
+    border-top-color: var(--copperwood);
+    border-right-color: var(--olive-leaf);
+    box-shadow: 0 6px 18px rgba(35, 50, 19, 0.15);
+    animation: spinner-rotate 0.8s linear infinite;
+}
+
+.loading-content-blurred {
+    filter: blur(2.4px);
+    opacity: 0.85;
+    pointer-events: none;
+    user-select: none;
+}
+
+@keyframes spinner-rotate {
+    to {
+        transform: rotate(360deg);
+    }
+}

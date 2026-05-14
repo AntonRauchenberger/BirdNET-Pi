@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from "react";
 import TabHeader from "../../components/TabHeader";
+import LoadingSpinner from "../../components/LoadingSpinner";
 import maplibregl from "maplibre-gl";
 import MapService from "../../lib/services/MapService";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -48,6 +49,7 @@ const Map = () => {
         lastUpdate?: string;
     } | null>(null);
     const [isMapKeyLoaded, setIsMapKeyLoaded] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const loadMapData = async () => {
@@ -117,125 +119,135 @@ const Map = () => {
         mapRef.current = map as any;
 
         map.on("load", async () => {
-            if (mapKey) {
-                try {
-                    map.addSource("terrain", {
-                        type: "raster-dem",
-                        url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${mapKey}`,
-                        tileSize: 256,
-                    });
-
-                    map.setTerrain({
-                        source: "terrain",
-                        exaggeration: 1.5,
-                    });
-
-                    map.setPitch(60);
-                    map.setBearing(-20);
-                } catch (err) {
-                    console.warn("Terrain konnte nicht geladen werden:", err);
-                }
-            }
-
-            // Load and render detections
             try {
-                const detections = await MapService.getDetectionsForMap();
+                if (mapKey) {
+                    try {
+                        map.addSource("terrain", {
+                            type: "raster-dem",
+                            url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${mapKey}`,
+                            tileSize: 256,
+                        });
 
-                const geojsonData = {
-                    type: "FeatureCollection" as const,
-                    features: detections.map((detection) => ({
-                        type: "Feature" as const,
-                        properties: {
-                            commonName: detection.commonName,
-                            scientificName: detection.scientificName,
+                        map.setTerrain({
+                            source: "terrain",
+                            exaggeration: 1.5,
+                        });
+
+                        map.setPitch(60);
+                        map.setBearing(-20);
+                    } catch (err) {
+                        console.warn(
+                            "Terrain konnte nicht geladen werden:",
+                            err,
+                        );
+                    }
+                }
+
+                // Load and render detections
+                try {
+                    const detections = await MapService.getDetectionsForMap();
+
+                    const geojsonData = {
+                        type: "FeatureCollection" as const,
+                        features: detections.map((detection) => ({
+                            type: "Feature" as const,
+                            properties: {
+                                commonName: detection.commonName,
+                                scientificName: detection.scientificName,
+                            },
+                            geometry: {
+                                type: "Point" as const,
+                                coordinates: [
+                                    detection.longitude,
+                                    detection.latitude,
+                                ],
+                            },
+                        })),
+                    };
+
+                    map.addSource("detections", {
+                        type: "geojson",
+                        data: geojsonData,
+                    });
+
+                    map.addLayer({
+                        id: "detections-layer",
+                        type: "circle",
+                        source: "detections",
+                        paint: {
+                            "circle-radius": 3,
+                            "circle-color": "rgb(35, 50, 19)",
+                            "circle-opacity": 0.6,
                         },
-                        geometry: {
-                            type: "Point" as const,
-                            coordinates: [
-                                detection.longitude,
-                                detection.latitude,
-                            ],
-                        },
-                    })),
-                };
+                    });
+                } catch (err) {
+                    console.error("Error loading detections:", err);
+                }
 
-                map.addSource("detections", {
-                    type: "geojson",
-                    data: geojsonData,
-                });
-
-                map.addLayer({
-                    id: "detections-layer",
-                    type: "circle",
-                    source: "detections",
-                    paint: {
-                        "circle-radius": 3,
-                        "circle-color": "rgb(35, 50, 19)",
-                        "circle-opacity": 0.6,
-                    },
-                });
-            } catch (err) {
-                console.error("Error loading detections:", err);
-            }
-
-            // Add legend
-            const legendElement = document.createElement("div");
-            legendElement.className = "map-legend";
-            legendElement.innerHTML = `
-                <div style="background: var(--card); padding: 12px; border-radius: 8px; border: var(--card-border); box-shadow: 0 2px 8px rgba(40, 54, 24, 0.1); min-width: 200px; font-size: 13px;">
-                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--black-forest);">Legend</div>
-                    <div style="display: flex; align-items: center; gap: 3px; margin-bottom: 6px;">
-                        <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--copperwood); border: 2px solid var(--card);"></div>
-                        <span>Your device</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; margin-left: 6px;">
-                        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--black-forest); opacity: 0.8;"></div>
-                        <span>Bird detections</span>
-                    </div>
-                </div>
-            `;
-            legendElement.style.position = "absolute";
-            legendElement.style.bottom = "100px";
-            legendElement.style.right = "20px";
-            legendElement.style.zIndex = "100";
-
-            mapContainer.current?.appendChild(legendElement);
-
-            const markerElement = document.createElement("div");
-            markerElement.className = "device-marker";
-            markerElement.innerHTML = `<div class="device-marker-pulse"></div><div class="device-marker-core"></div>`;
-
-            const popupContent = `
-                <article class="device-popup-card">
-                    <div class="device-popup-icon" aria-hidden="true">${HARD_DRIVE_ICON_SVG}</div>
-                    <div class="device-popup-main">
-                        <div class="device-popup-title-row">
-                            <strong>Your device</strong>
+                // Add legend
+                const legendElement = document.createElement("div");
+                legendElement.className = "map-legend";
+                legendElement.innerHTML = `
+                    <div style="background: var(--card); padding: 12px; border-radius: 8px; border: var(--card-border); box-shadow: 0 2px 8px rgba(40, 54, 24, 0.1); min-width: 200px; font-size: 13px;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: var(--black-forest);">Legend</div>
+                        <div style="display: flex; align-items: center; gap: 3px; margin-bottom: 6px;">
+                            <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--copperwood); border: 2px solid var(--card);"></div>
+                            <span>Your device</span>
                         </div>
-                        <div class="device-popup-sub">Updated ${formatLastUpdate(deviceLocation?.lastUpdate)}</div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-left: 6px;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--black-forest); opacity: 0.8;"></div>
+                            <span>Bird detections</span>
+                        </div>
                     </div>
-                </article>
-            `;
+                `;
+                legendElement.style.position = "absolute";
+                legendElement.style.bottom = "100px";
+                legendElement.style.right = "20px";
+                legendElement.style.zIndex = "100";
 
-            const deviceMarker = new maplibregl.Marker({
-                element: markerElement,
-                anchor: "center",
-            })
-                .setLngLat(
-                    deviceLocation
-                        ? [deviceLocation.longitude, deviceLocation.latitude]
-                        : [0, 0],
-                )
-                .setPopup(
-                    new maplibregl.Popup({
-                        offset: 24,
-                        closeButton: false,
-                        className: "device-popup",
-                    }).setHTML(popupContent),
-                )
-                .addTo(map);
+                mapContainer.current?.appendChild(legendElement);
 
-            deviceMarker.togglePopup();
+                const markerElement = document.createElement("div");
+                markerElement.className = "device-marker";
+                markerElement.innerHTML = `<div class="device-marker-pulse"></div><div class="device-marker-core"></div>`;
+
+                const popupContent = `
+                    <article class="device-popup-card">
+                        <div class="device-popup-icon" aria-hidden="true">${HARD_DRIVE_ICON_SVG}</div>
+                        <div class="device-popup-main">
+                            <div class="device-popup-title-row">
+                                <strong>Your device</strong>
+                            </div>
+                            <div class="device-popup-sub">Updated ${formatLastUpdate(deviceLocation?.lastUpdate)}</div>
+                        </div>
+                    </article>
+                `;
+
+                const deviceMarker = new maplibregl.Marker({
+                    element: markerElement,
+                    anchor: "center",
+                })
+                    .setLngLat(
+                        deviceLocation
+                            ? [
+                                  deviceLocation.longitude,
+                                  deviceLocation.latitude,
+                              ]
+                            : [0, 0],
+                    )
+                    .setPopup(
+                        new maplibregl.Popup({
+                            offset: 24,
+                            closeButton: false,
+                            className: "device-popup",
+                        }).setHTML(popupContent),
+                    )
+                    .addTo(map);
+
+                deviceMarker.togglePopup();
+            } finally {
+                setIsLoading(false);
+            }
         });
 
         return () => {
@@ -257,9 +269,12 @@ const Map = () => {
     };
 
     return (
-        <div style={{ height: "100vh", width: "100%" }}>
-            <TabHeader tab={"DEVICE LOCATION"} title={"Whispering Pines"} />
-            <div ref={mapContainer} style={styles.mapContainer} />
+        <div style={{ height: "100vh", width: "100%", position: "relative" }}>
+            <div className={isLoading ? "loading-content-blurred" : ""}>
+                <TabHeader tab={"DEVICE LOCATION"} title={"Whispering Pines"} />
+                <div ref={mapContainer} style={styles.mapContainer} />
+            </div>
+            {isLoading && <LoadingSpinner />}
         </div>
     );
 };

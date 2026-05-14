@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./css/root.css";
+import "./css/spinner.css";
 import Navbar from "./components/Navbar";
 import Sync from "./tabs/sync";
 import Map from "./tabs/map";
