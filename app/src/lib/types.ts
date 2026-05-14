@@ -10,11 +10,12 @@ export interface Setting {
     name: string;
     description: string | null;
     value: boolean | string | number;
-    setValue: ((value: boolean | string | number) => void) | undefined;
+    setValue?: ((value: boolean | string | number) => void) | undefined;
     tab?: string;
     type?: "boolean" | "string" | "number";
     icon?: React.ReactNode;
     disabled?: boolean;
+    defaultValue?: boolean | string | number;
 }
 
 export interface Species {

@@ -1,4 +1,4 @@
-import DatabaseService from "./DatabaseService,";
+import DatabaseService from "./DatabaseService";
 import { Detection } from "../types";
 
 export default class MapService {

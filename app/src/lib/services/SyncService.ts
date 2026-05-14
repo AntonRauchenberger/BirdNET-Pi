@@ -1,5 +1,5 @@
 import ApiService from "./ApiService";
-import DatabaseService from "./DatabaseService,";
+import DatabaseService from "./DatabaseService";
 import { SYNC_ROW_LIMIT } from "../constants";
 import { Detection } from "../types";
 

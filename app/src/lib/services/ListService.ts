@@ -1,4 +1,4 @@
-import DatabaseService from "./DatabaseService,";
+import DatabaseService from "./DatabaseService";
 import { Detection, Species } from "../types";
 
 export default class ListService {

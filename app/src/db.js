@@ -19,4 +19,15 @@ db.version(1).stores({
     File_Name,
     [Date+Time]
   `,
+    settings: `
+    ++id,
+    name,
+    description,
+    value,
+    tab,
+    type,
+    icon,
+    disabled,
+    defaultValue
+  `,
 });
