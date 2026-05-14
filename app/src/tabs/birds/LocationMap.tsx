@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { X } from "lucide-react";
+import SettingsService from "../../lib/services/SettingsService";
 
 interface LocationMapProps {
     latitude: number;
@@ -20,16 +21,36 @@ const LocationMap = ({
         () => [latitude, longitude],
         [latitude, longitude],
     );
-    const mapContainer = useRef(null);
-    const mapRef = useRef(null);
+    const mapContainer = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<maplibregl.Map | null>(null);
     const [isClosing, setIsClosing] = useState(false);
+    const [mapKey, setMapKey] = useState("");
+    const [isMapKeyLoaded, setIsMapKeyLoaded] = useState(false);
 
-    const MAP_KEY = import.meta.env.VITE_MAP_KEY;
+    useEffect(() => {
+        const loadMapKey = async () => {
+            try {
+                const keySetting =
+                    await SettingsService.getSetting("mapTilerApiKey");
+                const settingValue = keySetting?.value;
+                setMapKey(
+                    typeof settingValue === "string" ? settingValue.trim() : "",
+                );
+            } catch (error) {
+                console.error("Error loading mapTilerApiKey setting:", error);
+                setMapKey("");
+            } finally {
+                setIsMapKeyLoaded(true);
+            }
+        };
+
+        loadMapKey();
+    }, []);
 
     const MAP_STYLE = useMemo(
         () =>
-            MAP_KEY
-                ? `https://api.maptiler.com/maps/outdoor/style.json?key=${MAP_KEY}`
+            mapKey
+                ? `https://api.maptiler.com/maps/outdoor/style.json?key=${mapKey}`
                 : {
                       version: 8,
                       sources: {
@@ -49,7 +70,7 @@ const LocationMap = ({
                           },
                       ],
                   },
-        [MAP_KEY],
+        [mapKey],
     );
 
     const handleClose = () => {
@@ -60,11 +81,13 @@ const LocationMap = ({
     };
 
     useEffect(() => {
+        if (!isMapKeyLoaded) return;
         if (mapRef.current) return;
+        if (!mapContainer.current) return;
 
         const map = new maplibregl.Map({
             container: mapContainer.current,
-            style: MAP_STYLE,
+            style: MAP_STYLE as any,
             center: [position[1], position[0]], // [lon, lat]
             zoom: 15,
         });
@@ -118,7 +141,7 @@ const LocationMap = ({
                 mapRef.current = null;
             }
         };
-    }, [MAP_KEY, MAP_STYLE, position, commonName, latitude, longitude]);
+    }, [isMapKeyLoaded, MAP_STYLE, position, commonName, latitude, longitude]);
 
     const styles = {
         overlay: {

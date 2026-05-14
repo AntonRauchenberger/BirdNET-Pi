@@ -1,9 +1,10 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import TabHeader from "../../components/TabHeader";
 import maplibregl from "maplibre-gl";
 import MapService from "../../lib/services/MapService";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "../../css/map.css";
+import SettingsService from "../../lib/services/SettingsService";
 
 const HARD_DRIVE_ICON_SVG = `
     <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hard-drive" aria-hidden="true"><path d="M10 16h.01"></path><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><path d="M21.946 12.013H2.054"></path><path d="M6 16h.01"></path></svg>
@@ -11,16 +12,36 @@ const HARD_DRIVE_ICON_SVG = `
 
 const Map = () => {
     const position = useMemo(() => [49.02, 12.09], []); // [lat, lon]
-    const mapContainer = useRef(null);
-    const mapRef = useRef(null);
+    const mapContainer = useRef<HTMLDivElement | null>(null);
+    const mapRef = useRef<maplibregl.Map | null>(null);
+    const [mapKey, setMapKey] = useState("");
+    const [isMapKeyLoaded, setIsMapKeyLoaded] = useState(false);
 
-    const MAP_KEY = import.meta.env.VITE_MAP_KEY;
+    useEffect(() => {
+        const loadMapKey = async () => {
+            try {
+                const keySetting =
+                    await SettingsService.getSetting("mapTilerApiKey");
+                const settingValue = keySetting?.value;
+                setMapKey(
+                    typeof settingValue === "string" ? settingValue.trim() : "",
+                );
+            } catch (error) {
+                console.error("Error loading mapTilerApiKey setting:", error);
+                setMapKey("");
+            } finally {
+                setIsMapKeyLoaded(true);
+            }
+        };
+
+        loadMapKey();
+    }, []);
 
     // Simple openstreet map is used if no key provided, otherwise maptiler with terrain
     const MAP_STYLE = useMemo(
         () =>
-            MAP_KEY
-                ? `https://api.maptiler.com/maps/outdoor/style.json?key=${MAP_KEY}`
+            mapKey
+                ? `https://api.maptiler.com/maps/outdoor/style.json?key=${mapKey}`
                 : {
                       version: 8,
                       sources: {
@@ -40,10 +61,11 @@ const Map = () => {
                           },
                       ],
                   },
-        [MAP_KEY],
+        [mapKey],
     );
 
     useEffect(() => {
+        if (!isMapKeyLoaded) return;
         if (mapRef.current) return;
         if (!mapContainer.current) return;
 
@@ -57,11 +79,11 @@ const Map = () => {
         mapRef.current = map as any;
 
         map.on("load", async () => {
-            if (MAP_KEY) {
+            if (mapKey) {
                 try {
                     map.addSource("terrain", {
                         type: "raster-dem",
-                        url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${MAP_KEY}`,
+                        url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${mapKey}`,
                         tileSize: 256,
                     });
 
@@ -180,11 +202,11 @@ const Map = () => {
                 mapRef.current = null;
             }
         };
-    }, [MAP_KEY, MAP_STYLE, position]);
+    }, [isMapKeyLoaded, mapKey, MAP_STYLE, position]);
 
     const styles = {
         mapContainer: {
-            position: "fixed",
+            position: "fixed" as const,
             top: "0",
             left: "0",
             width: "100%",
