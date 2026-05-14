@@ -4,6 +4,9 @@ export interface DeviceDetails {
     storage: number;
     uptime: number;
     ssid: string;
+    longitude?: number;
+    latitude?: number;
+    lastUpdate?: string;
 }
 
 export interface Setting {

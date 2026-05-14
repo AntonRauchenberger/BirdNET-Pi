@@ -30,4 +30,15 @@ db.version(1).stores({
     disabled,
     defaultValue
   `,
+    lastKnownDeviceInfo: `
+    ++id,
+    name,
+    battery,
+    storage,
+    uptime,
+    ssid,
+    longitude,
+    latitude,
+    lastUpdate
+  `,
 });

@@ -10,15 +10,47 @@ const HARD_DRIVE_ICON_SVG = `
     <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hard-drive" aria-hidden="true"><path d="M10 16h.01"></path><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path><path d="M21.946 12.013H2.054"></path><path d="M6 16h.01"></path></svg>
 `;
 
+const formatLastUpdate = (lastUpdate?: string): string => {
+    if (!lastUpdate) {
+        return "unknown";
+    }
+
+    const updatedAt = new Date(lastUpdate);
+    if (Number.isNaN(updatedAt.getTime())) {
+        return "unknown";
+    }
+
+    const diffMs = Date.now() - updatedAt.getTime();
+    if (diffMs < 0) {
+        return "just now";
+    }
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    if (diffMinutes < 1) {
+        return "just now";
+    }
+
+    if (diffMinutes < 60 * 24) {
+        return `${diffMinutes} min ago`;
+    }
+
+    const diffDays = Math.floor(diffMinutes / (60 * 24));
+    return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+};
+
 const Map = () => {
-    const position = useMemo(() => [49.02, 12.09], []); // [lat, lon]
     const mapContainer = useRef<HTMLDivElement | null>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [mapKey, setMapKey] = useState("");
+    const [deviceLocation, setDeviceLocation] = useState<{
+        latitude: number;
+        longitude: number;
+        lastUpdate?: string;
+    } | null>(null);
     const [isMapKeyLoaded, setIsMapKeyLoaded] = useState(false);
 
     useEffect(() => {
-        const loadMapKey = async () => {
+        const loadMapData = async () => {
             try {
                 const keySetting =
                     await SettingsService.getSetting("mapTilerApiKey");
@@ -26,6 +58,10 @@ const Map = () => {
                 setMapKey(
                     typeof settingValue === "string" ? settingValue.trim() : "",
                 );
+
+                const latestDeviceLocation =
+                    await MapService.getLatestDeviceLocation();
+                setDeviceLocation(latestDeviceLocation);
             } catch (error) {
                 console.error("Error loading mapTilerApiKey setting:", error);
                 setMapKey("");
@@ -34,7 +70,7 @@ const Map = () => {
             }
         };
 
-        loadMapKey();
+        loadMapData();
     }, []);
 
     // Simple openstreet map is used if no key provided, otherwise maptiler with terrain
@@ -72,7 +108,9 @@ const Map = () => {
         const map = new maplibregl.Map({
             container: mapContainer.current,
             style: MAP_STYLE as any,
-            center: [position[1], position[0]], // [lon, lat]
+            center: deviceLocation
+                ? [deviceLocation.longitude, deviceLocation.latitude]
+                : [0, 0], // Default to [0, 0] if deviceLocation is null
             zoom: 13,
         });
 
@@ -174,7 +212,7 @@ const Map = () => {
                         <div class="device-popup-title-row">
                             <strong>Your device</strong>
                         </div>
-                        <div class="device-popup-sub">Last sync · 12 min ago</div>
+                        <div class="device-popup-sub">Updated ${formatLastUpdate(deviceLocation?.lastUpdate)}</div>
                     </div>
                 </article>
             `;
@@ -183,7 +221,11 @@ const Map = () => {
                 element: markerElement,
                 anchor: "center",
             })
-                .setLngLat([position[1], position[0]])
+                .setLngLat(
+                    deviceLocation
+                        ? [deviceLocation.longitude, deviceLocation.latitude]
+                        : [0, 0],
+                )
                 .setPopup(
                     new maplibregl.Popup({
                         offset: 24,
@@ -202,7 +244,7 @@ const Map = () => {
                 mapRef.current = null;
             }
         };
-    }, [isMapKeyLoaded, mapKey, MAP_STYLE, position]);
+    }, [isMapKeyLoaded, mapKey, MAP_STYLE, deviceLocation]);
 
     const styles = {
         mapContainer: {

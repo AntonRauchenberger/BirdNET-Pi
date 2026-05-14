@@ -155,6 +155,10 @@ class DataProvider:
     def _get_battery_percentage(self) -> int:
         # TODO implement
         return 100
+
+    def _get_device_location(self) -> dict | None:
+        # TODO implement
+        return {"latitude": 49.0200, "longitude": 12.0900}
     
     def _get_storage_usage_percent(self) -> int:
         """Get storage usage percentage of root filesystem"""
@@ -200,6 +204,8 @@ class DataProvider:
         uptime_days = (datetime.datetime.now() - boot_time).days
         
         wifi_ssid = self._get_wifi_ssid()
+
+        location = self._get_device_location()
         
         return {
             "name": device_name,
@@ -207,4 +213,7 @@ class DataProvider:
             "storage": storage_usage_percent,
             "uptime": uptime_days,
             "ssid": wifi_ssid,
+            "longitude": location["longitude"] if location else None,
+            "latitude": location["latitude"] if location else None,
+            "lastUpdate": datetime.datetime.now(),
         }

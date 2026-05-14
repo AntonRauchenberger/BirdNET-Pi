@@ -17,31 +17,32 @@ const Settings = () => {
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const loadSettings = async () => {
+        setLoading(true);
+        await SettingsService.initializeDefaultSettings();
+        const loadedSettings = await SettingsService.getAllSettings();
+        setSettings(loadedSettings);
+
+        const deviceDetails = await DeviceService.getDeviceDetails();
+        setDeviceInfo(deviceDetails);
+
+        // set connection setting value locally
+        setSettings((prevSettings) =>
+            prevSettings.map((setting) =>
+                setting.id === "connection"
+                    ? {
+                          ...setting,
+                          value: deviceDetails.ssid,
+                      }
+                    : setting,
+            ),
+        );
+
+        setLoading(false);
+    };
+
     // Load settings from database on component mount
     useEffect(() => {
-        const loadSettings = async () => {
-            setLoading(true);
-            await SettingsService.initializeDefaultSettings();
-            const loadedSettings = await SettingsService.getAllSettings();
-            setSettings(loadedSettings);
-
-            const deviceDetails = await DeviceService.getDeviceDetails();
-            setDeviceInfo(deviceDetails);
-
-            // set connection setting value locally
-            setSettings((prevSettings) =>
-                prevSettings.map((setting) =>
-                    setting.id === "connection"
-                        ? {
-                              ...setting,
-                              value: deviceDetails.ssid,
-                          }
-                        : setting,
-                ),
-            );
-
-            setLoading(false);
-        };
         loadSettings();
     }, []);
 
@@ -138,7 +139,10 @@ const Settings = () => {
     return (
         <div>
             <TabHeader tab={"SETTINGS"} title={"Preferences"} subTitle={""} />
-            <DeviceInfoCard deviceInfo={deviceInfo} />
+            <DeviceInfoCard
+                deviceInfo={deviceInfo}
+                loadSettings={loadSettings}
+            />
             <div style={{ textAlign: "left" }}>
                 {tabs.map((tab) => (
                     <div key={tab}>

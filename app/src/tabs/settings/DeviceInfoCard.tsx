@@ -1,7 +1,10 @@
-import { HardDrive } from "lucide-react";
-import { DeviceInfo } from "../../lib/types";
+import { HardDrive, RotateCw } from "lucide-react";
+import { DeviceDetails } from "../../lib/types";
 
-const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
+const DeviceInfoCard = (props: {
+    deviceInfo: DeviceDetails;
+    loadSettings: () => void;
+}) => {
     const styles = {
         deviceCard: {
             background: "var(--gradiant-leaf)",
@@ -16,6 +19,12 @@ const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
             display: "flex",
             gap: "10px",
             alignItems: "center",
+            justifyContent: "space-between",
+        },
+        deviceNameContainer: {
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
         },
         deviceIcon: {
             backgroundColor:
@@ -55,17 +64,37 @@ const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
             padding: "10px",
             width: "30%",
         },
+        refreshButton: {
+            background: "var(--gradiant-clay)",
+            borderRadius: "50%",
+            height: "40px",
+            width: "40px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+        },
     };
 
     return (
         <div style={styles.deviceCard}>
             <div style={styles.deviceNameWrapper}>
-                <div style={styles.deviceIcon}>
-                    <HardDrive size={20} aria-hidden="true" />
+                <div style={styles.deviceNameContainer}>
+                    <div style={styles.deviceIcon}>
+                        <HardDrive size={20} aria-hidden="true" />
+                    </div>
+                    <div>
+                        <div style={styles.subHeading}>PAIRED DEVICE</div>
+                        <div style={styles.cardValue}>
+                            {props.deviceInfo.name}
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <div style={styles.subHeading}>PAIRED DEVICE</div>
-                    <div style={styles.cardValue}>{deviceInfo.name}</div>
+                <div style={styles.refreshButton} onClick={props.loadSettings}>
+                    <RotateCw
+                        size={20}
+                        aria-hidden="true"
+                        style={{ color: "var(--cornsilk)" }}
+                    />
                 </div>
             </div>
 
@@ -74,21 +103,27 @@ const DeviceInfoCard = ({ deviceInfo }: { deviceInfo: DeviceInfo }) => {
                     <div style={{ ...styles.subHeading, fontSize: "13px" }}>
                         BATTERY
                     </div>
-                    <div style={styles.cardValue}>{deviceInfo.battery}%</div>
+                    <div style={styles.cardValue}>
+                        {props.deviceInfo.battery}%
+                    </div>
                 </div>
 
                 <div style={styles.detailedValueCard}>
                     <div style={{ ...styles.subHeading, fontSize: "13px" }}>
                         STORAGE
                     </div>
-                    <div style={styles.cardValue}>{deviceInfo.storage}%</div>
+                    <div style={styles.cardValue}>
+                        {props.deviceInfo.storage}%
+                    </div>
                 </div>
 
                 <div style={styles.detailedValueCard}>
                     <div style={{ ...styles.subHeading, fontSize: "13px" }}>
                         UPTIME
                     </div>
-                    <div style={styles.cardValue}>{deviceInfo.uptime}d</div>
+                    <div style={styles.cardValue}>
+                        {props.deviceInfo.uptime}d
+                    </div>
                 </div>
             </div>
         </div>
