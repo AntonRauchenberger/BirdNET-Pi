@@ -27,6 +27,17 @@ class DataProvider:
             except BaseException as e:
                 pass
 
+    def _execute_db_command(self, command: str, params: tuple = ()) -> None:
+        for attempt_number in range(3):
+            try:
+                with self._db_lock:
+                    cur = self._db_con.cursor()
+                    cur.execute(command, params)
+                    self._db_con.commit()
+                    return
+            except BaseException as e:
+                pass
+
     @staticmethod
     def _get_boot_time() -> datetime.datetime:
         uptime_seconds = float(Path("/proc/uptime").read_text().split()[0])
@@ -102,12 +113,13 @@ class DataProvider:
         return pending_detections[0][0]
     
     def get_sync_data(self, offset: int = 0, limit: int = 50) -> list[Any]:
-        detections = self._get_from_db("SELECT * FROM detections LIMIT ? OFFSET ?", (limit, offset))
+        detections = self._get_from_db("SELECT * FROM detections WHERE synced = FALSE LIMIT ? OFFSET ?", (limit, offset))
 
         if detections is None:
             return []
 
         formated_detections = []
+        fetchedTimestamps = []
         for row in detections:
             formated_detections.append({
                 "date": row[0],
@@ -123,5 +135,16 @@ class DataProvider:
                 "overlap": row[10],
                 "file_name": row[11],
             })
+            fetchedTimestamps.append((row[0], row[1]))
+
+        # Mark these detections as synced in the database using the date and time as identifiers
+        if formated_detections:
+            placeholders = ",".join(["(?, ?)"] * len(fetchedTimestamps))
+            params = [item for timestamp in fetchedTimestamps for item in timestamp]
+            self._execute_db_command(f"UPDATE detections SET synced = TRUE WHERE (date, time) IN ({placeholders})", tuple(params))
+            
         
         return formated_detections
+    
+    def delete_synced_data(self) -> None:
+        self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")

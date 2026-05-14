@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TabHeader from "../../components/TabHeader";
-import { Wifi, Download } from "lucide-react";
+import { Wifi, Download, Check } from "lucide-react";
 import SyncService from "../../lib/services/SyncService";
 import { SYNC_ROW_LIMIT } from "../../lib/constants";
 
@@ -8,6 +8,42 @@ const Sync = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncProgress, setSyncProgress] = useState(0);
+    const [temporaryStatusMessage, setTemporaryStatusMessage] = useState<
+        string | null
+    >(null);
+    const [temporaryStatusType, setTemporaryStatusType] = useState<
+        "info" | "success" | null
+    >(null);
+    const temporaryStatusTimeoutRef = useRef<ReturnType<
+        typeof setTimeout
+    > | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (temporaryStatusTimeoutRef.current) {
+                clearTimeout(temporaryStatusTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    const showTemporaryStatusMessage = (
+        message: string,
+        duration = 2000,
+        type: "info" | "success" = "info",
+    ) => {
+        setTemporaryStatusMessage(message);
+        setTemporaryStatusType(type);
+
+        if (temporaryStatusTimeoutRef.current) {
+            clearTimeout(temporaryStatusTimeoutRef.current);
+        }
+
+        temporaryStatusTimeoutRef.current = setTimeout(() => {
+            setTemporaryStatusMessage(null);
+            setTemporaryStatusType(null);
+            temporaryStatusTimeoutRef.current = null;
+        }, duration);
+    };
 
     const startSync = async () => {
         if (isSyncing) {
@@ -19,9 +55,6 @@ const Sync = () => {
             // return;
         }
 
-        setIsSyncing(true);
-        setSyncProgress(0);
-
         try {
             const pendingAmount =
                 await SyncService.getPendingDetectionsAmount();
@@ -29,15 +62,21 @@ const Sync = () => {
 
             if (pendingAmount === false || pendingAmount === 0) {
                 console.log("No pending detections to sync");
+                showTemporaryStatusMessage("No pending detections to sync");
                 setIsSyncing(false);
                 return;
             }
 
+            setIsSyncing(true);
+            setSyncProgress(0);
+
             let offset = 0;
+            let syncCompletedSuccessfully = true;
             while (offset < pendingAmount) {
                 const syncSuccess = await SyncService.syncData(offset);
                 if (!syncSuccess) {
                     console.error("Sync failed at offset:", offset);
+                    syncCompletedSuccessfully = false;
                     break;
                 }
 
@@ -53,7 +92,17 @@ const Sync = () => {
                 );
             }
 
-            setSyncProgress(100);
+            if (syncCompletedSuccessfully) {
+                const deleteSuccess = await SyncService.deleteSyncedData();
+                if (deleteSuccess) {
+                    setSyncProgress(100);
+                    showTemporaryStatusMessage(
+                        "Sync completed successfully",
+                        2000,
+                        "success",
+                    );
+                }
+            }
         } catch (error) {
             console.error("Sync error:", error);
         } finally {
@@ -94,7 +143,7 @@ const Sync = () => {
         },
         statusIcon: {
             background:
-                isConnected && !isSyncing
+                (isConnected && !isSyncing) || temporaryStatusMessage
                     ? "green"
                     : isSyncing
                       ? "orange"
@@ -168,6 +217,8 @@ const Sync = () => {
                     <div style={styles.innerCircle}>
                         {isSyncing ? (
                             <Download size={75} aria-hidden="true" />
+                        ) : temporaryStatusType === "success" ? (
+                            <Check size={75} aria-hidden="true" />
                         ) : (
                             <Wifi size={75} aria-hidden="true" />
                         )}
@@ -175,7 +226,12 @@ const Sync = () => {
                 </div>
 
                 <div>
-                    {isConnected && !isSyncing ? (
+                    {temporaryStatusMessage ? (
+                        <div style={styles.statusWrapper}>
+                            <div style={styles.statusIcon}></div>
+                            <div>{temporaryStatusMessage}</div>
+                        </div>
+                    ) : isConnected && !isSyncing ? (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
                             <div>Ready to sync</div>

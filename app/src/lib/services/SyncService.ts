@@ -2,6 +2,7 @@ import ApiService from "./ApiService";
 import DatabaseService from "./DatabaseService";
 import { SYNC_ROW_LIMIT } from "../constants";
 import { Detection } from "../types";
+import SettingsService from "./SettingsService";
 
 export default class SyncService {
     static async getPendingDetectionsAmount() {
@@ -63,11 +64,18 @@ export default class SyncService {
         return true;
     }
 
-    static async markDataAsSynced(
-        offset: number,
-        limit: number = SYNC_ROW_LIMIT,
-    ) {
-        // TODO implementieren
-        // TODO auch Einstellung einbauen, ob die Daten nach dem Syncen gelöscht werden sollen oder nicht
+    static async deleteSyncedData(): Promise<boolean> {
+        const delteSyncedDataSetting =
+            await SettingsService.getSetting("deleteSyncedData");
+        if (delteSyncedDataSetting?.value !== true) {
+            return true;
+        }
+
+        const response = await ApiService.callApi(
+            "/sync/deletesynceddata",
+            {},
+            "DELETE",
+        );
+        return response !== false;
     }
 }

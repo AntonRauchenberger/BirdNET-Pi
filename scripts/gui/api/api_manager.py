@@ -69,6 +69,11 @@ class APIManager:
         async def get_sync_data(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500)) -> list[Any]:
             return self.data_provider.get_sync_data(offset=offset, limit=limit)
         
+        @self.app.delete("/sync/deletesynceddata")
+        async def delete_synced_data() -> dict:
+            self.data_provider.delete_synced_data()
+            return {"status": "success"}
+        
 
     def run(self, host: str = "0.0.0.0", port: int = 2026) -> None:
         if self.debug:
