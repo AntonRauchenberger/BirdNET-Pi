@@ -1,8 +1,9 @@
-export interface DeviceInfo {
+export interface DeviceDetails {
     name: string;
     battery: number;
     storage: number;
     uptime: number;
+    ssid: string;
 }
 
 export interface Setting {

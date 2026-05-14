@@ -52,10 +52,9 @@ class APIManager:
         )
 
     def _register_routes(self) -> None:
-        @self.app.get("/health")
-        async def health() -> dict:
-            # TODO implement
-            return {"status": "ok"}
+        @self.app.get("/device/details")
+        async def get_device_details() -> dict:
+            return self.data_provider.get_device_details()
 
         @self.app.get("/latestdetections")
         async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:

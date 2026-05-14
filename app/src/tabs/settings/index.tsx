@@ -1,17 +1,18 @@
 import TabHeader from "../../components/TabHeader";
-import { DeviceInfo, Setting } from "../../lib/types";
+import { DeviceDetails, Setting } from "../../lib/types";
 import { useState, useEffect } from "react";
 import DeviceInfoCard from "./DeviceInfoCard";
-import { Wifi, RefreshCw, KeyRound } from "lucide-react";
 import Switch from "../../components/Switch";
 import SettingsService from "../../lib/services/SettingsService";
+import DeviceService from "../../lib/services/DeviceService";
 
 const Settings = () => {
-    const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({
-        name: "Raspberry Pi 4",
-        battery: 85,
-        storage: 64,
-        uptime: 12,
+    const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
+        name: "Not connected",
+        battery: 0,
+        storage: 0,
+        uptime: 0,
+        ssid: "",
     });
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
@@ -23,6 +24,22 @@ const Settings = () => {
             await SettingsService.initializeDefaultSettings();
             const loadedSettings = await SettingsService.getAllSettings();
             setSettings(loadedSettings);
+
+            const deviceDetails = await DeviceService.getDeviceDetails();
+            setDeviceInfo(deviceDetails);
+
+            // set connection setting value locally
+            setSettings((prevSettings) =>
+                prevSettings.map((setting) =>
+                    setting.id === "connection"
+                        ? {
+                              ...setting,
+                              value: deviceDetails.ssid,
+                          }
+                        : setting,
+                ),
+            );
+
             setLoading(false);
         };
         loadSettings();

@@ -5,6 +5,8 @@ Provides state data for the GUI screens.
 import datetime
 import socket
 import sqlite3
+import subprocess
+import shutil
 import threading
 
 from pathlib import Path
@@ -148,3 +150,61 @@ class DataProvider:
     
     def delete_synced_data(self) -> None:
         self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")
+
+    
+    def _get_battery_percentage(self) -> int:
+        # TODO implement
+        return 100
+    
+    def _get_storage_usage_percent(self) -> int:
+        """Get storage usage percentage of root filesystem"""
+        try:
+            usage = shutil.disk_usage("/")
+            percent = int((usage.used / usage.total) * 100)
+            return percent
+        except Exception:
+            return 0
+    
+    def _get_wifi_ssid(self) -> str:
+        """Get the hotspot SSID from activate_hotspot.sh"""
+        try:
+            # Navigate to scripts folder (parent of gui folder)
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+            
+            if not hotspot_script.exists():
+                return "Not connected"
+            
+            content = hotspot_script.read_text()
+            
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("SSID="):
+                    # Extract SSID from line like: SSID="MyBirdNETPiHotspot" and remove quotes if present
+                    ssid_part = line[5:]
+                    ssid = ssid_part.strip().strip('"')
+                    if ssid:
+                        return ssid
+        except Exception as e:
+            print(f"Error reading SSID: {e}")
+        
+        return "Not connected"
+    
+    def get_device_details(self) -> dict:
+        device_name = socket.gethostname()
+        
+        battery_percentage = self._get_battery_percentage()
+        
+        storage_usage_percent = self._get_storage_usage_percent()
+        
+        boot_time = self._get_boot_time()
+        uptime_days = (datetime.datetime.now() - boot_time).days
+        
+        wifi_ssid = self._get_wifi_ssid()
+        
+        return {
+            "name": device_name,
+            "battery": battery_percentage,
+            "storage": storage_usage_percent,
+            "uptime": uptime_days,
+            "ssid": wifi_ssid,
+        }

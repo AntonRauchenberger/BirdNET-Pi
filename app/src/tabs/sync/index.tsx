@@ -3,9 +3,9 @@ import TabHeader from "../../components/TabHeader";
 import { Wifi, Download, Check } from "lucide-react";
 import SyncService from "../../lib/services/SyncService";
 import { SYNC_ROW_LIMIT } from "../../lib/constants";
+import DeviceService from "../../lib/services/DeviceService";
 
 const Sync = () => {
-    const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncProgress, setSyncProgress] = useState(0);
     const [temporaryStatusMessage, setTemporaryStatusMessage] = useState<
@@ -50,9 +50,16 @@ const Sync = () => {
             return; // Prevent multiple sync operations
         }
 
-        if (!isConnected) {
-            // TODO remove comment
-            // return;
+        const deviceDetails = await DeviceService.getDeviceDetails();
+        if (
+            deviceDetails.ssid === "" ||
+            deviceDetails.ssid === null ||
+            deviceDetails.name === "Not connected"
+        ) {
+            showTemporaryStatusMessage(
+                "Please connect to your device hotspot before syncing",
+            );
+            return;
         }
 
         try {
@@ -143,7 +150,7 @@ const Sync = () => {
         },
         statusIcon: {
             background:
-                (isConnected && !isSyncing) || temporaryStatusMessage
+                !isSyncing || temporaryStatusMessage
                     ? "green"
                     : isSyncing
                       ? "orange"
@@ -231,7 +238,7 @@ const Sync = () => {
                             <div style={styles.statusIcon}></div>
                             <div>{temporaryStatusMessage}</div>
                         </div>
-                    ) : isConnected && !isSyncing ? (
+                    ) : !isSyncing ? (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
                             <div>Ready to sync</div>
@@ -271,7 +278,7 @@ const Sync = () => {
                         onClick={startSync}
                         style={{
                             ...styles.startButton,
-                            opacity: isSyncing || !isConnected ? 0.6 : 1,
+                            opacity: isSyncing ? 0.6 : 1,
                         }}
                     >
                         {isSyncing ? "Syncing..." : "Start Sync"}
