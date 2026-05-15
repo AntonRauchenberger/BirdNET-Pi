@@ -13,12 +13,12 @@ const HARD_DRIVE_ICON_SVG = `
 
 const formatLastUpdate = (lastUpdate?: string): string => {
     if (!lastUpdate) {
-        return "unknown";
+        return "not yet";
     }
 
     const updatedAt = new Date(lastUpdate);
     if (Number.isNaN(updatedAt.getTime())) {
-        return "unknown";
+        return "not yet";
     }
 
     const diffMs = Date.now() - updatedAt.getTime();

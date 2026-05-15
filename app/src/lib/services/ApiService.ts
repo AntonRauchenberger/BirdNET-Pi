@@ -1,5 +1,3 @@
-import { API_BASE_URL } from "../constants";
-
 export default class ApiService {
     static async callApi(
         path: string,
@@ -7,7 +5,7 @@ export default class ApiService {
         method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
         body?: unknown,
     ) {
-        let url = `${API_BASE_URL}${path}`;
+        let url = `${path}`;
         if (pathParams && Object.keys(pathParams).length > 0) {
             const queryString = new URLSearchParams(pathParams).toString();
             url += `?${queryString}`;
