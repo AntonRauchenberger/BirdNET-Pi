@@ -91,11 +91,10 @@ class DataProvider:
             wifi_ssid = self._get_wifi_ssid()
             if wifi_ssid != "Not connected" and self._has_internet_connectivity():
                 status = "Online"
-                device_ip = self._get_device_ip()
-                app_url = f"http://{device_ip}/app" if device_ip != "Not connected" else "Not connected"
+                app_url = "/"
             else:
                 status = "Offline"
-                app_url = "Not connected"
+                app_url = "/"
 
         return {
             "wlan_ssid": wifi_ssid,
