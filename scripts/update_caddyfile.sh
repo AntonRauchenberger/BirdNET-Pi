@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 source /etc/birdnet/birdnet.conf
-my_dir=$HOME/BirdNET-Pi/scripts
+my_dir="$HOME/BirdNET-Pi/scripts"
+
 set -x
-[ -d /etc/caddy ] || mkdir /etc/caddy
-if [ -f /etc/caddy/Caddyfile ];then
+
+[ -d /etc/caddy ] || mkdir -p /etc/caddy
+if [ -f /etc/caddy/Caddyfile ]; then
   cp /etc/caddy/Caddyfile{,.original}
 fi
-if ! [ -z ${CADDY_PWD} ];then
-HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
-cat << EOF > /etc/caddy/Caddyfile
-http:// ${BIRDNETPI_URL} {
+
+if [ -n "${CADDY_PWD:-}" ]; then
+  HASHWORD=$(caddy hash-password --plaintext "${CADDY_PWD}")
+  cat << EOF > /etc/caddy/Caddyfile
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   file_server browse
   handle /By_Date/* {
@@ -45,7 +50,7 @@ http:// ${BIRDNETPI_URL} {
 EOF
 else
   cat << EOF > /etc/caddy/Caddyfile
-http:// ${BIRDNETPI_URL} {
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   file_server browse
   handle /By_Date/* {
