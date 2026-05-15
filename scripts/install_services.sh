@@ -268,6 +268,9 @@ http:// ${BIRDNETPI_URL} {
     basicauth /terminal* {
       birdnet ${HASHWORD}
     }
+    reverse_proxy /device* localhost:2026
+    reverse_proxy /latestdetections* localhost:2026
+    reverse_proxy /sync* localhost:2026
     reverse_proxy /stream localhost:8000
     php_fastcgi unix//run/php/php-fpm.sock
     reverse_proxy /log* localhost:8080
@@ -303,6 +306,9 @@ http:// ${BIRDNETPI_URL} {
     file_server
   }
   handle {
+    reverse_proxy /device* localhost:2026
+    reverse_proxy /latestdetections* localhost:2026
+    reverse_proxy /sync* localhost:2026
     reverse_proxy /stream localhost:8000
     php_fastcgi unix//run/php/php-fpm.sock
     reverse_proxy /log* localhost:8080

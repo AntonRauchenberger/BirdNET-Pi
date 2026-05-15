@@ -80,14 +80,14 @@ class DataProvider:
     def fetch_sync_state_data(self) -> dict:
         wifi_ssid = self._get_wifi_ssid()
         entries_to_sync = self.get_sync_pending_detections_amount()
-        wifi_ip = self._get_wifi_ip()
+        device_ip = self._get_device_ip()
         hotspot_enabled = self.is_hotspot_enabled()
 
         return {
             "wlan_ssid": wifi_ssid,
             "status": "Enabled" if hotspot_enabled else "Disabled",
             "entries_to_sync": entries_to_sync,
-            "app_url": f"http://{wifi_ip}/app" if wifi_ip != "Not connected" else "Not connected",
+            "app_url": f"http://{device_ip}/app" if device_ip != "Not connected" else "Not connected",
         }
 
     def toggle_hotspot(self) -> bool:
@@ -249,6 +249,28 @@ class DataProvider:
         except Exception as e:
             print(f"Error reading IP: {e}")
         
+        return "Not connected"
+
+    def _get_device_ip(self) -> str:
+        """Get current device IP address used for outbound traffic."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+                # This does not send traffic; it asks the OS for the default route source IP.
+                sock.connect(("8.8.8.8", 80))
+                ip = sock.getsockname()[0]
+                if ip and ip != "127.0.0.1":
+                    return ip
+        except Exception:
+            pass
+
+        try:
+            # Fallback for environments without a default route at the moment.
+            for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+                if ip and not ip.startswith("127."):
+                    return ip
+        except Exception:
+            pass
+
         return "Not connected"
     
     def get_device_details(self) -> dict:
