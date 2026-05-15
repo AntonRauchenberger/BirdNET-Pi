@@ -32,7 +32,8 @@ export default defineConfig({
             manifest: {
                 name: "BirdNET-Pi",
                 short_name: "BirdNET-Pi",
-                start_url: "/",
+                start_url: "/app",
+                scope: "/app",
                 display: "standalone",
                 background_color: "#ffffff",
                 theme_color: "#111111",
