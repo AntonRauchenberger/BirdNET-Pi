@@ -514,6 +514,7 @@ install_services() {
   install_avahi_aliases
   install_birdnet_analysis
   install_display_gui_service
+  install_gui_api_service
   install_birdnet_stats_service
   install_recording_service
   install_custom_recording_service # But does not enable

@@ -35,8 +35,6 @@ class APIManager:
 
         self._configure_cors(allowed_origins)
         self._register_routes()
-
-        self.run(host=host, port=port)
         self.running = True
 
     def _configure_cors(self, allowed_origins: list[str] | None = None) -> None:
@@ -97,3 +95,4 @@ if __name__ == "__main__":
     port = 2026
 
     api_manager = APIManager(host, port, debug=True)
+    api_manager.run(host, port)

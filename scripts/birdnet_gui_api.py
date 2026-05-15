@@ -4,8 +4,16 @@
 import logging
 import signal
 import sys
+from pathlib import Path
 
-from.gui.api.api_manager import APIManager
+if __package__ is None or __package__ == "":
+    scripts_dir = Path(__file__).resolve().parent
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+
+    from gui.api.api_manager import APIManager
+else:
+    from .gui.api.api_manager import APIManager
 
 log = logging.getLogger(__name__)
 
@@ -24,10 +32,11 @@ def main():
     host = "0.0.0.0"
     port = 2026
 
-    APIManager(host, port)
-
     signal.signal(signal.SIGINT, _handle_shutdown)
     signal.signal(signal.SIGTERM, _handle_shutdown)
+
+    api_manager = APIManager(host, port)
+    api_manager.run(host, port)
 
 
     log.info('GUI FastAPI service shutting down, putting display to sleep')
