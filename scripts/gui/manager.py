@@ -128,8 +128,7 @@ class GUIManager:
         self.list_page = 1 if self.list_page >= total_pages else self.list_page + 1
 
     def start_sync(self) -> None:
-        # In a real implementation, this would trigger the backend to start syncing data with the server.
-        pass
+        self.data_provider.toggle_hotspot()
 
     def switch_gps_state(self) -> None:
         # In a real implementation, this would toggle the GPS state in the backend and fetch updated data for the GPS screen.

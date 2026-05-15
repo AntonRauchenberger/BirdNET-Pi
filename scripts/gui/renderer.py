@@ -211,16 +211,16 @@ def render_sync_screen(state_data):
     draw = ImageDraw.Draw(image)
 
     wlan_ssid = str(state_data.get("wlan_ssid", "Unknown Wi-Fi"))
+    app_url = str(state_data.get("app_url", "Unknown URL"))
     status = str(state_data.get("status", "Unknown Status"))
-    last_sync = str(state_data.get("last_sync", "Unknown Time"))
     entries_to_sync = int(state_data.get("entries_to_sync", 0) or 0)
 
     components = [
         *_get_header_components("SYNC"),
-        *_get_footer_components(footer_text="OK: Start sync", current_page=4),
-        Text(8, 29, f"WLAN: {wlan_ssid}", font_size=16, color="black"),
-        Text(8, 44, f"Status: {status}", font_size=16, color="black"),
-        Text(8, 59, f"Last Sync: {last_sync}", font_size=16, color="black"),
+        *_get_footer_components(footer_text="OK: Switch status", current_page=4),
+        Text(8, 29, f"Hotspot: {wlan_ssid}", font_size=16, color="black"),
+        Text(8, 44, f"App URL: {app_url}", font_size=16, color="black"),
+        Text(8, 59, f"Status: {status}", font_size=16, color="black"),
         Text(8, 74, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
     ]
 

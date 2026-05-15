@@ -5,6 +5,8 @@ Provides state data for the GUI screens.
 import datetime
 import socket
 import sqlite3
+import subprocess
+import shutil
 import threading
 
 from pathlib import Path
@@ -24,6 +26,17 @@ class DataProvider:
                     cur = self._db_con.cursor()
                     cur.execute(query, params)
                     return cur.fetchall()
+            except BaseException as e:
+                pass
+
+    def _execute_db_command(self, command: str, params: tuple = ()) -> None:
+        for attempt_number in range(3):
+            try:
+                with self._db_lock:
+                    cur = self._db_con.cursor()
+                    cur.execute(command, params)
+                    self._db_con.commit()
+                    return
             except BaseException as e:
                 pass
 
@@ -65,13 +78,47 @@ class DataProvider:
         }
 
     def fetch_sync_state_data(self) -> dict:
-        # In a real implementation, this would fetch the current sync status from the backend.
+        wifi_ssid = self._get_wifi_ssid()
+        entries_to_sync = self.get_sync_pending_detections_amount()
+        wifi_ip = self._get_wifi_ip()
+        hotspot_enabled = self.is_hotspot_enabled()
+
         return {
-            "wlan_ssid": "MyWiFiNetwork_1",
-            "status": "Ready",
-            "last_sync": "2024-06-01 12:34:56",
-            "entries_to_sync": 42,
+            "wlan_ssid": wifi_ssid,
+            "status": "Enabled" if hotspot_enabled else "Disabled",
+            "entries_to_sync": entries_to_sync,
+            "app_url": f"http://{wifi_ip}/app" if wifi_ip != "Not connected" else "Not connected",
         }
+
+    def toggle_hotspot(self) -> bool:
+        """Toggle hotspot state via the shell scripts and return resulting state."""
+        scripts_dir = Path(__file__).resolve().parent.parent
+        enable_script = scripts_dir / "activate_hotspot.sh"
+        disable_script = scripts_dir / "deactivate_hotspot.sh"
+
+        try:
+            target_script = disable_script if self.is_hotspot_enabled() else enable_script
+            subprocess.run(["bash", str(target_script)], check=False, capture_output=True, text=True)
+        except Exception as e:
+            print(f"Error toggling hotspot: {e}")
+
+        return self.is_hotspot_enabled()
+
+    def is_hotspot_enabled(self) -> bool:
+        """Check whether the configured hotspot connection is currently active."""
+        connection_name = self._get_hotspot_connection_name()
+        try:
+            result = subprocess.run(
+                ["nmcli", "-t", "-f", "NAME", "connection", "show", "--active"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            active_names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return connection_name in active_names
+        except Exception as e:
+            print(f"Error checking hotspot status: {e}")
+            return False
 
     def fetch_gps_state_data(self) -> dict:
         # In a real implementation, this would fetch the current GPS status and coordinates from the backend.
@@ -93,46 +140,159 @@ class DataProvider:
         
         return latest_detections
     
-    def get_sync_data(self) -> list[Any]:
-        # TODO get real sync data
-        return [
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            },
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            },
-            {
-                "date": "2024-06-01",
-                "time": "12:34:56",
-                "sci_name": "Turdus merula",
-                "com_name": "Common Blackbird",
-                "confidence": 0.95,
-                "lat": "52.5200",
-                "lon": "13.4050",
-                "cutoff": 0.7,
-                "week": 19,
-                "sens": 1.25,
-                "overlap": 0,
-            }
-        ]
+    def get_sync_pending_detections_amount(self) -> int:
+        pending_detections = self._get_from_db("SELECT COUNT(*) FROM detections WHERE synced = FALSE")
+
+        if pending_detections is None:
+            return 0
+        
+        return pending_detections[0][0]
+    
+    def get_sync_data(self, offset: int = 0, limit: int = 50) -> list[Any]:
+        detections = self._get_from_db("SELECT * FROM detections WHERE synced = FALSE LIMIT ? OFFSET ?", (limit, offset))
+
+        if detections is None:
+            return []
+
+        formated_detections = []
+        fetchedTimestamps = []
+        for row in detections:
+            formated_detections.append({
+                "date": row[0],
+                "time": row[1],
+                "sci_name": row[2],
+                "com_name": row[3],
+                "confidence": row[4],
+                "lat": row[5],
+                "lon": row[6],
+                "cutoff": row[7],
+                "weekday": row[8],
+                "sens": row[9],
+                "overlap": row[10],
+                "file_name": row[11],
+            })
+            fetchedTimestamps.append((row[0], row[1]))
+
+        # Mark these detections as synced in the database using the date and time as identifiers
+        if formated_detections:
+            placeholders = ",".join(["(?, ?)"] * len(fetchedTimestamps))
+            params = [item for timestamp in fetchedTimestamps for item in timestamp]
+            self._execute_db_command(f"UPDATE detections SET synced = TRUE WHERE (date, time) IN ({placeholders})", tuple(params))
+            
+        
+        return formated_detections
+    
+    def delete_synced_data(self) -> None:
+        self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")
+
+    
+    def _get_battery_percentage(self) -> int:
+        # TODO implement
+        return 100
+
+    def _get_device_location(self) -> dict | None:
+        # TODO implement
+        return {"latitude": 49.0200, "longitude": 12.0900}
+    
+    def _get_storage_usage_percent(self) -> int:
+        """Get storage usage percentage of root filesystem"""
+        try:
+            usage = shutil.disk_usage("/")
+            percent = int((usage.used / usage.total) * 100)
+            return percent
+        except Exception:
+            return 0
+    
+    def _get_wifi_ssid(self) -> str:
+        """Get the hotspot SSID from activate_hotspot.sh"""
+        try:
+            # Navigate to scripts folder (parent of gui folder)
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+            
+            if not hotspot_script.exists():
+                return "Not connected"
+            
+            content = hotspot_script.read_text()
+            
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("SSID="):
+                    # Extract SSID from line like: SSID="MyBirdNETPiHotspot" and remove quotes if present
+                    ssid_part = line[5:]
+                    ssid = ssid_part.strip().strip('"')
+                    if ssid:
+                        return ssid
+        except Exception as e:
+            print(f"Error reading SSID: {e}")
+        
+        return "Not connected"
+
+    def _get_hotspot_connection_name(self) -> str:
+        """Read hotspot connection name from activate_hotspot.sh."""
+        try:
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+
+            if not hotspot_script.exists():
+                return "Hotspot"
+
+            content = hotspot_script.read_text()
+
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("CON_NAME="):
+                    conn_part = line[9:]
+                    conn_name = conn_part.strip().strip('"')
+                    if conn_name:
+                        return conn_name
+        except Exception as e:
+            print(f"Error reading connection name: {e}")
+
+        return "Hotspot"
+    
+    def _get_wifi_ip(self) -> str:
+        """Get the hotspot IP from activate_hotspot.sh"""
+        try:
+            # Navigate to scripts folder (parent of gui folder)
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+            
+            if not hotspot_script.exists():
+                return "Not connected"
+            
+            content = hotspot_script.read_text()
+            
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("IP_ADDR="):
+                    # Extract IP from line like: IP_ADDR="192.168.4.1/24" and remove mask.
+                    ip_part = line[8:]
+                    ip = ip_part.strip().strip('"')
+                    if ip:
+                        return ip.split("/")[0]
+        except Exception as e:
+            print(f"Error reading IP: {e}")
+        
+        return "Not connected"
+    
+    def get_device_details(self) -> dict:
+        device_name = socket.gethostname()
+        
+        battery_percentage = self._get_battery_percentage()
+        
+        storage_usage_percent = self._get_storage_usage_percent()
+        
+        boot_time = self._get_boot_time()
+        uptime_days = (datetime.datetime.now() - boot_time).days
+        
+        wifi_ssid = self._get_wifi_ssid()
+        location = self._get_device_location()
+        
+        return {
+            "name": device_name,
+            "battery": battery_percentage,
+            "storage": storage_usage_percent,
+            "uptime": uptime_days,
+            "ssid": wifi_ssid,
+            "longitude": location["longitude"] if location else None,
+            "latitude": location["latitude"] if location else None,
+            "lastUpdate": datetime.datetime.now(),
+        }
