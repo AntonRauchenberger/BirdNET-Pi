@@ -52,20 +52,27 @@ class APIManager:
         )
 
     def _register_routes(self) -> None:
-        @self.app.get("/health")
-        async def health() -> dict:
-            # TODO implement
-            return {"status": "ok"}
+        @self.app.get("/device/details")
+        async def get_device_details() -> dict:
+            return self.data_provider.get_device_details()
 
         @self.app.get("/latestdetections")
         async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:
             return self.data_provider.get_latest_bird_detections(limit=limit)
         
+        @self.app.get("/sync/pendingdetectionsamount")
+        async def get_sync_pending_detections_amount() -> dict:
+            return {"amount": self.data_provider.get_sync_pending_detections_amount()}
+
         @self.app.get("/sync/data")
-        async def get_sync_data() -> list[dict]:
-            return self.data_provider.get_sync_data()
+        async def get_sync_data(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500)) -> list[Any]:
+            return self.data_provider.get_sync_data(offset=offset, limit=limit)
         
-    # TODO add missing routes for other state data
+        @self.app.delete("/sync/deletesynceddata")
+        async def delete_synced_data() -> dict:
+            self.data_provider.delete_synced_data()
+            return {"status": "success"}
+        
 
     def run(self, host: str = "0.0.0.0", port: int = 2026) -> None:
         if self.debug:

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configturation
-SSID="MeinBirdNet"
-PASSWORD="MeinPasswort123"
+SSID="MyBirdNETPiHotspot"
+PASSWORD="MyPassword123"
 IP_ADDR="192.168.4.1/24"
 CON_NAME="Hotspot"
 

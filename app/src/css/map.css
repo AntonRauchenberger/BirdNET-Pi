@@ -1,0 +1,131 @@
+.device-marker {
+    position: relative;
+    width: 42px;
+    height: 42px;
+}
+
+.device-marker-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: rgba(96, 108, 56, 0.35);
+    animation: device-marker-pulse 1.8s ease-out infinite;
+}
+
+.device-marker-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: var(--copperwood);
+    border: 2px solid var(--card);
+    box-shadow: 0 0 0 2px rgba(40, 54, 24, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--card);
+}
+
+.device-marker-icon {
+    width: 13px;
+    height: 13px;
+}
+
+@keyframes device-marker-pulse {
+    0% {
+        transform: scale(0.7);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.8);
+        opacity: 0;
+    }
+}
+
+.device-popup .maplibregl-popup-content {
+    padding: 0;
+    border-radius: 24px;
+    border: var(--card-border);
+    background: var(--card);
+    box-shadow: 0 12px 26px rgba(40, 54, 24, 0.2);
+    overflow: hidden;
+}
+
+.device-popup .maplibregl-popup-tip {
+    border-top-color: var(--card);
+}
+
+.device-popup-card {
+    min-width: 290px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0.85rem;
+}
+
+.device-popup-icon {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--card);
+    background: var(--gradiant-leaf);
+}
+
+.device-popup-icon .device-marker-icon {
+    width: 22px;
+    height: 22px;
+}
+
+.device-popup-main {
+    min-width: 0;
+    flex: 1;
+}
+
+.device-popup-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 1.03rem;
+    line-height: 1.2;
+    color: var(--black-forest);
+}
+
+.device-popup-title-row strong {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.device-popup-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.18rem 0.48rem;
+    border-radius: 999px;
+    color: #4f6a2f;
+    background: rgba(96, 108, 56, 0.16);
+}
+
+.device-popup-sub {
+    margin-top: 0.28rem;
+    color: rgba(40, 54, 24, 0.7);
+    font-size: 0.94rem;
+    text-align: left;
+}
+
+.device-popup-action {
+    border: 0;
+    padding: 0.5rem 0.88rem;
+    border-radius: 999px;
+    background: rgba(221, 161, 94, 0.23);
+    color: var(--black-forest);
+    font-size: 0.95rem;
+    font-weight: 600;
+}

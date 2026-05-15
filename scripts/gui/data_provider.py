@@ -227,28 +227,6 @@ class DataProvider:
         
         return "Not connected"
 
-    def _get_hotspot_connection_name(self) -> str:
-        """Read hotspot connection name from activate_hotspot.sh."""
-        try:
-            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
-
-            if not hotspot_script.exists():
-                return "Hotspot"
-
-            content = hotspot_script.read_text()
-
-            for line in content.split("\n"):
-                line = line.strip()
-                if line.startswith("CON_NAME="):
-                    conn_part = line[9:]
-                    conn_name = conn_part.strip().strip('"')
-                    if conn_name:
-                        return conn_name
-        except Exception as e:
-            print(f"Error reading connection name: {e}")
-
-        return "Hotspot"
-    
     def _get_wifi_ip(self) -> str:
         """Get the hotspot IP from activate_hotspot.sh"""
         try:

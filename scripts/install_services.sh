@@ -217,6 +217,27 @@ install_Caddyfile() {
   cat << EOF > /etc/caddy/Caddyfile
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
+  handle /app* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    try_files {path} /index.html
+    file_server
+  }
+  handle /assets/* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /manifest.webmanifest {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /sw.js {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /workbox-* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
   file_server browse
   handle /By_Date/* {
     file_server browse
@@ -253,6 +274,27 @@ EOF
     cat << EOF > /etc/caddy/Caddyfile
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
+  handle /app* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    try_files {path} /index.html
+    file_server
+  }
+  handle /assets/* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /manifest.webmanifest {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /sw.js {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
+  handle /workbox-* {
+    root * ${HOME}/BirdNET-Pi/web-app-dist
+    file_server
+  }
   file_server browse
   handle /By_Date/* {
     file_server browse

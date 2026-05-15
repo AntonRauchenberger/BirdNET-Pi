@@ -1,0 +1,151 @@
+:root {
+    --olive-leaf: #606c38ff;
+    --black-forest: #283618ff;
+    --forest: #233213;
+    --cornsilk: #fefae0ff;
+    --sunlit-clay: #dda15eff;
+    --copperwood: #bc6c25ff;
+    --copper: #b76219;
+    --seccondary: #e7e1c4;
+
+    --iphone-max-width: 430px;
+
+    --card: #fffffa;
+    --card-border: 1px solid rgba(40, 54, 24, 0.15);
+
+    --gradiant-leaf: linear-gradient(
+        135deg,
+        oklch(49.5% 0.085 130),
+        oklch(29.5% 0.055 130)
+    );
+    --gradiant-clay: linear-gradient(
+        135deg,
+        oklch(76% 0.12 70),
+        oklch(58.5% 0.135 55)
+    );
+
+    --shadow-soft: 0 4px 16px -6px oklch(29.5% 0.055 130/0.15);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    background-color: var(--cornsilk);
+    color: var(--black-forest);
+    font-family:
+        "Avenir Next",
+        "SF Pro Text",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    touch-action: pan-y;
+}
+
+#root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.app-shell {
+    width: min(100vw, var(--iphone-max-width));
+    max-width: 100%;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.app-content {
+    padding: 1rem 1rem calc(5.75rem + env(safe-area-inset-bottom));
+}
+
+.app-content h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: -20px;
+    width: 100%;
+    max-width: var(--iphone-max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.2rem;
+    padding: 0.4rem 0.5rem calc(0.55rem + env(safe-area-inset-bottom));
+    border-top: var(--card-border);
+    background-color: var(--card);
+    backdrop-filter: blur(8px);
+}
+
+.tab-button {
+    border: 0;
+    background: transparent;
+    color: rgba(40, 54, 24, 0.65);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0.45rem 0.2rem;
+    border-radius: 0.75rem;
+    font-size: 0.63rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.tab-button .button-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.tab-button.active {
+    color: var(--copperwood);
+    background-color: rgba(221, 161, 94, 0.16);
+}
+
+.tab-button:active {
+    transform: translateY(1px);
+}
+
+@keyframes sync-status-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.25;
+    }
+}
+
+@media (min-width: 768px) {
+    .app-shell {
+        box-shadow:
+            0 0 0 1px rgba(40, 54, 24, 0.08),
+            0 14px 40px rgba(40, 54, 24, 0.14);
+    }
+}
