@@ -95,14 +95,20 @@ class GUIManager:
         # threading.Thread(target=KeyboardInputHandler(self).run, daemon=True).start()
 
     def render_current_state(self) -> None:
-        self.current_state.update_state_data()
-        render(self.device, self.current_state.state_data, self.current_state.name)
+        try:
+            self.current_state.update_state_data()
+            render(self.device, self.current_state.state_data, self.current_state.name)
+        except Exception as exc:
+            print(f"Failed to render state {self.current_state.name}: {exc}")
 
     def start(self) -> None:
         self.render_current_state()
 
     def handle_ok(self) -> None:
-        self.current_state.run_ok_action()
+        try:
+            self.current_state.run_ok_action()
+        except Exception as exc:
+            print(f"OK action failed in state {self.current_state.name}: {exc}")
         self.render_current_state()
 
     def handle_next(self) -> None:

@@ -78,16 +78,29 @@ class DataProvider:
         }
 
     def fetch_sync_state_data(self) -> dict:
-        wifi_ssid = self._get_wifi_ssid()
         entries_to_sync = self.get_sync_pending_detections_amount()
-        device_ip = self._get_device_ip()
         hotspot_enabled = self.is_hotspot_enabled()
+
+        if hotspot_enabled:
+            wifi_ssid = self._get_hotspot_ssid()
+            hotspot_ip = self._get_wifi_ip()
+            hotspot_ip = hotspot_ip if hotspot_ip != "Not connected" else "192.168.4.1"
+            status = "Sync Aktiv"
+            app_url = f"http://{hotspot_ip}/app"
+        else:
+            wifi_ssid = self._get_wifi_ssid()
+            if wifi_ssid != "Not connected" and self._has_internet_connectivity():
+                status = "Online"
+                app_url = "http://birdnetpi.local/app"
+            else:
+                status = "Offline"
+                app_url = "Not connected"
 
         return {
             "wlan_ssid": wifi_ssid,
-            "status": "Enabled" if hotspot_enabled else "Disabled",
+            "status": status,
             "entries_to_sync": entries_to_sync,
-            "app_url": f"http://{device_ip}/app" if device_ip != "Not connected" else "Not connected",
+            "app_url": app_url,
         }
 
     def toggle_hotspot(self) -> bool:
@@ -98,7 +111,13 @@ class DataProvider:
 
         try:
             target_script = disable_script if self.is_hotspot_enabled() else enable_script
-            subprocess.run(["bash", str(target_script)], check=False, capture_output=True, text=True)
+            if not target_script.exists():
+                print(f"Hotspot script not found: {target_script}")
+                return self.is_hotspot_enabled()
+
+            result = subprocess.run(["bash", str(target_script)], check=False, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"Hotspot toggle failed ({result.returncode}): {result.stderr.strip()}")
         except Exception as e:
             print(f"Error toggling hotspot: {e}")
 
@@ -107,6 +126,9 @@ class DataProvider:
     def is_hotspot_enabled(self) -> bool:
         """Check whether the configured hotspot connection is currently active."""
         connection_name = self._get_hotspot_connection_name()
+        if connection_name == "Not connected":
+            return False
+
         try:
             result = subprocess.run(
                 ["nmcli", "-t", "-f", "NAME", "connection", "show", "--active"],
@@ -204,28 +226,46 @@ class DataProvider:
             return 0
     
     def _get_wifi_ssid(self) -> str:
-        """Get the hotspot SSID from activate_hotspot.sh"""
+        """Get currently connected Wi-Fi SSID from NetworkManager."""
         try:
-            # Navigate to scripts folder (parent of gui folder)
-            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
-            
-            if not hotspot_script.exists():
-                return "Not connected"
-            
-            content = hotspot_script.read_text()
-            
-            for line in content.split("\n"):
-                line = line.strip()
-                if line.startswith("SSID="):
-                    # Extract SSID from line like: SSID="MyBirdNETPiHotspot" and remove quotes if present
-                    ssid_part = line[5:]
-                    ssid = ssid_part.strip().strip('"')
+            result = subprocess.run(
+                ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            for line in result.stdout.splitlines():
+                if line.startswith("yes:"):
+                    ssid = line.split(":", 1)[1].strip()
                     if ssid:
                         return ssid
         except Exception as e:
             print(f"Error reading SSID: {e}")
         
         return "Not connected"
+
+    def _get_hotspot_ssid(self) -> str:
+        """Get the hotspot SSID from activate_hotspot.sh."""
+        try:
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+
+            if not hotspot_script.exists():
+                return "Hotspot"
+
+            content = hotspot_script.read_text()
+
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("SSID="):
+                    ssid_part = line[5:]
+                    ssid = ssid_part.strip().strip('"')
+                    if ssid:
+                        return ssid
+        except Exception as e:
+            print(f"Error reading hotspot SSID: {e}")
+
+        return "Hotspot"
 
     def _get_wifi_ip(self) -> str:
         """Get the hotspot IP from activate_hotspot.sh"""
@@ -272,6 +312,40 @@ class DataProvider:
             pass
 
         return "Not connected"
+
+    def _get_hotspot_connection_name(self) -> str:
+        """Get hotspot connection name from activate_hotspot.sh."""
+        try:
+            hotspot_script = Path(__file__).resolve().parent.parent / "activate_hotspot.sh"
+            if not hotspot_script.exists():
+                return "Not connected"
+
+            content = hotspot_script.read_text()
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("CON_NAME="):
+                    name_part = line[9:]
+                    name = name_part.strip().strip('"')
+                    if name:
+                        return name
+        except Exception as e:
+            print(f"Error reading hotspot connection name: {e}")
+
+        return "Not connected"
+
+    def _has_internet_connectivity(self) -> bool:
+        """Return True if NetworkManager reports internet connectivity."""
+        try:
+            result = subprocess.run(
+                ["nmcli", "-t", "-f", "CONNECTIVITY", "general"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            connectivity = result.stdout.strip().lower()
+            return connectivity == "full"
+        except Exception:
+            return False
     
     def get_device_details(self) -> dict:
         device_name = socket.gethostname()
