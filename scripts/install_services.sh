@@ -238,36 +238,32 @@ http:// ${BIRDNETPI_URL} {
     root * ${HOME}/BirdNET-Pi/web-app-dist
     file_server
   }
-  file_server browse
-  handle /By_Date/* {
+  handle {
+    basicauth /views.php?view=File* {
+      birdnet ${HASHWORD}
+    }
+    basicauth /Processed* {
+      birdnet ${HASHWORD}
+    }
+    basicauth /scripts* {
+      birdnet ${HASHWORD}
+    }
+    basicauth /stream {
+      birdnet ${HASHWORD}
+    }
+    basicauth /phpsysinfo* {
+      birdnet ${HASHWORD}
+    }
+    basicauth /terminal* {
+      birdnet ${HASHWORD}
+    }
+    reverse_proxy /stream localhost:8000
+    php_fastcgi unix//run/php/php-fpm.sock
+    reverse_proxy /log* localhost:8080
+    reverse_proxy /stats* localhost:8501
+    reverse_proxy /terminal* localhost:8888
     file_server browse
   }
-  handle /Charts/* {
-    file_server browse
-  }
-  basicauth /views.php?view=File* {
-    birdnet ${HASHWORD}
-  }
-  basicauth /Processed* {
-    birdnet ${HASHWORD}
-  }
-  basicauth /scripts* {
-    birdnet ${HASHWORD}
-  }
-  basicauth /stream {
-    birdnet ${HASHWORD}
-  }
-  basicauth /phpsysinfo* {
-    birdnet ${HASHWORD}
-  }
-  basicauth /terminal* {
-    birdnet ${HASHWORD}
-  }
-  reverse_proxy /stream localhost:8000
-  php_fastcgi unix//run/php/php-fpm.sock
-  reverse_proxy /log* localhost:8080
-  reverse_proxy /stats* localhost:8501
-  reverse_proxy /terminal* localhost:8888
 }
 EOF
   else
@@ -295,18 +291,14 @@ http:// ${BIRDNETPI_URL} {
     root * ${HOME}/BirdNET-Pi/web-app-dist
     file_server
   }
-  file_server browse
-  handle /By_Date/* {
+  handle {
+    reverse_proxy /stream localhost:8000
+    php_fastcgi unix//run/php/php-fpm.sock
+    reverse_proxy /log* localhost:8080
+    reverse_proxy /stats* localhost:8501
+    reverse_proxy /terminal* localhost:8888
     file_server browse
   }
-  handle /Charts/* {
-    file_server browse
-  }
-  reverse_proxy /stream localhost:8000
-  php_fastcgi unix//run/php/php-fpm.sock
-  reverse_proxy /log* localhost:8080
-  reverse_proxy /stats* localhost:8501
-  reverse_proxy /terminal* localhost:8888
 }
 EOF
   fi

@@ -112,7 +112,7 @@ const Map = () => {
             style: MAP_STYLE as any,
             center: deviceLocation
                 ? [deviceLocation.longitude, deviceLocation.latitude]
-                : [0, 0], // Default to [0, 0] if deviceLocation is null
+                : [12.0974869, 49.0195333],
             zoom: 13,
         });
 
@@ -233,7 +233,7 @@ const Map = () => {
                                   deviceLocation.longitude,
                                   deviceLocation.latitude,
                               ]
-                            : [0, 0],
+                            : [12.0974869, 49.0195333],
                     )
                     .setPopup(
                         new maplibregl.Popup({
