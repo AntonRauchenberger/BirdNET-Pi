@@ -219,7 +219,7 @@ def render_sync_screen(state_data):
         *_get_header_components("SYNC"),
         *_get_footer_components(footer_text="OK: Switch status", current_page=4),
         Text(8, 29, f"Hotspot: {wlan_ssid}", font_size=16, color="black"),
-        Text(8, 44, f"App URL: {app_url}", font_size=16, color="black"),
+        Text(8, 44, f"App: {app_url}", font_size=16, color="black"),
         Text(8, 59, f"Status: {status}", font_size=16, color="black"),
         Text(8, 74, f"Entries to Sync: {entries_to_sync}", font_size=16, color="black"),
     ]
