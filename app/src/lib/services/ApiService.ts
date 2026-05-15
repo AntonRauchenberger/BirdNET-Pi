@@ -5,14 +5,16 @@ export default class ApiService {
         method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
         body?: unknown,
     ) {
-        let url = `${path}`;
+        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+        const url = new URL(normalizedPath, window.location.origin);
         if (pathParams && Object.keys(pathParams).length > 0) {
-            const queryString = new URLSearchParams(pathParams).toString();
-            url += `?${queryString}`;
+            for (const [key, value] of Object.entries(pathParams)) {
+                url.searchParams.set(key, String(value));
+            }
         }
 
         try {
-            const response = await fetch(url, {
+            const response = await fetch(url.toString(), {
                 method,
                 headers: body
                     ? {
@@ -28,7 +30,10 @@ export default class ApiService {
 
             return await response.json();
         } catch (error) {
-            console.error(`API call failed for ${method} ${path}:`, error);
+            console.error(
+                `API call failed for ${method} ${url.toString()}:`,
+                error,
+            );
             return false;
         }
     }
