@@ -97,11 +97,22 @@ Description=BirdNET FastAPI Service
 After=network.target
 
 [Service]
+Restart=always
+Type=simple
+RestartSec=2
+
 User=${USER}
 WorkingDirectory=$HOME/BirdNET-Pi
 
+Environment="PYTHONUNBUFFERED=1"
+Environment="TMPDIR=/tmp"
+Environment="PYTHONPATH=/usr/lib/python3/dist-packages"
+
 ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_gui_api.py
-Restart=always
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=birdnet_gui_api
 
 [Install]
 WantedBy=multi-user.target

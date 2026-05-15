@@ -20,6 +20,7 @@ else:
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.db"))
+log = logging.getLogger(__name__)
 
 
 class APIManager:
@@ -28,8 +29,11 @@ class APIManager:
         self.port = port
         self.debug = debug
         self.db_path = DB_PATH
-        if not Path(self.db_path).is_file():
-            raise FileNotFoundError(f"Database file not found: {self.db_path}")
+        db_path_obj = Path(self.db_path)
+        db_path_obj.parent.mkdir(parents=True, exist_ok=True)
+        if not db_path_obj.is_file():
+            log.warning("Database file not found, creating empty SQLite DB at %s", self.db_path)
+
         self.data_provider = DataProvider(self.db_path)
         self.app = FastAPI(title="BirdNET-Pi GUI API", debug=debug)
 
@@ -73,6 +77,8 @@ class APIManager:
         
 
     def run(self, host: str = "0.0.0.0", port: int = 2026) -> None:
+        log.info("Starting GUI API on %s:%s using DB %s", host, port, self.db_path)
+
         if self.debug:
             # Show detailed server/application logs during local debugging.
             logging.getLogger("uvicorn").setLevel(logging.DEBUG)
