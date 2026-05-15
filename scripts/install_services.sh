@@ -223,10 +223,17 @@ install_Caddyfile() {
   if [ -f /etc/caddy/Caddyfile ];then
     cp /etc/caddy/Caddyfile{,.original}
   fi
+
+  HOTSPOT_IP="${HOTSPOT_IP:-192.168.4.1}"
+  BIRDNET_ADDR="${BIRDNETPI_URL#https://}"
+  BIRDNET_ADDR="${BIRDNET_ADDR#http://}"
+  SITE_LABELS="${HOTSPOT_IP}, ${BIRDNET_ADDR}"
+
   if ! [ -z ${CADDY_PWD} ];then
   HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
   cat << EOF > /etc/caddy/Caddyfile
-http:// ${BIRDNETPI_URL} {
+${SITE_LABELS} {
+  tls internal
   root * ${EXTRACTED}
   handle /app* {
     root * ${HOME}/BirdNET-Pi/web-app-dist
@@ -282,7 +289,8 @@ http:// ${BIRDNETPI_URL} {
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
-http:// ${BIRDNETPI_URL} {
+${SITE_LABELS} {
+  tls internal
   root * ${EXTRACTED}
   handle /app* {
     root * ${HOME}/BirdNET-Pi/web-app-dist
