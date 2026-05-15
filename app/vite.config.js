@@ -16,12 +16,7 @@ export default defineConfig({
                 skipWaiting: true,
                 runtimeCaching: [
                     {
-                        urlPattern: ({ url }) =>
-                            (url.origin === self.location.origin ||
-                                url.origin === "http://192.168.4.1") &&
-                            (/^\/sync(\/|$)/.test(url.pathname) ||
-                                /^\/device(\/|$)/.test(url.pathname) ||
-                                /^\/latestdetections(\/|$)/.test(url.pathname)),
+                        urlPattern: /^http:\/\/localhost:2026\/.*$/i,
                         handler: "NetworkFirst",
                         options: {
                             cacheName: "api-cache",
