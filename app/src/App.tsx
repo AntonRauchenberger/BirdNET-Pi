@@ -27,7 +27,10 @@ function App() {
 
     return (
         <div className="app-shell">
-            <main className="app-content" role="main">
+            <main
+                className={`app-content ${activeTab.toLowerCase()}-screen`}
+                role="main"
+            >
                 {renderActiveTab()}
             </main>
             <Navbar activeTab={activeTab} onTabChange={setActiveTab} />

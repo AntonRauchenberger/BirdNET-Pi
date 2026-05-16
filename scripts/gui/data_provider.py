@@ -8,9 +8,12 @@ import sqlite3
 import subprocess
 import shutil
 import threading
+import os
 
 from pathlib import Path
 from typing import Any
+
+from fastapi.responses import FileResponse
 
 
 class DataProvider:
@@ -138,6 +141,8 @@ class DataProvider:
             )
             active_names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return connection_name in active_names
+        except FileNotFoundError:
+            return False
         except Exception as e:
             print(f"Error checking hotspot status: {e}")
             return False
@@ -162,13 +167,15 @@ class DataProvider:
         
         return latest_detections
     
-    def get_sync_pending_detections_amount(self) -> int:
+    def get_sync_pending_detections_amount(self) -> tuple[int, int]:
         pending_detections = self._get_from_db("SELECT COUNT(*) FROM detections WHERE synced = FALSE")
 
         if pending_detections is None:
-            return 0
+            return 0, 0
         
-        return pending_detections[0][0]
+        pending_species = self._get_from_db("SELECT DISTINCT com_name FROM detections WHERE synced = FALSE")
+        
+        return pending_detections[0][0], len(pending_species) if pending_species else 0
     
     def get_sync_data(self, offset: int = 0, limit: int = 50) -> list[Any]:
         detections = self._get_from_db("SELECT * FROM detections WHERE synced = FALSE LIMIT ? OFFSET ?", (limit, offset))
@@ -204,7 +211,23 @@ class DataProvider:
         
         return formated_detections
     
-    def delete_synced_data(self) -> None:
+    def delete_synced_data(self, AUDIO_PATH: str) -> None:
+        # Delete corresponding audio files for synced detections
+        synced_detections = self._get_from_db("SELECT date, com_name, file_name FROM detections WHERE synced = TRUE")
+        for detection in synced_detections:
+            date = detection[0]
+            com_name = detection[1]
+            file_name = detection[2]
+            com_name_formatted = com_name.replace(" ", "_").replace("'", "")
+            file_path = Path(AUDIO_PATH) / date / com_name_formatted / file_name
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                print(f"Error deleting audio file {file_path}: {e}")
+
         self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")
 
     
@@ -240,6 +263,8 @@ class DataProvider:
                     ssid = line.split(":", 1)[1].strip()
                     if ssid:
                         return ssid
+        except FileNotFoundError:
+            pass
         except Exception as e:
             print(f"Error reading SSID: {e}")
         
@@ -370,3 +395,31 @@ class DataProvider:
             "latitude": location["latitude"] if location else None,
             "lastUpdate": datetime.datetime.now(),
         }
+
+    def get_audio_file(self, audio_path: str, species_com_name: str) -> FileResponse | None:
+        best_detection = self._get_from_db(
+            """
+            SELECT Date, Time, File_Name, Com_Name, Confidence
+            FROM detections
+            WHERE Com_Name = ?
+            ORDER BY Date DESC, Time DESC, Confidence DESC
+            LIMIT 1
+            """,
+            (species_com_name,),
+        )
+
+        if not best_detection:
+            return None
+
+        detection = best_detection[0]
+        detection_date = detection[0]
+        detection_com_name = detection[3].replace(" ", "_").replace("'", "")
+        detection_file_name = detection[2]
+
+        file_path = Path(audio_path) / detection_date / detection_com_name / detection_file_name
+
+        if file_path.exists():
+            return FileResponse(str(file_path), media_type="audio/wav")
+
+        return None
+

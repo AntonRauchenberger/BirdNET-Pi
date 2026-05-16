@@ -41,4 +41,10 @@ db.version(1).stores({
     latitude,
     lastUpdate
   `,
+    birdSongs: `
+    ++id,
+    species,
+    timestamp,
+    audioBlob
+  `,
 });

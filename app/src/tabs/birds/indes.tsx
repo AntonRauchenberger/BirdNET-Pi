@@ -5,6 +5,7 @@ import Filters from "./Filters";
 import SpeciesListItem from "./SpeciesListItem";
 import SpeciesDetails from "./SpeciesDetails";
 import ListService from "../../lib/services/ListService";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const Birds = () => {
     const [species, setSpecies] = useState<Species[]>([]);
@@ -19,6 +20,7 @@ const Birds = () => {
     });
     const [currentSelectedSpecies, setCurrentSelectedSpecies] =
         useState<Species | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const filteredSpecies = species
         .filter(
@@ -46,9 +48,10 @@ const Birds = () => {
         });
 
     const fetchSpecies = async () => {
-        // TODO add loading state
+        setIsLoading(true);
         const speciesList = await ListService.getBirdsList();
         setSpecies(speciesList);
+        setIsLoading(false);
     };
 
     useEffect(() => {
@@ -74,15 +77,19 @@ const Birds = () => {
             <Filters filter={filter} setFilter={setFilter} />
 
             <div style={styles.speciesCardsWrapper}>
-                {filteredSpecies.map((specie, index) => (
-                    <SpeciesListItem
-                        key={specie.commonName}
-                        species={specie}
-                        onClick={() => {
-                            setCurrentSelectedSpecies(specie);
-                        }}
-                    />
-                ))}
+                {filteredSpecies && filteredSpecies.length > 0 ? (
+                    filteredSpecies.map((specie, index) => (
+                        <SpeciesListItem
+                            key={specie.commonName}
+                            species={specie}
+                            onClick={() => {
+                                setCurrentSelectedSpecies(specie);
+                            }}
+                        />
+                    ))
+                ) : (
+                    <div>No detections synced yet</div>
+                )}
             </div>
 
             <div>
@@ -93,6 +100,8 @@ const Birds = () => {
                     />
                 )}
             </div>
+
+            {isLoading && <LoadingSpinner />}
         </div>
     );
 };
