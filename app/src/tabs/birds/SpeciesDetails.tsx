@@ -119,7 +119,7 @@ export const SpeciesDetails = (props: {
             border: "var(--card-border)",
             boxShadow: "var(--shadow-soft)",
             position: "fixed" as const,
-            bottom: "30px",
+            bottom: "40px",
             zIndex: "3",
             width: "89%",
             maxWidth: "var(--iphone-max-width)",
