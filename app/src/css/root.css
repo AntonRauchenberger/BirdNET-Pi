@@ -36,7 +36,9 @@ body {
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: hidden;
     overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
 }
 
 body {
@@ -57,20 +59,32 @@ body {
 
 #root {
     width: 100%;
+    height: 100dvh;
     max-width: 100%;
     overflow-x: hidden;
+    overflow-y: hidden;
 }
 
 .app-shell {
     width: min(100vw, var(--iphone-max-width));
+    height: 100dvh;
     max-width: 100%;
     margin: 0 auto;
     position: relative;
     overflow-x: hidden;
+    overflow-y: hidden;
 }
 
 .app-content {
+    height: 100%;
     padding: 1rem 1rem calc(5.75rem + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.app-content.sync-screen {
+    padding-bottom: 0px;
 }
 
 .app-content h1 {
