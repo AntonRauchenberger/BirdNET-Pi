@@ -81,7 +81,7 @@ class DataProvider:
         }
 
     def fetch_sync_state_data(self) -> dict:
-        entries_to_sync = self.get_sync_pending_detections_amount()
+        (entries_to_sync, _) = self.get_sync_pending_detections_amount()
         hotspot_enabled = self.is_hotspot_enabled()
 
         if hotspot_enabled:
