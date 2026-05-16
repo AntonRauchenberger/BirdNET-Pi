@@ -6,9 +6,10 @@ export default class ApiService {
         pathParams?: Record<string, any>,
         method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
         body?: unknown,
+        baseUrl?: string,
     ) {
         const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-        const url = new URL(normalizedPath, BASE_URL);
+        const url = new URL(normalizedPath, baseUrl || BASE_URL);
         if (pathParams && Object.keys(pathParams).length > 0) {
             for (const [key, value] of Object.entries(pathParams)) {
                 url.searchParams.set(key, String(value));

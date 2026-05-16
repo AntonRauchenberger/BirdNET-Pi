@@ -29,6 +29,7 @@ const SpeciesListItem = ({
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            overflow: "hidden",
         },
         speciesCardContentWrapper: {
             display: "flex",
@@ -73,7 +74,20 @@ const SpeciesListItem = ({
     return (
         <div style={styles.speciesCard} onClick={onClick}>
             <div style={styles.birdImnageContainer}>
-                <Bird size={35} />
+                {species.imageUrl && species.imageUrl !== "" ? (
+                    <img
+                        src={species.imageUrl}
+                        alt={species.commonName}
+                        style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "block",
+                            objectFit: "cover" as const,
+                        }}
+                    />
+                ) : (
+                    <Bird size={35} />
+                )}
             </div>
             <div style={styles.speciesCardContentWrapper}>
                 <div style={styles.speciesCardValueContainer}>

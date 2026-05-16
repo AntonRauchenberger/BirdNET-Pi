@@ -157,6 +157,7 @@ export const SpeciesDetails = (props: {
             color: "var(--card)",
             height: "190px",
             borderRadius: "1.5rem",
+            overflow: "hidden",
         },
         infoCardsWrapper: {
             display: "flex",
@@ -326,7 +327,19 @@ export const SpeciesDetails = (props: {
                 </div>
 
                 <div style={styles.birdImageContainer}>
-                    <Bird size={48} />
+                    {props.species.imageUrl && props.species.imageUrl !== "" ? (
+                        <img
+                            src={props.species.imageUrl}
+                            alt={props.species.commonName}
+                            style={{
+                                width: "100%",
+                                objectFit: "cover" as const,
+                                display: "block",
+                            }}
+                        />
+                    ) : (
+                        <Bird size={48} />
+                    )}
                 </div>
 
                 <div style={styles.infoCardsWrapper}>
@@ -346,7 +359,12 @@ export const SpeciesDetails = (props: {
 
                     <div style={styles.infoCard}>
                         <div style={styles.infoCardHeading}>LAST CALL</div>
-                        <div style={styles.infoCardValue}>
+                        <div
+                            style={{
+                                ...styles.infoCardValue,
+                                fontSize: "15px",
+                            }}
+                        >
                             {getTimeAgo(props.species.lastCall)}
                         </div>
                     </div>
@@ -372,7 +390,9 @@ export const SpeciesDetails = (props: {
                             <div style={styles.infoListIcon}>
                                 <MapPin size={18} />
                             </div>
-                            <div style={styles.infoListHeading}>Location</div>
+                            <div style={styles.infoListHeading}>
+                                Last location
+                            </div>
                         </div>
                         <div style={styles.locationValueWrapper}>
                             <div style={styles.infoListValue}>

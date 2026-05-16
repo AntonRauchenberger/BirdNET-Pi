@@ -32,6 +32,7 @@ export interface Species {
     longitude: number;
     firstSeen: number;
     fileName: string;
+    imageUrl?: string;
 }
 
 export interface Detection {
