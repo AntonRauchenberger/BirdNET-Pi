@@ -1,7 +1,7 @@
 import { BASE_URL } from "../constants";
 
 export default class ApiService {
-    private static readonly REQUEST_TIMEOUT_MS = 5000;
+    private static readonly REQUEST_TIMEOUT_MS = 2500;
 
     static async callApi(
         path: string,

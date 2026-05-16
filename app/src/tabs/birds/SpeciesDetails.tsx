@@ -119,13 +119,13 @@ export const SpeciesDetails = (props: {
             border: "var(--card-border)",
             boxShadow: "var(--shadow-soft)",
             position: "fixed" as const,
-            bottom: "0",
+            bottom: "30px",
             zIndex: "3",
             width: "89%",
             maxWidth: "var(--iphone-max-width)",
             transform: "translateX(-50%)",
             padding: "1.25rem",
-            maxHeight: "85vh",
+            maxHeight: "90vh",
             overflowY: "auto" as const,
             animation: isClosing
                 ? "slideDown 0.3s ease-out forwards"
