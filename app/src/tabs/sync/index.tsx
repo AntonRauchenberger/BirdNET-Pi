@@ -12,7 +12,7 @@ const Sync = () => {
         string | null
     >(null);
     const [temporaryStatusType, setTemporaryStatusType] = useState<
-        "info" | "success" | null
+        "info" | "success" | "error" | null
     >(null);
     const temporaryStatusTimeoutRef = useRef<ReturnType<
         typeof setTimeout
@@ -29,7 +29,7 @@ const Sync = () => {
     const showTemporaryStatusMessage = (
         message: string,
         duration = 2000,
-        type: "info" | "success" = "info",
+        type: "info" | "success" | "error" = "info",
     ) => {
         setTemporaryStatusMessage(message);
         setTemporaryStatusType(type);
@@ -58,6 +58,8 @@ const Sync = () => {
         ) {
             showTemporaryStatusMessage(
                 "Please connect to your device hotspot before syncing",
+                2000,
+                "error",
             );
             return;
         }
@@ -69,7 +71,11 @@ const Sync = () => {
 
             if (pendingAmount === false || pendingAmount === 0) {
                 console.log("No pending detections to sync");
-                showTemporaryStatusMessage("No pending detections to sync");
+                showTemporaryStatusMessage(
+                    "No pending detections to sync",
+                    2000,
+                    "info",
+                );
                 setIsSyncing(false);
                 return;
             }
@@ -150,11 +156,15 @@ const Sync = () => {
         },
         statusIcon: {
             background:
-                !isSyncing || temporaryStatusMessage
-                    ? "green"
-                    : isSyncing
-                      ? "orange"
-                      : "red",
+                temporaryStatusType === "error"
+                    ? "red"
+                    : temporaryStatusType === "info"
+                      ? "blue"
+                      : !isSyncing || temporaryStatusMessage
+                        ? "green"
+                        : isSyncing
+                          ? "orange"
+                          : "red",
             width: "13px",
             height: "13px",
             borderRadius: "50%",
@@ -171,7 +181,7 @@ const Sync = () => {
             justifyContent: "center",
             alignItems: "center",
             borderRadius: "35px",
-            marginTop: "35%",
+            marginTop: "50%",
             fontSize: "15px",
             fontWeight: "500",
         },
@@ -210,6 +220,14 @@ const Sync = () => {
             background: "var(--gradiant-clay)",
             transition: "width 0.5s ease-in-out",
         },
+        statusPositonWrapper: {
+            position: "absolute" as const,
+            top: "49%",
+            width: "85%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+        },
     };
 
     return (
@@ -232,26 +250,30 @@ const Sync = () => {
                     </div>
                 </div>
 
-                <div>
+                <div style={styles.statusPositonWrapper}>
                     {temporaryStatusMessage ? (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
-                            <div>{temporaryStatusMessage}</div>
+                            <div style={{ maxWidth: "90%" }}>
+                                {temporaryStatusMessage}
+                            </div>
                         </div>
                     ) : !isSyncing ? (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
-                            <div>Ready to sync</div>
+                            <div style={{ maxWidth: "90%" }}>Ready to sync</div>
                         </div>
                     ) : isSyncing ? (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
-                            <div>Synching ...</div>
+                            <div style={{ maxWidth: "90%" }}>Synching ...</div>
                         </div>
                     ) : (
                         <div style={styles.statusWrapper}>
                             <div style={styles.statusIcon}></div>
-                            <div>Connect to your device hotspot</div>
+                            <div style={{ maxWidth: "90%" }}>
+                                Connect to your device hotspot
+                            </div>
                         </div>
                     )}
                 </div>
