@@ -279,6 +279,50 @@ http:// ${BIRDNETPI_URL} {
     file_server browse
   }
 }
+
+https://192.168.4.1 {
+  tls internal
+
+  handle /app* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    try_files {path} /index.html
+    file_server
+  }
+
+  handle /assets/* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /manifest.webmanifest {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /sw.js {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /workbox-* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /device* {
+    reverse_proxy localhost:2026
+  }
+  handle /latestdetections* {
+    reverse_proxy localhost:2026
+  }
+  handle /sync* {
+    reverse_proxy localhost:2026
+  }
+
+  handle {
+    error "Not allowed in hotspot mode" 403
+  }
+}
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
@@ -315,6 +359,50 @@ http:// ${BIRDNETPI_URL} {
     reverse_proxy /stats* localhost:8501
     reverse_proxy /terminal* localhost:8888
     file_server browse
+  }
+}
+
+https://192.168.4.1 {
+  tls internal
+
+  handle /app* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    try_files {path} /index.html
+    file_server
+  }
+
+  handle /assets/* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /manifest.webmanifest {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /sw.js {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /workbox-* {
+    root * /home/admin/BirdNET-Pi/web-app-dist
+    file_server
+  }
+
+  handle /device* {
+    reverse_proxy localhost:2026
+  }
+  handle /latestdetections* {
+    reverse_proxy localhost:2026
+  }
+  handle /sync* {
+    reverse_proxy localhost:2026
+  }
+
+  handle {
+    error "Not allowed in hotspot mode" 403
   }
 }
 EOF
