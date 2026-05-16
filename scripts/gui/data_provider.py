@@ -86,7 +86,7 @@ class DataProvider:
             hotspot_ip = self._get_wifi_ip()
             hotspot_ip = hotspot_ip if hotspot_ip != "Not connected" else "192.168.4.1"
             status = "Active"
-            app_url = f"http://{hotspot_ip}/app"
+            app_url = f"https://{hotspot_ip}/app"
         else:
             wifi_ssid = self._get_wifi_ssid()
             if wifi_ssid != "Not connected" and self._has_internet_connectivity():
