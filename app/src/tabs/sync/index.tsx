@@ -5,6 +5,7 @@ import SyncService from "../../lib/services/SyncService";
 import { SYNC_ROW_LIMIT } from "../../lib/constants";
 import DeviceService from "../../lib/services/DeviceService";
 import ListService from "../../lib/services/ListService";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const Sync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -19,6 +20,7 @@ const Sync = () => {
         typeof setTimeout
     > | null>(null);
     const [syncingInfo, setSyncingInfo] = useState("Transfering detections ...");
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -132,12 +134,15 @@ const Sync = () => {
             return; // Prevent multiple sync operations
         }
 
+        setIsLoading(true);
+
         const deviceDetails = await DeviceService.getDeviceDetails();
         if (
             deviceDetails.ssid === "" ||
             deviceDetails.ssid === null ||
             deviceDetails.name === "Not connected"
         ) {
+            setIsLoading(false);
             showTemporaryStatusMessage(
                 "Please connect to your device hotspot before syncing",
                 2000,
@@ -145,6 +150,8 @@ const Sync = () => {
             );
             return;
         }
+
+        setIsLoading(false);
 
         try {
             const pendingAmounts = await SyncService.getPendingDetectionsAmount();
@@ -380,6 +387,7 @@ const Sync = () => {
                     </span>
                 </div>
             </div>
+            {isLoading && <LoadingSpinner />}
         </div>
     );
 };
