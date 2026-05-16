@@ -79,7 +79,7 @@ class APIManager:
             self.data_provider.delete_synced_data()
             return {"status": "success"}
 
-        @self.app.get("/sync/audiofile")
+        @self.app.get("/sync/audiofile", response_model=None)
         async def get_audio_file_for_species(species_com_name: str = Query(..., description="Common name of the species")) -> FileResponse | Response:
             audio_file = self.data_provider.get_audio_file(AUDIO_DIR, species_com_name)
             if audio_file is None:

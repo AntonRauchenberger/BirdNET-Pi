@@ -141,6 +141,8 @@ class DataProvider:
             )
             active_names = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return connection_name in active_names
+        except FileNotFoundError:
+            return False
         except Exception as e:
             print(f"Error checking hotspot status: {e}")
             return False
@@ -209,7 +211,23 @@ class DataProvider:
         
         return formated_detections
     
-    def delete_synced_data(self) -> None:
+    def delete_synced_data(self, AUDIO_PATH: str) -> None:
+        # Delete corresponding audio files for synced detections
+        synced_detections = self._get_from_db("SELECT date, com_name, file_name FROM detections WHERE synced = TRUE")
+        for detection in synced_detections:
+            date = detection[0]
+            com_name = detection[1]
+            file_name = detection[2]
+            com_name_formatted = com_name.replace(" ", "_").replace("'", "")
+            file_path = Path(AUDIO_PATH) / date / com_name_formatted / file_name
+            try:
+                if file_path.exists():
+                    file_path.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception as e:
+                print(f"Error deleting audio file {file_path}: {e}")
+
         self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")
 
     
@@ -245,6 +263,8 @@ class DataProvider:
                     ssid = line.split(":", 1)[1].strip()
                     if ssid:
                         return ssid
+        except FileNotFoundError:
+            pass
         except Exception as e:
             print(f"Error reading SSID: {e}")
         
