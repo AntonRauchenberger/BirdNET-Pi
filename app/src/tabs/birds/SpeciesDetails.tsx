@@ -1,8 +1,9 @@
 import { Species } from "../../lib/types";
-import { X, Bird, MapPin, Calendar, Volume2, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { X, Bird, MapPin, Calendar, Volume2, ChevronRight, Pause } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import LocationMap from "./LocationMap";
+import ListService from "../../lib/services/ListService";
 
 export const SpeciesDetails = (props: {
     species: Species;
@@ -10,6 +11,16 @@ export const SpeciesDetails = (props: {
 }) => {
     const [isClosing, setIsClosing] = useState(false);
     const [showLocationMap, setShowLocationMap] = useState(false);
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
+    useEffect(() => {
+        return () => {
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+        };
+    }, [audioUrl]);
 
     const handleClose = () => {
         setIsClosing(true);
@@ -34,6 +45,20 @@ export const SpeciesDetails = (props: {
         }
 
         return `${days} days ago`;
+    };
+
+    const playAudio = async () => {
+        const audioBlob = await ListService.getSpeciesAudioBlob(props.species);
+
+        if (audioBlob) {
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+
+            const url = URL.createObjectURL(audioBlob);
+            setAudioUrl(url);
+            setIsAudioPlaying(true);
+        }
     };
 
     const keyframes = `
@@ -419,11 +444,23 @@ export const SpeciesDetails = (props: {
                     </div>
                 </div>
 
-                <button style={styles.playButton}>
-                    <div style={styles.playButtonIcon}>
-                        <Volume2 size={18} />
-                    </div>
-                    <div>Play last recording</div>
+                <button style={styles.playButton} onClick={() => {
+                    if (isAudioPlaying) {
+                        setAudioUrl(null);
+                        setIsAudioPlaying(false);
+                    } else {
+                        playAudio();
+                    }
+                }}>
+                    {isAudioPlaying ? (
+                        <><div style={styles.playButtonIcon}>
+                            <Pause size={18} />
+                        </div><div>Stop audio</div></>
+                    ) : (
+                        <><div style={styles.playButtonIcon}>
+                            <Volume2 size={18} />
+                        </div><div>Play last recording</div></>
+                    )}
                 </button>
                 {showLocationMap && (
                     <LocationMap
@@ -431,6 +468,18 @@ export const SpeciesDetails = (props: {
                         longitude={props.species.longitude}
                         commonName={props.species.commonName}
                         onClose={() => setShowLocationMap(false)}
+                    />
+                )}
+                {audioUrl && (
+                    <audio
+                        src={audioUrl}
+                        controls
+                        autoPlay
+                        style={{ display: "none" }}
+                        onEnded={() => {
+                            setAudioUrl(null);
+                            setIsAudioPlaying(false);
+                        }}
                     />
                 )}
             </div>

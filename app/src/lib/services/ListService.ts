@@ -101,4 +101,36 @@ export default class ListService {
 
         return typeof imageUrl === "string" ? imageUrl : "";
     }
+
+    static async getSpeciesAudioBlob(species: Species): Promise<Blob | null> {
+        if (!species?.commonName) {
+            return null;
+        }
+
+        const birdSongs = await DatabaseService.getAllFromDatabase("birdSongs");
+        if (!birdSongs || birdSongs.length === 0) {
+            return null;
+        }
+
+        const normalizedTargetSpecies = species.commonName.trim().toLowerCase();
+
+        const matchingSongs = birdSongs.filter((song: any) => {
+            const songSpecies = String(song?.species ?? "")
+                .trim()
+                .toLowerCase();
+            return songSpecies === normalizedTargetSpecies;
+        });
+
+        if (matchingSongs.length === 0) {
+            return null;
+        }
+
+        const latestSong = matchingSongs.reduce((latest: any, current: any) =>
+            Number(current?.timestamp ?? 0) > Number(latest?.timestamp ?? 0)
+                ? current
+                : latest,
+        );
+
+        return latestSong?.audioBlob instanceof Blob ? latestSong.audioBlob : null;
+    }
 }

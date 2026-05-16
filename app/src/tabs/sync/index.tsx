@@ -4,6 +4,7 @@ import { Wifi, Download, Check } from "lucide-react";
 import SyncService from "../../lib/services/SyncService";
 import { SYNC_ROW_LIMIT } from "../../lib/constants";
 import DeviceService from "../../lib/services/DeviceService";
+import ListService from "../../lib/services/ListService";
 
 const Sync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -17,6 +18,7 @@ const Sync = () => {
     const temporaryStatusTimeoutRef = useRef<ReturnType<
         typeof setTimeout
     > | null>(null);
+    const [syncingInfo, setSyncingInfo] = useState("Transfering detections ...");
 
     useEffect(() => {
         return () => {
@@ -45,6 +47,86 @@ const Sync = () => {
         }, duration);
     };
 
+    const syncDetections = async (pendingAmount: any) => {
+        if (pendingAmount === false || pendingAmount === 0) {
+            return true;
+        }
+
+        setIsSyncing(true);
+        setSyncProgress(0);
+        setSyncingInfo("Transfering detections ...");
+
+        let offset = 0;
+        let syncCompletedSuccessfully = true;
+        while (offset < pendingAmount) {
+            const syncSuccess = await SyncService.syncData(offset);
+            if (!syncSuccess) {
+                console.error("Sync failed at offset:", offset);
+                syncCompletedSuccessfully = false;
+                break;
+            }
+
+            offset += SYNC_ROW_LIMIT;
+
+            // Update progress based on offset and pendingAmount
+            setSyncProgress(
+                Math.min(100, Math.round((offset / pendingAmount) * 100)),
+            );
+
+            console.log(
+                `Synced ${Math.min(offset, pendingAmount)} of ${pendingAmount} detections`,
+            );
+        }
+
+        return syncCompletedSuccessfully;
+    };
+
+    const syncAudioFiles = async (pendingAmount: any) => {
+        if (pendingAmount === false || pendingAmount === 0) {
+            return true;
+        }
+
+        setIsSyncing(true);
+        setSyncProgress(0);
+        setSyncingInfo("Transfering audio files ...");
+
+        const speciesList = await ListService.getBirdsList();
+        const speciesToSync = speciesList.slice(0, pendingAmount);
+        const totalSpeciesToSync = speciesToSync.length;
+
+        let offset = 0;
+        let syncCompletedSuccessfully = true;
+        while (offset < totalSpeciesToSync) {
+            const species = speciesToSync[offset];
+            if (!species) {
+                syncCompletedSuccessfully = false;
+                break;
+            }
+
+            const syncSuccess = await SyncService.syncAudioFiles(
+                species.commonName,
+            );
+            if (!syncSuccess) {
+                console.error("Sync failed at offset:", offset);
+                syncCompletedSuccessfully = false;
+                break;
+            }
+
+            offset += 1;
+
+            // Update progress based on offset and pendingAmount
+            setSyncProgress(
+                Math.min(100, Math.round((offset / totalSpeciesToSync) * 100)),
+            );
+
+            console.log(
+                `Synced ${Math.min(offset, pendingAmount)} of ${pendingAmount} audio files`,
+            );
+        }
+
+        return syncCompletedSuccessfully;
+    }
+
     const startSync = async () => {
         if (isSyncing) {
             return; // Prevent multiple sync operations
@@ -65,14 +147,11 @@ const Sync = () => {
         }
 
         try {
-            const pendingAmount =
-                await SyncService.getPendingDetectionsAmount();
-            console.log("Pending detections amount:", pendingAmount);
-
-            if (pendingAmount === false || pendingAmount === 0) {
-                console.log("No pending detections to sync");
+            const pendingAmounts = await SyncService.getPendingDetectionsAmount();
+            if (pendingAmounts === false || (pendingAmounts.detectionsAmount === 0 && pendingAmounts.speciesAmount === 0)) {
+                console.log("No pending data to sync");
                 showTemporaryStatusMessage(
-                    "No pending detections to sync",
+                    "No pending data to sync",
                     2000,
                     "info",
                 );
@@ -80,42 +159,29 @@ const Sync = () => {
                 return;
             }
 
-            setIsSyncing(true);
-            setSyncProgress(0);
+            console.log("Pending detections to sync:", pendingAmounts.detectionsAmount);
+            console.log("Pending species to sync:", pendingAmounts.speciesAmount);
 
-            let offset = 0;
-            let syncCompletedSuccessfully = true;
-            while (offset < pendingAmount) {
-                const syncSuccess = await SyncService.syncData(offset);
-                if (!syncSuccess) {
-                    console.error("Sync failed at offset:", offset);
-                    syncCompletedSuccessfully = false;
-                    break;
-                }
-
-                offset += SYNC_ROW_LIMIT;
-
-                // Update progress based on offset and pendingAmount
-                setSyncProgress(
-                    Math.min(100, Math.round((offset / pendingAmount) * 100)),
-                );
-
-                console.log(
-                    `Synced ${Math.min(offset, pendingAmount)} of ${pendingAmount} detections`,
-                );
+            const successfulDetectionsSync = await syncDetections(pendingAmounts.detectionsAmount);
+            if (!successfulDetectionsSync) {
+                throw new Error("Failed to sync detections");
             }
 
-            if (syncCompletedSuccessfully) {
-                const deleteSuccess = await SyncService.deleteSyncedData();
-                if (deleteSuccess) {
-                    setSyncProgress(100);
-                    showTemporaryStatusMessage(
-                        "Sync completed successfully",
-                        2000,
-                        "success",
-                    );
-                }
+            const successfulAudioSync = await syncAudioFiles(pendingAmounts.speciesAmount);
+            if (!successfulAudioSync) {
+                throw new Error("Failed to sync audio files");
             }
+
+            if (successfulDetectionsSync && successfulAudioSync) {
+                await SyncService.deleteSyncedData();
+            }
+
+            setSyncProgress(100);
+            showTemporaryStatusMessage(
+                "Sync completed successfully",
+                2000,
+                "success",
+            );
         } catch (error) {
             console.error("Sync error:", error);
         } finally {
@@ -159,12 +225,12 @@ const Sync = () => {
                 temporaryStatusType === "error"
                     ? "red"
                     : temporaryStatusType === "info"
-                      ? "blue"
-                      : !isSyncing || temporaryStatusMessage
-                        ? "green"
-                        : isSyncing
-                          ? "orange"
-                          : "red",
+                        ? "blue"
+                        : !isSyncing || temporaryStatusMessage
+                            ? "green"
+                            : isSyncing
+                                ? "orange"
+                                : "red",
             width: "13px",
             height: "13px",
             borderRadius: "50%",
@@ -205,7 +271,7 @@ const Sync = () => {
             border: "var(--card-border)",
             width: "330px",
             position: "absolute" as const,
-            top: "437px",
+            top: "55.5%",
         },
         syncStatusBarContainer: {
             width: "100%",
@@ -286,7 +352,7 @@ const Sync = () => {
                                 justifyContent: "space-between",
                             }}
                         >
-                            <div>Transfer</div>
+                            <div>{syncingInfo}</div>
                             <div>{syncProgress}%</div>
                         </div>
                         <div style={styles.syncStatusBarContainer}>

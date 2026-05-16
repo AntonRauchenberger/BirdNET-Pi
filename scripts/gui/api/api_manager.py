@@ -6,6 +6,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from typing import Any
 
 if __package__ is None or __package__ == "":
@@ -20,6 +21,7 @@ else:
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DB_PATH = os.environ.get("BIRDNET_DB_PATH", str(_REPO_ROOT / "scripts" / "birds.db"))
+AUDIO_DIR = os.environ.get("BIRDNET_AUDIO_DIR", str(_REPO_ROOT / ".." / "BirdSongs" / "Extracted" / "By_Date"))
 log = logging.getLogger(__name__)
 
 
@@ -64,7 +66,9 @@ class APIManager:
         
         @self.app.get("/sync/pendingdetectionsamount")
         async def get_sync_pending_detections_amount() -> dict:
-            return {"amount": self.data_provider.get_sync_pending_detections_amount()}
+            pending_detections_amount, pending_species_amount = self.data_provider.get_sync_pending_detections_amount()
+
+            return {"detectionsAmount": pending_detections_amount, "speciesAmount": pending_species_amount}
 
         @self.app.get("/sync/data")
         async def get_sync_data(offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500)) -> list[Any]:
@@ -74,6 +78,13 @@ class APIManager:
         async def delete_synced_data() -> dict:
             self.data_provider.delete_synced_data()
             return {"status": "success"}
+
+        @self.app.get("/sync/audiofile")
+        async def get_audio_file_for_species(species_com_name: str = Query(..., description="Common name of the species")) -> FileResponse | Response:
+            audio_file = self.data_provider.get_audio_file(AUDIO_DIR, species_com_name)
+            if audio_file is None:
+                return Response(status_code=204)
+            return audio_file
         
 
     def run(self, host: str = "0.0.0.0", port: int = 2026) -> None:

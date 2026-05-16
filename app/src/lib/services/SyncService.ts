@@ -10,11 +10,15 @@ export default class SyncService {
             "/sync/pendingdetectionsamount",
         );
 
-        if (responseData === false || !responseData?.amount) {
+        if (
+            responseData === false ||
+            typeof responseData?.detectionsAmount !== "number" ||
+            typeof responseData?.speciesAmount !== "number"
+        ) {
             return false;
         }
 
-        return responseData.amount;
+        return responseData;
     }
 
     static async getSyncData(offset: number, limit: number = SYNC_ROW_LIMIT) {
@@ -61,6 +65,31 @@ export default class SyncService {
 
         const detections: Detection[] = rawData.map(this.mapRowToDetection);
         await this.saveSyncData(detections);
+        return true;
+    }
+
+    static async syncAudioFiles(speciesComName: string): Promise<boolean> {
+        const rawData = await ApiService.getAudioFile(`/sync/audiofile`, {
+            species_com_name: speciesComName,
+        });
+
+        // No audio exists for this species on the device yet; skip gracefully.
+        if (rawData === null) {
+            return true;
+        }
+
+        if (rawData === false) {
+            return false;
+        }
+
+        const audioBlob = await rawData.blob();
+        const birdSongEntry = {
+            species: speciesComName,
+            timestamp: Date.now(),
+            audioBlob,
+        };
+
+        await DatabaseService.saveToDatabase("birdSongs", [birdSongEntry]);
         return true;
     }
 
