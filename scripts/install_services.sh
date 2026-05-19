@@ -226,6 +226,14 @@ install_Caddyfile() {
   if ! [ -z ${CADDY_PWD} ];then
   HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
   cat << EOF > /etc/caddy/Caddyfile
+{
+  pki {
+    ca local {
+      name "BirdNET-Pi Local CA"
+    }
+  }
+}
+
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   handle /app* {
@@ -326,6 +334,14 @@ https://192.168.4.1 {
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
+{
+  pki {
+    ca local {
+      name "BirdNET-Pi Local CA"
+    }
+  }
+}
+
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   handle /app* {
