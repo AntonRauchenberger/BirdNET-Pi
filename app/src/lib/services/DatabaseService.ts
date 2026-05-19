@@ -62,6 +62,7 @@ export default class DatabaseService {
             value: cloudItem.value,
             tab: cloudItem.tab,
             type: cloudItem.type,
+            icon: cloudItem.icon,
             disabled: cloudItem.disabled,
             defaultValue: cloudItem.defaultValue,
         });
