@@ -6,6 +6,7 @@ import { SYNC_ROW_LIMIT } from "../../lib/constants";
 import DeviceService from "../../lib/services/DeviceService";
 import ListService from "../../lib/services/ListService";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import CloudService from "../../lib/services/CloudService";
 
 const Sync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -182,6 +183,9 @@ const Sync = () => {
             if (successfulDetectionsSync && successfulAudioSync) {
                 await SyncService.deleteSyncedData();
             }
+
+            // Sync data to cloud if credentials are available
+            await CloudService.syncToSupabase();
 
             setSyncProgress(100);
             showTemporaryStatusMessage(

@@ -1,5 +1,5 @@
 import { Setting } from "../../lib/types";
-import { Wifi, RefreshCw, KeyRound } from "lucide-react";
+import { Wifi, RefreshCw, KeyRound, Database, DatabaseZap } from "lucide-react";
 
 export const DEFAULT_SETTINGS: Setting[] = [
     {
@@ -26,11 +26,31 @@ export const DEFAULT_SETTINGS: Setting[] = [
     {
         id: "mapTilerApiKey",
         name: "MapTiler API Key",
-        description: "Manage your device's credentials",
+        description: "API key for MapTiler to unlock improved map features",
         defaultValue: "",
         tab: "CREDENTIALS",
         type: "string",
         icon: <KeyRound size={18} />,
+        value: "",
+    },
+    {
+        id: "supabaseUrl",
+        name: "Supabase URL",
+        description: "URL for your Supabase instance to enable cloud syncing",
+        defaultValue: "",
+        tab: "CREDENTIALS",
+        type: "string",
+        icon: <Database size={18} />,
+        value: "",
+    },
+    {
+        id: "supabaseKey",
+        name: "Supabase Key",
+        description: "Publishable key for your Supabase instance",
+        defaultValue: "",
+        tab: "CREDENTIALS",
+        type: "string",
+        icon: <DatabaseZap size={18} />,
         value: "",
     },
 ];
