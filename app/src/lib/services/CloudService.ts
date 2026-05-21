@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import SettingsService from "./SettingsService";
 import DatabaseService from "./DatabaseService";
+import { Detection, Setting } from "../types";
 
 export default class CloudService {
     static async getSupabaseClient() {
@@ -14,6 +15,55 @@ export default class CloudService {
         return createClient(String(urlSetting.value), String(keySetting.value));
     }
 
+    static mapData(data: Setting | Detection, tableName: string) {
+        let normalizedData: any;
+        switch (tableName) {
+            case "detections":
+                normalizedData = data as Detection;
+
+                return {
+                    id: normalizedData.id,
+                    date: normalizedData.date,
+                    time: normalizedData.time,
+                    scientificName: normalizedData.scientificName,
+                    commonName: normalizedData.commonName,
+                    confidence: normalizedData.confidence,
+                    latitude: normalizedData.latitude,
+                    longitude: normalizedData.longitude,
+                    cutoff: normalizedData.cutoff,
+                    week: normalizedData.week,
+                    sens: normalizedData.sens,
+                    overlap: normalizedData.overlap,
+                    fileName: normalizedData.fileName,
+                };
+            case "settings":
+                normalizedData = data as Setting;
+
+                return {
+                    id: normalizedData.id,
+                    name: normalizedData.name,
+                    description: normalizedData.description,
+                    value: normalizedData.value,
+                    tab: normalizedData.tab,
+                    type: normalizedData.type,
+                    icon: normalizedData.icon ? normalizedData.icon.toString() : null,
+                    disabled: normalizedData.disabled,
+                    defaultValue: normalizedData.defaultValue,
+                };
+            case "bird_songs":
+                normalizedData = data as Detection;
+
+                return {
+                    id: normalizedData.id,
+                    species: normalizedData.species,
+                    timestamp: normalizedData.timestamp,
+                    audio_url: normalizedData.audio_url,
+                };
+            default:
+                throw new Error(`Unknown table name: ${tableName}`);
+        }
+    }
+
     static async syncTable(supabase: any, tableName: string) {
         const data = await DatabaseService.getAllFromDatabase(tableName);
         if (data.length === 0) {
@@ -21,7 +71,9 @@ export default class CloudService {
             return;
         }
 
-        const { error } = await supabase.from(tableName).upsert(data, {
+        const mappedData = data.map((item: any) => this.mapData(item, tableName));
+
+        const { error } = await supabase.from(tableName).upsert(mappedData, {
             onConflict: "id",
         });
 
