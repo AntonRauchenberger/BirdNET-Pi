@@ -68,6 +68,8 @@ export default class ListService {
         const allDetections =
             await DatabaseService.getAllFromDatabase("detections");
 
+        console.log("All Detections:", allDetections);
+
         if (!allDetections || allDetections.length === 0) {
             return [];
         }

@@ -107,7 +107,7 @@ export const SpeciesDetails = (props: {
             position: "fixed" as const,
             top: "0",
             left: "0",
-            zIndex: "2",
+            zIndex: "11",
             background: "color-mix(in oklab, var(--forest) 40%, transparent)",
             animation: isClosing
                 ? "fadeOut 0.3s ease-out forwards"
@@ -120,7 +120,7 @@ export const SpeciesDetails = (props: {
             boxShadow: "var(--shadow-soft)",
             position: "fixed" as const,
             bottom: "45px",
-            zIndex: "3",
+            zIndex: "12",
             width: "89%",
             maxWidth: "var(--iphone-max-width)",
             transform: "translateX(-50%)",
@@ -358,6 +358,7 @@ export const SpeciesDetails = (props: {
                             alt={props.species.commonName}
                             style={{
                                 width: "100%",
+                                height: "100%",
                                 objectFit: "cover" as const,
                                 display: "block",
                             }}

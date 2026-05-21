@@ -79,7 +79,9 @@ const Birds = () => {
 
         try {
             setIsLoading(true);
-            await CloudService.syncToSupabase();
+            if (species.length !== 0) {
+                await CloudService.syncToSupabase();
+            }
 
             await CloudService.fetchFromSupabase();
 

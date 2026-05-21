@@ -4,6 +4,32 @@ import DatabaseService from "./DatabaseService";
 import { Detection, Setting } from "../types";
 
 export default class CloudService {
+    static normalizeSettingValue(value: any, type?: string) {
+        if (value === undefined || value === null) {
+            return "";
+        }
+
+        if (type === "boolean") {
+            if (typeof value === "boolean") {
+                return value ? "true" : "false";
+            }
+
+            const normalized = String(value).trim().toLowerCase();
+            if (normalized === "true" || normalized === "1") {
+                return "true";
+            }
+            if (normalized === "false" || normalized === "0") {
+                return "false";
+            }
+        }
+
+        return String(value).trim();
+    }
+
+    static buildSongKey(species: string, timestamp: any) {
+        return `${String(species).trim().toLowerCase()}|${new Date(timestamp).toISOString()}`;
+    }
+
     static async getSupabaseClient() {
         const urlSetting = await SettingsService.getSetting("supabaseUrl");
         const keySetting = await SettingsService.getSetting("supabaseKey");
@@ -71,7 +97,21 @@ export default class CloudService {
             return;
         }
 
-        const mappedData = data.map((item: any) => this.mapData(item, tableName));
+        const filteredData =
+            tableName === "settings"
+                ? data.filter((item: any) => {
+                    const currentValue = this.normalizeSettingValue(item.value, item.type);
+                    const defaultValue = this.normalizeSettingValue(item.defaultValue, item.type);
+                    return currentValue !== defaultValue;
+                })
+                : data;
+
+        if (filteredData.length === 0) {
+            console.log(`No changed ${tableName} to sync`);
+            return;
+        }
+
+        const mappedData = filteredData.map((item: any) => this.mapData(item, tableName));
 
         const { error } = await supabase.from(tableName).upsert(mappedData, {
             onConflict: "id",
@@ -92,17 +132,42 @@ export default class CloudService {
             return;
         }
 
+        const { data: cloudSongs, error: cloudSongsError } = await supabase
+            .from("bird_songs")
+            .select("species,timestamp");
+
+        if (cloudSongsError) {
+            throw cloudSongsError;
+        }
+
+        const existingCloudKeys = new Set(
+            (cloudSongs || []).map((song: any) => this.buildSongKey(song.species, song.timestamp)),
+        );
+        const processedLocalKeys = new Set<string>();
+
         for (const song of localSongs) {
             if (!song.audioBlob) {
                 continue;
             }
 
+            const songKey = this.buildSongKey(song.species, song.timestamp);
+            if (processedLocalKeys.has(songKey) || existingCloudKeys.has(songKey)) {
+                continue;
+            }
+
+            processedLocalKeys.add(songKey);
+
+            const normalizedTimestamp = new Date(song.timestamp).toISOString();
+
             // Generate a clean filename using the song ID and species name
             const cleanSpecies = song.species.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-            const fileName = `${song.id}_${cleanSpecies}_${Date.now()}.wav`;
+            const safeTimestamp = normalizedTimestamp
+                .replace(/[:.]/g, "-")
+                .replace(/[^a-zA-Z0-9_-]/g, "_");
+            const fileName = `${cleanSpecies}_${safeTimestamp}.wav`;
 
             // Upload the audio blob to Supabase Storage
-            const { data: storageData, error: storageError } = await supabase
+            const { error: storageError } = await supabase
                 .storage
                 .from("bird-audio")
                 .upload(fileName, song.audioBlob, {
@@ -128,7 +193,7 @@ export default class CloudService {
                 .from("bird_songs")
                 .insert({
                     species: song.species,
-                    timestamp: new Date(song.timestamp).toISOString(),
+                    timestamp: normalizedTimestamp,
                     audio_url: publicAudioUrl // Hier verknüpfen wir SQL mit Storage!
                 });
 
@@ -136,6 +201,8 @@ export default class CloudService {
                 console.error(`Error saving metadata for ${fileName}:`, dbError);
                 continue;
             }
+
+            existingCloudKeys.add(songKey);
 
             console.log(`Audio file ${fileName} uploaded and metadata saved successfully`);
         }
@@ -195,7 +262,7 @@ export default class CloudService {
         }
 
         for (const cloudItem of cloudSettings) {
-            const inserted = await DatabaseService.saveSettingFromCloudIfMissing(cloudItem);
+            const inserted = await DatabaseService.saveSettingFromCloudAndOverwrite(cloudItem);
 
             if (inserted) {
                 console.log(`Entry ${cloudItem.id} loaded from cloud.`);
@@ -222,8 +289,16 @@ export default class CloudService {
             }
 
             for (const cloudSong of cloudSongs) {
-                // Check if this song already exists locally in Dexie by its unique ID
-                const localSong = await DatabaseService.getById("birdSongs", cloudSong.id);
+                if (!cloudSong.audio_url) {
+                    console.log(`Song ${cloudSong.id} has no audio_url. Skipping.`);
+                    continue;
+                }
+
+                // Use species+timestamp for deduplication because local and cloud IDs are not guaranteed to match.
+                const localSong = await DatabaseService.getBirdSongBySpeciesAndTimestamp(
+                    cloudSong.species,
+                    cloudSong.timestamp,
+                );
 
                 if (!localSong) {
                     // Song doesn't exist locally yet, download audio file from storage
