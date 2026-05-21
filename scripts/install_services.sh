@@ -236,27 +236,15 @@ install_Caddyfile() {
 
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
+  
+  # Fängt /app, /app/sw.js, /app/assets/*, /app/manifest.webmanifest ab!
   handle /app* {
     root * ${HOME}/BirdNET-Pi/web-app-dist
+    uri strip_prefix /app
     try_files {path} /index.html
     file_server
   }
-  handle /assets/* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /manifest.webmanifest {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /sw.js {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /workbox-* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
+  
   handle {
     basicauth /views.php?view=File* {
       birdnet ${HASHWORD}
@@ -293,27 +281,8 @@ https://192.168.4.1 {
 
   handle /app* {
     root * /home/admin/BirdNET-Pi/web-app-dist
+    uri strip_prefix /app
     try_files {path} /index.html
-    file_server
-  }
-
-  handle /assets/* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /manifest.webmanifest {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /sw.js {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /workbox-* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
     file_server
   }
 
@@ -344,27 +313,14 @@ EOF
 
 http:// ${BIRDNETPI_URL} {
   root * ${EXTRACTED}
+  
   handle /app* {
     root * ${HOME}/BirdNET-Pi/web-app-dist
+    uri strip_prefix /app
     try_files {path} /index.html
     file_server
   }
-  handle /assets/* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /manifest.webmanifest {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /sw.js {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
-  handle /workbox-* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    file_server
-  }
+  
   handle {
     reverse_proxy /device* localhost:2026
     reverse_proxy /latestdetections* localhost:2026
@@ -383,27 +339,8 @@ https://192.168.4.1 {
 
   handle /app* {
     root * /home/admin/BirdNET-Pi/web-app-dist
+    uri strip_prefix /app
     try_files {path} /index.html
-    file_server
-  }
-
-  handle /assets/* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /manifest.webmanifest {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /sw.js {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    file_server
-  }
-
-  handle /workbox-* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
     file_server
   }
 

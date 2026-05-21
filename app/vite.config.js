@@ -4,12 +4,15 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
+    base: "/app/",
     plugins: [
         react(),
         VitePWA({
             registerType: "autoUpdate",
             includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
+            injectRegister: "auto",
             workbox: {
+                globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
                 navigateFallback: "/index.html",
                 cleanupOutdatedCaches: true,
                 clientsClaim: true,
