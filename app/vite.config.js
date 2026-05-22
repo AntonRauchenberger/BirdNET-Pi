@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vite.dev/config/
 export default defineConfig({
-    base: "/app/",
+    base: "/BirdNET-Pi/",
     plugins: [
         react(),
         VitePWA({
@@ -39,8 +39,8 @@ export default defineConfig({
             manifest: {
                 name: "BirdNET-Pi",
                 short_name: "BirdNET-Pi",
-                start_url: "/app",
-                scope: "/app",
+                start_url: "/BirdNET-Pi/",
+                scope: "/BirdNET-Pi/",
                 display: "standalone",
                 background_color: "#ffffff",
                 theme_color: "#111111",
