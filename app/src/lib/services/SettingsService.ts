@@ -25,17 +25,41 @@ export default class SettingsService {
             const settingMap = new Map(dbSettings.map((s: any) => [s.id, s]));
 
             // Merge database settings with defaults
-            const allSettings = DEFAULT_SETTINGS.map((defaultSetting) => {
-                const dbSetting = settingMap.get(defaultSetting.id) as any;
-                return dbSetting
-                    ? { ...defaultSetting, value: dbSetting.value }
-                    : defaultSetting;
-            });
+            const allSettings = DEFAULT_SETTINGS
+                .filter((s) => s.deviceInternal !== true) // Exclude device internal settings
+                .map((defaultSetting) => {
+                    const dbSetting = settingMap.get(defaultSetting.id) as any;
+                    return dbSetting
+                        ? { ...defaultSetting, value: dbSetting.value }
+                        : defaultSetting;
+                });
 
             return allSettings;
         } catch (error) {
             console.error("Error getting all settings:", error);
             return DEFAULT_SETTINGS;
+        }
+    }
+
+    static async getAllDeviceSettings(topTab: string): Promise<Setting[]> {
+        try {
+            const dbSettings = await (db as any).settings.toArray();
+            const settingMap = new Map(dbSettings.map((s: any) => [s.id, s]));
+
+            // Filter defaults to this topTab, then merge with any saved DB values
+            const allSettings = DEFAULT_SETTINGS
+                .filter((s) => s.topTab === topTab)
+                .map((defaultSetting) => {
+                    const dbSetting = settingMap.get(defaultSetting.id) as any;
+                    return dbSetting
+                        ? { ...defaultSetting, value: dbSetting.value }
+                        : defaultSetting;
+                });
+
+            return allSettings;
+        } catch (error) {
+            console.error("Error getting all device settings:", error);
+            return DEFAULT_SETTINGS.filter((s) => s.topTab === topTab);
         }
     }
 

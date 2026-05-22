@@ -101,6 +101,7 @@ const Settings = () => {
             boxShadow: activeSubPage === null ? "var(--shadow-soft)" : "none",
             display: "flex",
             flexDirection: "column" as const,
+            paddingTop: "1rem",
         },
         settingRow: {
             display: "flex",
