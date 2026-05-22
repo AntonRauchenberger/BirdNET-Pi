@@ -74,6 +74,10 @@ const Settings = () => {
     };
 
     const openSubPage = (subPage: "basic" | "advanced") => {
+        if (deviceInfo.name === "Not connected") {
+            return;
+        }
+
         setSubPageVisible(false);
         setActiveSubPage(subPage);
     };
@@ -155,11 +159,12 @@ const Settings = () => {
             "display": "flex",
             "justifyContent": "space-between",
             "width": "100%",
-            "background": "var(--card)",
-            "border": "var(--card-border)",
+            "background": "var(--gradiant-leaf)",
+            "color": "var(--card)",
             "padding": "1rem",
             "borderRadius": "1.15rem",
-            "boxShadow": activeSubPage === null ? "var(--shadow-soft)" : "none"
+            "boxShadow": activeSubPage === null ? "var(--shadow-soft)" : "none",
+            "opacity": deviceInfo?.name !== "Not connected" ? 1 : 0.5,
         },
         subSettingName: {
             "fontSize": "18px",

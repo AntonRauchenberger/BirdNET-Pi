@@ -58,7 +58,9 @@ const SubPage = (props: {
             gap: "10px",
             padding: "1rem 1.25rem",
             justifyContent: "space-between",
-            boxShadow: "var(--shadow-soft)"
+            boxShadow: "var(--shadow-soft)",
+            background: "var(--gradiant-leaf)",
+            color: "var(--card)",
         },
         backButton: {
             border: "none",

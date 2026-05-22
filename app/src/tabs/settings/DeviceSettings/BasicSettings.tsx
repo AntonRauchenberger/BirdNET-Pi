@@ -3,7 +3,6 @@ import LoadingSpinner from "../../../components/LoadingSpinner"
 import { Setting } from "../../../lib/types";
 import Switch from "../../../components/Switch";
 import SettingsService from "../../../lib/services/SettingsService";
-import { Save, RotateCw } from "lucide-react";
 
 const BasicSettings = () => {
     const [loading, setLoading] = useState(false);
