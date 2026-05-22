@@ -7,6 +7,7 @@ const SubPage = (props: {
     closeSubPage: () => void;
     activeSubPage: ReactNode;
     setSubPageVisible: (visible: boolean) => void;
+    headerElement?: ReactNode;
 }) => {
 
     useEffect(() => {
@@ -56,6 +57,8 @@ const SubPage = (props: {
             alignItems: "center",
             gap: "10px",
             padding: "1rem 1.25rem",
+            justifyContent: "space-between",
+            boxShadow: "var(--shadow-soft)"
         },
         backButton: {
             border: "none",
@@ -76,6 +79,7 @@ const SubPage = (props: {
             overflowX: "hidden" as const,
             overscrollBehavior: "contain" as const,
             WebkitOverflowScrolling: "touch" as const,
+            paddingTop: "0"
         },
     }
 
@@ -91,6 +95,7 @@ const SubPage = (props: {
                     <ChevronLeft size={20} />
                     Back
                 </button>
+                {props.headerElement}
             </div>
 
             <div style={styles.subPageBody}>

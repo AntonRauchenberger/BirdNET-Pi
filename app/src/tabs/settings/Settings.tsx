@@ -53,7 +53,6 @@ export const DEFAULT_SETTINGS: Setting[] = [
         icon: <DatabaseZap size={18} />,
         value: "",
     },
-    // TODO icons anpassen
 
     // Device internal settings
     // Basic settings
@@ -445,4 +444,6 @@ export const DEFAULT_SETTINGS: Setting[] = [
         value: "Europe/Berlin",
         deviceInternal: true,
     },
+
+    // Advanced settings
 ];

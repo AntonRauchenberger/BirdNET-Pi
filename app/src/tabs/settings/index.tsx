@@ -10,6 +10,7 @@ import { ChevronRight } from "lucide-react";
 import BasicSettings from "./DeviceSettings/BasicSettings";
 import AdvancedSettings from "./DeviceSettings/AdvancedSettings";
 import SubPage from "../../components/SubPage";
+import { Save, RotateCw } from "lucide-react";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -173,7 +174,58 @@ const Settings = () => {
             "flexDirection": "column" as const,
             "gap": "10px"
         },
+        refreshButton: {
+            "background": "var(--gradiant-clay)",
+            "borderRadius": "15px",
+            "height": "48px",
+            "width": "48px",
+            "display": "flex",
+            "justifyContent": "center",
+            "alignItems": "center"
+        },
+        buttonsWrapper: {
+            "display": "flex",
+            "justifyContent": "flex-end",
+            "gap": "8px",
+            "alignItems": "center",
+        },
+        saveButton: {
+            "display": "flex",
+            "gap": "5px",
+            "background": "green",
+            "color": "var(--card)",
+            "alignItems": "center",
+            "padding": "12px",
+            "borderRadius": "15px",
+            "fontSize": "19px",
+            "justifyContent": "center",
+            "fontWeight": 600,
+        },
+        saveIcon: {
+            "transform": "translateY(2px)"
+        }
     };
+
+    const subPageHeaderButtons = (
+        <div style={styles.buttonsWrapper}>
+            <div style={styles.saveButton} onClick={() => console.log("Save clicked")}>
+                <div style={styles.saveIcon}>
+                    <Save
+                        size={20}
+                    />
+                </div>
+                <div>Speichern</div>
+            </div>
+
+            <div style={styles.refreshButton} onClick={() => console.log("Refresh clicked")}>
+                <RotateCw
+                    size={22}
+                    aria-hidden="true"
+                    style={{ color: "var(--cornsilk)" }}
+                />
+            </div>
+        </div>
+    )
 
     // Get unique tabs from settings
     const tabs = Array.from(new Set(settings.map((s) => s.tab)));
@@ -337,6 +389,7 @@ const Settings = () => {
                         )
                     }
                     setSubPageVisible={setSubPageVisible}
+                    headerElement={subPageHeaderButtons}
                 />
             )}
         </div>

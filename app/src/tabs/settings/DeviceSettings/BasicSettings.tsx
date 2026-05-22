@@ -3,6 +3,7 @@ import LoadingSpinner from "../../../components/LoadingSpinner"
 import { Setting } from "../../../lib/types";
 import Switch from "../../../components/Switch";
 import SettingsService from "../../../lib/services/SettingsService";
+import { Save, RotateCw } from "lucide-react";
 
 const BasicSettings = () => {
     const [loading, setLoading] = useState(false);
@@ -18,8 +19,6 @@ const BasicSettings = () => {
                 setting.id === id ? { ...setting, value: newValue } : setting,
             ),
         );
-
-        await SettingsService.updateSetting(id, newValue);
     };
 
     const renderDescription = (setting: Setting) => {
@@ -173,7 +172,7 @@ const BasicSettings = () => {
 
     return (
         <div>
-            <div style={{ textAlign: "left" }}>
+            <div style={{ textAlign: "left", marginTop: "-10px" }}>
                 {tabs.map((tab) => (
                     <div key={tab}>
                         <div style={styles.tabHeader}>{tab}</div>
