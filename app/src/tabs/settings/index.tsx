@@ -6,6 +6,10 @@ import Switch from "../../components/Switch";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
+import { ChevronRight } from "lucide-react";
+import BasicSettings from "./DeviceSettings/BasicSettings";
+import AdvancedSettings from "./DeviceSettings/AdvancedSettings";
+import SubPage from "../../components/SubPage";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -17,6 +21,10 @@ const Settings = () => {
     });
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeSubPage, setActiveSubPage] = useState<
+        "basic" | "advanced" | null
+    >(null);
+    const [subPageVisible, setSubPageVisible] = useState(false);
 
     const loadSettings = async () => {
         setLoading(true);
@@ -32,9 +40,9 @@ const Settings = () => {
             prevSettings.map((setting) =>
                 setting.id === "connection"
                     ? {
-                          ...setting,
-                          value: deviceDetails.ssid,
-                      }
+                        ...setting,
+                        value: deviceDetails.ssid,
+                    }
                     : setting,
             ),
         );
@@ -46,6 +54,7 @@ const Settings = () => {
     useEffect(() => {
         loadSettings();
     }, []);
+
 
     // Handle setting value change - directly save to database
     const handleSettingChange = async (
@@ -63,6 +72,18 @@ const Settings = () => {
         await SettingsService.updateSetting(id, newValue);
     };
 
+    const openSubPage = (subPage: "basic" | "advanced") => {
+        setSubPageVisible(false);
+        setActiveSubPage(subPage);
+    };
+
+    const closeSubPage = () => {
+        setSubPageVisible(false);
+        window.setTimeout(() => {
+            setActiveSubPage(null);
+        }, 280);
+    };
+
     const styles = {
         tabHeader: {
             letterSpacing: "1px",
@@ -77,7 +98,7 @@ const Settings = () => {
             border: "var(--card-border)",
             padding: "1.25rem",
             borderRadius: "1.5rem",
-            boxShadow: "var(--shadow-soft)",
+            boxShadow: activeSubPage === null ? "var(--shadow-soft)" : "none",
             display: "flex",
             flexDirection: "column" as const,
         },
@@ -128,6 +149,29 @@ const Settings = () => {
             transition: "border-color 0.2s ease",
             minWidth: "299px",
         },
+        subSettingRow: {
+            "display": "flex",
+            "justifyContent": "space-between",
+            "width": "100%",
+            "background": "var(--card)",
+            "border": "var(--card-border)",
+            "padding": "1rem",
+            "borderRadius": "1.15rem",
+            "boxShadow": activeSubPage === null ? "var(--shadow-soft)" : "none"
+        },
+        subSettingName: {
+            "fontSize": "18px",
+            "fontWeight": "600",
+            "transform": "translateY(3px)"
+        },
+        subSettingIcon: {
+            "transform": "translateY(3px)"
+        },
+        subSettingsWrapper: {
+            "display": "flex",
+            "flexDirection": "column" as const,
+            "gap": "10px"
+        },
     };
 
     // Get unique tabs from settings
@@ -144,14 +188,33 @@ const Settings = () => {
                 <DeviceInfoCard
                     deviceInfo={deviceInfo}
                     loadSettings={loadSettings}
+                    activeSubPage={activeSubPage}
                 />
+
+                <div style={{ textAlign: "left" }}>
+                    <div>
+                        <div style={styles.tabHeader}>DEVICE SETTINGS</div>
+                        <div style={styles.subSettingsWrapper}>
+                            <div style={styles.subSettingRow} onClick={() => openSubPage("basic")}>
+                                <div style={styles.subSettingName}>Basic Settings</div>
+                                <div style={styles.subSettingIcon}><ChevronRight size={24} /></div>
+                            </div>
+
+                            <div style={styles.subSettingRow} onClick={() => openSubPage("advanced")}>
+                                <div style={styles.subSettingName}>Advanced Settings</div>
+                                <div style={styles.subSettingIcon}><ChevronRight size={24} /></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div style={{ textAlign: "left" }}>
                     {tabs.map((tab) => (
                         <div key={tab}>
                             <div style={styles.tabHeader}>{tab}</div>
                             <div style={styles.tabCard}>
                                 {settings
-                                    .filter((setting) => setting.tab === tab)
+                                    .filter((setting) => setting.tab === tab && setting.deviceInternal !== true)
                                     .map((setting, index, filteredSettings) => (
                                         <div
                                             key={setting.id}
@@ -163,12 +226,12 @@ const Settings = () => {
                                                         : "column",
                                                 borderBottom:
                                                     index <
-                                                    filteredSettings.length - 1
+                                                        filteredSettings.length - 1
                                                         ? "1px solid rgba(40, 54, 24, 0.12)"
                                                         : "none",
                                                 paddingBottom:
                                                     index <
-                                                    filteredSettings.length - 1
+                                                        filteredSettings.length - 1
                                                         ? "16px"
                                                         : "0",
                                             }}
@@ -198,17 +261,17 @@ const Settings = () => {
                                                     ...styles.settingValueWrapper,
                                                     width:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "auto"
                                                             : "100%",
                                                     marginTop:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "0"
                                                             : "8px",
                                                     minWidth:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "0px"
                                                             : "120px",
                                                 }}
@@ -260,6 +323,21 @@ const Settings = () => {
                 </div>
             </div>
             {loading && <LoadingSpinner />}
+
+            {activeSubPage && (
+                <SubPage
+                    subPageVisible={subPageVisible}
+                    closeSubPage={closeSubPage}
+                    activeSubPage={
+                        activeSubPage === "basic" ? (
+                            <BasicSettings />
+                        ) : (
+                            <AdvancedSettings />
+                        )
+                    }
+                    setSubPageVisible={setSubPageVisible}
+                />
+            )}
         </div>
     );
 };

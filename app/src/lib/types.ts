@@ -20,6 +20,7 @@ export interface Setting {
     icon?: React.ReactNode;
     disabled?: boolean;
     defaultValue?: boolean | string | number;
+    deviceInternal?: boolean;
 }
 
 export interface Species {
