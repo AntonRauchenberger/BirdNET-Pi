@@ -77,6 +77,95 @@ def get_settings(settings_path='/etc/birdnet/birdnet.conf', force_reload=False):
     settings = _load_settings(settings_path, force_reload)
     return settings
 
+def save_settings(settings_path='/etc/birdnet/birdnet.conf', new_settings: dict = None):
+    if not new_settings:
+        return
+    if not isinstance(new_settings, dict):
+        raise TypeError('new_settings must be a dict')
+
+    def _format_value(value, quote: bool | None = None) -> str:
+        if isinstance(value, bool):
+            value_str = '1' if value else '0'
+        elif value is None:
+            value_str = ''
+        else:
+            value_str = str(value)
+
+        if quote is None:
+            quote = (value_str == '' or any(ch.isspace() for ch in value_str))
+
+        if quote:
+            escaped = value_str.replace('\\', '\\\\').replace('"', '\\"')
+            return f'"{escaped}"'
+        return value_str
+
+    updates = {str(key): value for key, value in new_settings.items()}
+    line_pattern = re.compile(r'^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$')
+
+    # Read existing settings and apply updates
+    with open(settings_path, 'r') as conf_file:
+        lines = conf_file.readlines()
+
+    updated_lines = []
+    for line in lines:
+        if line.lstrip().startswith('#'):
+            updated_lines.append(line)
+            continue
+
+        match = line_pattern.match(line.rstrip('\n'))
+        if not match:
+            updated_lines.append(line)
+            continue
+
+        key = match.group(2)
+        if key not in updates:
+            updated_lines.append(line)
+            continue
+
+        existing_raw_value = match.group(3).strip()
+        use_quotes = existing_raw_value.startswith('"') and existing_raw_value.endswith('"')
+        formatted_value = _format_value(updates.pop(key), quote=use_quotes)
+        updated_lines.append(f'{match.group(1)}{key}={formatted_value}\n')
+
+    if updates:
+        if updated_lines and updated_lines[-1] and not updated_lines[-1].endswith('\n'):
+            updated_lines[-1] = f"{updated_lines[-1]}\n"
+        if updated_lines and updated_lines[-1].strip() != '':
+            updated_lines.append('\n')
+        for key, value in updates.items():
+            updated_lines.append(f'{key}={_format_value(value)}\n')
+
+    contents = ''.join(updated_lines)
+    temp_path = f'{settings_path}.tmp'
+
+    # Attempt to write, fallback to sudo if permission is denied
+    try:
+        with open(temp_path, 'w') as conf_file:
+            conf_file.write(contents)
+        os.replace(temp_path, settings_path)
+    except PermissionError:
+        try:
+            sudo_result = subprocess.run(
+                ['sudo', '-n', 'tee', settings_path],
+                input=contents,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if sudo_result.returncode != 0:
+                stderr = sudo_result.stderr.strip()
+                raise PermissionError(
+                    f'Unable to write settings file {settings_path}: {stderr or "sudo write failed"}'
+                )
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    # Invalidate cache so subsequent reads observe persisted updates
+    global _settings
+    _settings = None
+    _load_settings(settings_path=settings_path, force_reload=True)
+
 
 def get_open_files_in_dir(dir_name):
     result = subprocess.run(['lsof', '-w', '-Fn', '+D', f'{dir_name}'], check=False, capture_output=True)

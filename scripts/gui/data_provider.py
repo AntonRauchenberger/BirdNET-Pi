@@ -15,9 +15,9 @@ from typing import Any
 from fastapi.responses import FileResponse
 
 try:
-    from ..utils.helpers import get_settings
+    from ..utils.helpers import get_settings, save_settings
 except ImportError:
-    from utils.helpers import get_settings
+    from utils.helpers import get_settings, save_settings
 
 
 class DataProvider:
@@ -432,4 +432,4 @@ class DataProvider:
         return conf
 
     def update_device_settings(self, new_settings: dict) -> None:
-        pass
+        save_settings(new_settings=new_settings)

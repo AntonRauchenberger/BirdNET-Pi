@@ -69,7 +69,6 @@ class APIManager:
         
         @self.app.put("/device/settings", response_model=None)
         async def update_device_settings(new_settings: dict) -> None:
-            print("Received new settings:", new_settings)
             self.data_provider.update_device_settings(new_settings)
 
         @self.app.get("/latestdetections")
