@@ -20,7 +20,7 @@ export default defineConfig({
                 runtimeCaching: [
                     {
                         urlPattern: ({ url }) =>
-                            url.origin === "https://192.168.4.1" &&
+                            url.origin === "http://192.168.4.1" &&
                             (/^\/sync(\/|$)/.test(url.pathname) ||
                                 /^\/device(\/|$)/.test(url.pathname) ||
                                 /^\/latestdetections(\/|$)/.test(url.pathname)),

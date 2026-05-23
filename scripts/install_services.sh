@@ -276,7 +276,7 @@ http:// ${BIRDNETPI_URL} {
   }
 }
 
-https://192.168.4.1 {
+http://192.168.4.1 {
   tls internal
 
   handle /app* {
@@ -334,7 +334,7 @@ http:// ${BIRDNETPI_URL} {
   }
 }
 
-https://192.168.4.1 {
+http://192.168.4.1 {
   tls internal
 
   handle /app* {

@@ -44,8 +44,10 @@ class APIManager:
         self.running = True
 
     def _configure_cors(self, allowed_origins: list[str] | None = None) -> None:
-        # TODO adjust allowed origins for better security in real deployment
-        origins = allowed_origins or ["*"]
+        origins = [
+            "https://antonrauchenberger.github.io",
+            "http://localhost:5173",
+        ]
 
         self.app.add_middleware(
             CORSMiddleware,
