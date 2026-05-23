@@ -1,20 +1,22 @@
-import { useState, useEffect } from "react";
-import LoadingSpinner from "../../../components/LoadingSpinner"
-import { Setting } from "../../../lib/types";
-import Switch from "../../../components/Switch";
-import SettingsService from "../../../lib/services/SettingsService";
+import { useEffect } from "react";
+import LoadingSpinner from "../../components/LoadingSpinner"
+import { Setting } from "../../lib/types";
+import Switch from "../../components/Switch";
 
-const AdvancedSettings = () => {
-    const [loading, setLoading] = useState(false);
-    const [settings, setSettings] = useState<Setting[]>([]);
-
+const DeviceSettings = (props: {
+    loading: boolean;
+    settings: Setting[];
+    setSettings: (settings: any) => void;
+    setLoading: (loading: boolean) => void;
+    fetchSettings: () => Promise<void>;
+}) => {
     const handleSettingChange = async (
         id: string,
         newValue: boolean | string | number,
     ) => {
         // Update UI immediately
-        setSettings((prevSettings) =>
-            prevSettings.map((setting) =>
+        props.setSettings((prevSettings: any) =>
+            prevSettings.map((setting: any) =>
                 setting.id === id ? { ...setting, value: newValue } : setting,
             ),
         );
@@ -44,20 +46,8 @@ const AdvancedSettings = () => {
         return setting.description;
     };
 
-    const fetchSettings = async () => {
-        setLoading(true);
-        try {
-            const fetchedSettings = await SettingsService.getAllDeviceSettings("ADVANCED");
-            setSettings(fetchedSettings);
-        } catch (error) {
-            console.error("Error fetching settings:", error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
-        fetchSettings();
+        props.fetchSettings();
     }, []);
 
     const styles = {
@@ -167,7 +157,7 @@ const AdvancedSettings = () => {
         },
     }
 
-    const tabs = Array.from(new Set(settings.map((s) => s.tab)));
+    const tabs = Array.from(new Set(props.settings.map((s) => s.tab)));
 
     return (
         <div>
@@ -176,7 +166,7 @@ const AdvancedSettings = () => {
                     <div key={tab}>
                         <div style={styles.tabHeader}>{tab}</div>
                         <div style={styles.tabCard}>
-                            {settings
+                            {props.settings
                                 .filter((setting) => setting.tab === tab)
                                 .map((setting, index, filteredSettings) => (
                                     <div
@@ -296,9 +286,9 @@ const AdvancedSettings = () => {
             {/* Helper to fix scrolling */}
             <div style={{ paddingBottom: "90px" }}></div>
 
-            {loading && <LoadingSpinner />}
+            {props.loading && <LoadingSpinner />}
         </div>
     )
 }
 
-export default AdvancedSettings
+export default DeviceSettings

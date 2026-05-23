@@ -10,11 +10,11 @@ from fastapi.responses import FileResponse, Response
 from typing import Any
 
 if __package__ is None or __package__ == "":
-    gui_dir = Path(__file__).resolve().parent.parent
-    if str(gui_dir) not in sys.path:
-        sys.path.insert(0, str(gui_dir))
+    scripts_dir = Path(__file__).resolve().parents[2]
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
 
-    from data_provider import DataProvider
+    from gui.data_provider import DataProvider
 else:
     from ..data_provider import DataProvider
 
@@ -59,6 +59,13 @@ class APIManager:
         @self.app.get("/device/details")
         async def get_device_details() -> dict:
             return self.data_provider.get_device_details()
+        
+        @self.app.get("/device/settings", response_model=None)
+        async def get_device_settings() -> dict | None:
+            settings = self.data_provider.get_device_settings()
+            if settings is None:
+                return Response(status_code=204)
+            return settings
 
         @self.app.get("/latestdetections")
         async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:

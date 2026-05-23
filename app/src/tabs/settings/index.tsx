@@ -2,13 +2,12 @@ import TabHeader from "../../components/TabHeader";
 import { DeviceDetails, Setting } from "../../lib/types";
 import { useState, useEffect } from "react";
 import DeviceInfoCard from "./DeviceInfoCard";
+import DeviceSettings from "./DeviceSettings";
 import Switch from "../../components/Switch";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
 import { ChevronRight } from "lucide-react";
-import BasicSettings from "./DeviceSettings/BasicSettings";
-import AdvancedSettings from "./DeviceSettings/AdvancedSettings";
 import SubPage from "../../components/SubPage";
 import { Save, RotateCw } from "lucide-react";
 
@@ -26,6 +25,8 @@ const Settings = () => {
         "basic" | "advanced" | null
     >(null);
     const [subPageVisible, setSubPageVisible] = useState(false);
+    const [subPageLoading, setSubPageLoading] = useState(false);
+    const [subPageSettings, setSubPageSettings] = useState<Setting[]>([]);
 
     const loadSettings = async () => {
         setLoading(true);
@@ -88,6 +89,22 @@ const Settings = () => {
             setActiveSubPage(null);
         }, 280);
     };
+
+    const fetchSubpageSettings = async () => {
+        setSubPageLoading(true);
+        try {
+            if (!activeSubPage) {
+                throw new Error("No active subpage to fetch settings for");
+            }
+
+            const fetchedSettings = await SettingsService.getAllDeviceSettings(activeSubPage.toUpperCase());
+            setSubPageSettings(fetchedSettings);
+        } catch (error) {
+            console.error("Error fetching settings:", error);
+        } finally {
+            setSubPageLoading(false);
+        }
+    }
 
     const styles = {
         tabHeader: {
@@ -222,7 +239,7 @@ const Settings = () => {
                 <div>Speichern</div>
             </div>
 
-            <div style={styles.refreshButton} onClick={() => console.log("Refresh clicked")}>
+            <div style={styles.refreshButton} onClick={() => fetchSubpageSettings()}>
                 <RotateCw
                     size={22}
                     aria-hidden="true"
@@ -387,11 +404,13 @@ const Settings = () => {
                     subPageVisible={subPageVisible}
                     closeSubPage={closeSubPage}
                     activeSubPage={
-                        activeSubPage === "basic" ? (
-                            <BasicSettings />
-                        ) : (
-                            <AdvancedSettings />
-                        )
+                        <DeviceSettings
+                            loading={subPageLoading}
+                            settings={subPageSettings}
+                            setSettings={setSubPageSettings}
+                            setLoading={setSubPageLoading}
+                            fetchSettings={fetchSubpageSettings}
+                        />
                     }
                     setSubPageVisible={setSubPageVisible}
                     headerElement={subPageHeaderButtons}
