@@ -8,12 +8,16 @@ import sqlite3
 import subprocess
 import shutil
 import threading
-import os
 
 from pathlib import Path
 from typing import Any
 
 from fastapi.responses import FileResponse
+
+try:
+    from ..utils.helpers import get_settings, save_settings
+except ImportError:
+    from utils.helpers import get_settings, save_settings
 
 
 class DataProvider:
@@ -422,4 +426,10 @@ class DataProvider:
             return FileResponse(str(file_path), media_type="audio/wav")
 
         return None
+    
+    def get_device_settings(self) -> dict | None:
+        conf = get_settings()
+        return conf
 
+    def update_device_settings(self, new_settings: dict) -> None:
+        save_settings(new_settings=new_settings)

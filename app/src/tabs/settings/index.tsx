@@ -2,10 +2,13 @@ import TabHeader from "../../components/TabHeader";
 import { DeviceDetails, Setting } from "../../lib/types";
 import { useState, useEffect } from "react";
 import DeviceInfoCard from "./DeviceInfoCard";
+import DeviceSettings from "./DeviceSettings";
 import Switch from "../../components/Switch";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
+import { ChevronRight, HardDriveUpload, RotateCw } from "lucide-react";
+import SubPage from "../../components/SubPage";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -17,6 +20,12 @@ const Settings = () => {
     });
     const [settings, setSettings] = useState<Setting[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeSubPage, setActiveSubPage] = useState<
+        "basic" | "advanced" | null
+    >(null);
+    const [subPageVisible, setSubPageVisible] = useState(false);
+    const [subPageLoading, setSubPageLoading] = useState(false);
+    const [subPageSettings, setSubPageSettings] = useState<Setting[]>([]);
 
     const loadSettings = async () => {
         setLoading(true);
@@ -32,9 +41,9 @@ const Settings = () => {
             prevSettings.map((setting) =>
                 setting.id === "connection"
                     ? {
-                          ...setting,
-                          value: deviceDetails.ssid,
-                      }
+                        ...setting,
+                        value: deviceDetails.ssid,
+                    }
                     : setting,
             ),
         );
@@ -46,6 +55,7 @@ const Settings = () => {
     useEffect(() => {
         loadSettings();
     }, []);
+
 
     // Handle setting value change - directly save to database
     const handleSettingChange = async (
@@ -63,6 +73,54 @@ const Settings = () => {
         await SettingsService.updateSetting(id, newValue);
     };
 
+    const openSubPage = (subPage: "basic" | "advanced") => {
+        if (deviceInfo.name === "Not connected") {
+            return;
+        }
+
+        setSubPageVisible(false);
+        setActiveSubPage(subPage);
+    };
+
+    const closeSubPage = () => {
+        setSubPageVisible(false);
+        window.setTimeout(() => {
+            setActiveSubPage(null);
+        }, 280);
+    };
+
+    const fetchSubpageSettings = async () => {
+        setSubPageLoading(true);
+        try {
+            if (!activeSubPage) {
+                throw new Error("No active subpage to fetch settings for");
+            }
+
+            const fetchedSettings = await SettingsService.getAllDeviceSettings(activeSubPage.toUpperCase());
+            setSubPageSettings(fetchedSettings);
+        } catch (error) {
+            console.error("Error fetching settings:", error);
+        } finally {
+            setSubPageLoading(false);
+        }
+    }
+
+    const saveSubpageSettings = async () => {
+        setSubPageLoading(true);
+        try {
+            if (!activeSubPage) {
+                throw new Error("No active subpage to save settings for");
+            }
+
+            await SettingsService.updateDeviceSettings(subPageSettings);
+
+        } catch (error) {
+            console.error("Error saving settings:", error);
+        } finally {
+            setSubPageLoading(false);
+        }
+    }
+
     const styles = {
         tabHeader: {
             letterSpacing: "1px",
@@ -77,9 +135,10 @@ const Settings = () => {
             border: "var(--card-border)",
             padding: "1.25rem",
             borderRadius: "1.5rem",
-            boxShadow: "var(--shadow-soft)",
+            boxShadow: activeSubPage === null ? "var(--shadow-soft)" : "none",
             display: "flex",
             flexDirection: "column" as const,
+            paddingTop: "1rem",
         },
         settingRow: {
             display: "flex",
@@ -128,7 +187,82 @@ const Settings = () => {
             transition: "border-color 0.2s ease",
             minWidth: "299px",
         },
+        subSettingRow: {
+            "display": "flex",
+            "justifyContent": "space-between",
+            "width": "100%",
+            "background": "var(--gradiant-leaf)",
+            "color": "var(--card)",
+            "padding": "1rem",
+            "borderRadius": "1.15rem",
+            "boxShadow": activeSubPage === null ? "var(--shadow-soft)" : "none",
+            "opacity": deviceInfo?.name !== "Not connected" ? 1 : 0.5,
+        },
+        subSettingName: {
+            "fontSize": "18px",
+            "fontWeight": "600",
+            "transform": "translateY(3px)"
+        },
+        subSettingIcon: {
+            "transform": "translateY(3px)"
+        },
+        subSettingsWrapper: {
+            "display": "flex",
+            "flexDirection": "column" as const,
+            "gap": "10px"
+        },
+        refreshButton: {
+            "background": "var(--gradiant-clay)",
+            "borderRadius": "15px",
+            "height": "48px",
+            "width": "48px",
+            "display": "flex",
+            "justifyContent": "center",
+            "alignItems": "center"
+        },
+        buttonsWrapper: {
+            "display": "flex",
+            "justifyContent": "flex-end",
+            "gap": "8px",
+            "alignItems": "center",
+        },
+        saveButton: {
+            "display": "flex",
+            "gap": "5px",
+            "background": "green",
+            "color": "var(--card)",
+            "alignItems": "center",
+            "padding": "12px",
+            "borderRadius": "15px",
+            "fontSize": "19px",
+            "justifyContent": "center",
+            "fontWeight": 600,
+        },
+        saveIcon: {
+            "transform": "translateY(2px)"
+        }
     };
+
+    const subPageHeaderButtons = (
+        <div style={styles.buttonsWrapper}>
+            <div style={styles.saveButton} onClick={() => saveSubpageSettings()}>
+                <div style={styles.saveIcon}>
+                    <HardDriveUpload
+                        size={20}
+                    />
+                </div>
+                <div>Speichern</div>
+            </div>
+
+            <div style={styles.refreshButton} onClick={() => fetchSubpageSettings()}>
+                <RotateCw
+                    size={22}
+                    aria-hidden="true"
+                    style={{ color: "var(--cornsilk)" }}
+                />
+            </div>
+        </div>
+    )
 
     // Get unique tabs from settings
     const tabs = Array.from(new Set(settings.map((s) => s.tab)));
@@ -144,14 +278,33 @@ const Settings = () => {
                 <DeviceInfoCard
                     deviceInfo={deviceInfo}
                     loadSettings={loadSettings}
+                    activeSubPage={activeSubPage}
                 />
+
+                <div style={{ textAlign: "left" }}>
+                    <div>
+                        <div style={styles.tabHeader}>DEVICE SETTINGS</div>
+                        <div style={styles.subSettingsWrapper}>
+                            <div style={styles.subSettingRow} onClick={() => openSubPage("basic")}>
+                                <div style={styles.subSettingName}>Basic Settings</div>
+                                <div style={styles.subSettingIcon}><ChevronRight size={24} /></div>
+                            </div>
+
+                            <div style={styles.subSettingRow} onClick={() => openSubPage("advanced")}>
+                                <div style={styles.subSettingName}>Advanced Settings</div>
+                                <div style={styles.subSettingIcon}><ChevronRight size={24} /></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div style={{ textAlign: "left" }}>
                     {tabs.map((tab) => (
                         <div key={tab}>
                             <div style={styles.tabHeader}>{tab}</div>
                             <div style={styles.tabCard}>
                                 {settings
-                                    .filter((setting) => setting.tab === tab)
+                                    .filter((setting) => setting.tab === tab && setting.deviceInternal !== true)
                                     .map((setting, index, filteredSettings) => (
                                         <div
                                             key={setting.id}
@@ -163,12 +316,12 @@ const Settings = () => {
                                                         : "column",
                                                 borderBottom:
                                                     index <
-                                                    filteredSettings.length - 1
+                                                        filteredSettings.length - 1
                                                         ? "1px solid rgba(40, 54, 24, 0.12)"
                                                         : "none",
                                                 paddingBottom:
                                                     index <
-                                                    filteredSettings.length - 1
+                                                        filteredSettings.length - 1
                                                         ? "16px"
                                                         : "0",
                                             }}
@@ -198,17 +351,17 @@ const Settings = () => {
                                                     ...styles.settingValueWrapper,
                                                     width:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "auto"
                                                             : "100%",
                                                     marginTop:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "0"
                                                             : "8px",
                                                     minWidth:
                                                         setting.type ===
-                                                        "boolean"
+                                                            "boolean"
                                                             ? "0px"
                                                             : "120px",
                                                 }}
@@ -260,6 +413,24 @@ const Settings = () => {
                 </div>
             </div>
             {loading && <LoadingSpinner />}
+
+            {activeSubPage && (
+                <SubPage
+                    subPageVisible={subPageVisible}
+                    closeSubPage={closeSubPage}
+                    activeSubPage={
+                        <DeviceSettings
+                            loading={subPageLoading}
+                            settings={subPageSettings}
+                            setSettings={setSubPageSettings}
+                            setLoading={setSubPageLoading}
+                            fetchSettings={fetchSubpageSettings}
+                        />
+                    }
+                    setSubPageVisible={setSubPageVisible}
+                    headerElement={subPageHeaderButtons}
+                />
+            )}
         </div>
     );
 };

@@ -13,13 +13,19 @@ export interface Setting {
     id: string;
     name: string;
     description: string | null;
-    value: boolean | string | number;
-    setValue?: ((value: boolean | string | number) => void) | undefined;
+    value: boolean | string | number | null | undefined;
+    setValue?: ((value: boolean | string | number | null | undefined) => void) | undefined;
     tab?: string;
-    type?: "boolean" | "string" | "number";
+    topTab?: string;
+    type?: "boolean" | "string" | "number" | "select" | "textarea";
+    selectOptions?: { label: string; value: string | number }[];
     icon?: React.ReactNode;
     disabled?: boolean;
-    defaultValue?: boolean | string | number;
+    defaultValue?: boolean | string | number | null | undefined;
+    deviceInternal?: boolean;
+    max?: number;
+    min?: number;
+    step?: number;
 }
 
 export interface Species {

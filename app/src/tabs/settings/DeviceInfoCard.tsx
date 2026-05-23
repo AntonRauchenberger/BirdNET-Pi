@@ -4,6 +4,7 @@ import { DeviceDetails } from "../../lib/types";
 const DeviceInfoCard = (props: {
     deviceInfo: DeviceDetails;
     loadSettings: () => void;
+    activeSubPage: string | null;
 }) => {
     const styles = {
         deviceCard: {
@@ -13,7 +14,7 @@ const DeviceInfoCard = (props: {
             marginTop: "30px",
             overflow: "hidden",
             padding: "1.25rem",
-            boxShadow: "var(--shadow-soft)",
+            boxShadow: props.activeSubPage === null ? "var(--shadow-soft)" : "none"
         },
         deviceNameWrapper: {
             display: "flex",
