@@ -42,26 +42,6 @@ export default class SettingsService {
         }
     }
 
-    static async getAllDeviceSettings(topTab: string): Promise<Setting[]> {
-        try {
-            const filteredDefaults = DEFAULT_SETTINGS.filter((s) => s.topTab === topTab && s.deviceInternal === true);
-            const deviceSettingsObject = await this.fetchDeviceSettingsObject();
-
-            filteredDefaults.forEach((defaultSetting) => {
-                const deviceValue = deviceSettingsObject[defaultSetting.id.toUpperCase()];
-
-                if (deviceValue !== undefined) {
-                    defaultSetting.value = deviceValue;
-                }
-            });
-
-            return filteredDefaults;
-        } catch (error) {
-            console.error("Error getting all device settings:", error);
-            return DEFAULT_SETTINGS.filter((s) => s.topTab === topTab && s.deviceInternal === true);
-        }
-    }
-
     static async updateSetting(
         id: string,
         value: boolean | string | number | null | undefined,
@@ -108,6 +88,26 @@ export default class SettingsService {
         }
     }
 
+    static async getAllDeviceSettings(topTab: string): Promise<Setting[]> {
+        try {
+            const filteredDefaults = DEFAULT_SETTINGS.filter((s) => s.topTab === topTab && s.deviceInternal === true);
+            const deviceSettingsObject = await this.fetchDeviceSettingsObject();
+
+            filteredDefaults.forEach((defaultSetting) => {
+                const deviceValue = deviceSettingsObject[defaultSetting.id];
+
+                if (deviceValue !== undefined) {
+                    defaultSetting.value = deviceValue;
+                }
+            });
+
+            return filteredDefaults;
+        } catch (error) {
+            console.error("Error getting all device settings:", error);
+            return DEFAULT_SETTINGS.filter((s) => s.topTab === topTab && s.deviceInternal === true);
+        }
+    }
+
     static async fetchDeviceSettingsObject(): Promise<Record<string, boolean | string | number | null | undefined>> {
         try {
             const fetchedSettings = await ApiService.callApi("/device/settings");
@@ -121,6 +121,20 @@ export default class SettingsService {
         } catch (error) {
             console.error("Error getting device settings:", error);
             return {};
+        }
+    }
+
+    static async updateDeviceSettings(newSettings: Setting[]): Promise<void> {
+        try {
+            const settingsToUpdate: Record<string, boolean | string | number | null | undefined> = {};
+
+            newSettings.forEach((setting) => {
+                settingsToUpdate[setting.id] = setting.value;
+            });
+
+            await ApiService.callApi("/device/settings", undefined, "PUT", settingsToUpdate);
+        } catch (error) {
+            console.error("Error updating device settings:", error);
         }
     }
 }

@@ -7,9 +7,8 @@ import Switch from "../../components/Switch";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, HardDriveUpload, RotateCw } from "lucide-react";
 import SubPage from "../../components/SubPage";
-import { Save, RotateCw } from "lucide-react";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -101,6 +100,22 @@ const Settings = () => {
             setSubPageSettings(fetchedSettings);
         } catch (error) {
             console.error("Error fetching settings:", error);
+        } finally {
+            setSubPageLoading(false);
+        }
+    }
+
+    const saveSubpageSettings = async () => {
+        setSubPageLoading(true);
+        try {
+            if (!activeSubPage) {
+                throw new Error("No active subpage to save settings for");
+            }
+
+            await SettingsService.updateDeviceSettings(subPageSettings);
+
+        } catch (error) {
+            console.error("Error saving settings:", error);
         } finally {
             setSubPageLoading(false);
         }
@@ -230,9 +245,9 @@ const Settings = () => {
 
     const subPageHeaderButtons = (
         <div style={styles.buttonsWrapper}>
-            <div style={styles.saveButton} onClick={() => console.log("Save clicked")}>
+            <div style={styles.saveButton} onClick={() => saveSubpageSettings()}>
                 <div style={styles.saveIcon}>
-                    <Save
+                    <HardDriveUpload
                         size={20}
                     />
                 </div>

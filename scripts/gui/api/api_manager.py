@@ -66,6 +66,11 @@ class APIManager:
             if settings is None:
                 return Response(status_code=204)
             return settings
+        
+        @self.app.put("/device/settings", response_model=None)
+        async def update_device_settings(new_settings: dict) -> None:
+            print("Received new settings:", new_settings)
+            self.data_provider.update_device_settings(new_settings)
 
         @self.app.get("/latestdetections")
         async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:

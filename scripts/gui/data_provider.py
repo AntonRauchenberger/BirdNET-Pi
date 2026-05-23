@@ -431,3 +431,5 @@ class DataProvider:
         conf = get_settings()
         return conf
 
+    def update_device_settings(self, new_settings: dict) -> None:
+        pass
