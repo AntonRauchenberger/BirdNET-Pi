@@ -258,7 +258,7 @@ const Sync = () => {
             justifyContent: "center",
             alignItems: "center",
             borderRadius: "35px",
-            marginTop: "50%",
+            marginTop: "45%",
             fontSize: "15px",
             fontWeight: "500",
         },
@@ -386,8 +386,7 @@ const Sync = () => {
 
                 <div style={styles.infoCard}>
                     <span style={{ opacity: 0.6 }}>
-                        Make sure the sync mode is enabled on your device and
-                        that you are connected to its hotspot.
+                        Make sure the sync mode is enabled on your device, you are connected to its hotspot and the certificate is installed.
                     </span>
                 </div>
             </div>

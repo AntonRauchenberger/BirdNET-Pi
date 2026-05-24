@@ -7,8 +7,9 @@ import Switch from "../../components/Switch";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
-import { ChevronRight, HardDriveUpload, RotateCw } from "lucide-react";
+import { ChevronRight, HardDriveUpload, RotateCw, ShieldCheck } from "lucide-react";
 import SubPage from "../../components/SubPage";
+import { CERTIFICATE_URL } from "../../lib/constants";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -240,6 +241,24 @@ const Settings = () => {
         },
         saveIcon: {
             "transform": "translateY(2px)"
+        },
+        downloadButton: {
+            "display": "flex",
+            "width": "100%",
+            "justifyContent": "center",
+            "alignItems": "center",
+            "background": "var(--gradiant-clay)",
+            "color": "var(--card)",
+            "gap": "5px",
+            "padding": "10px",
+            "borderRadius": "15px",
+            "marginTop": "10px",
+            "textDecoration": "none",
+        },
+        linkText: {
+            "color": "var(--card)",
+            "fontSize": "18px",
+            "fontWeight": 600,
         }
     };
 
@@ -280,6 +299,15 @@ const Settings = () => {
                     loadSettings={loadSettings}
                     activeSubPage={activeSubPage}
                 />
+
+                <a style={styles.downloadButton} href={CERTIFICATE_URL}>
+                    <div style={{ transform: "translateY(2px)" }}>
+                        <ShieldCheck
+                            size={24}
+                        />
+                    </div>
+                    <div style={styles.linkText}>Download Certificate</div>
+                </a>
 
                 <div style={{ textAlign: "left" }}>
                     <div>
