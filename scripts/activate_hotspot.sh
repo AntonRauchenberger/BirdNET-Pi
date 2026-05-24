@@ -11,10 +11,16 @@ if ! nmcli connection show "$CON_NAME" > /dev/null 2>&1; then
     echo "Creating hotspot profile..."
     sudo nmcli device wifi hotspot ssid "$SSID" password "$PASSWORD" ifname wlan0 con-name "$CON_NAME"
     sudo nmcli connection modify "$CON_NAME" ipv4.addresses "$IP_ADDR" ipv4.method shared
+    
+    sudo nmcli connection modify "$CON_NAME" ipv4.dns "192.168.4.1"
+    sudo nmcli connection modify "$CON_NAME" ipv4.ignore-auto-dns yes
+    
     sudo nmcli connection modify "$CON_NAME" connection.autoconnect yes
     sudo nmcli connection modify "$CON_NAME" connection.autoconnect-priority 50
 else
     echo "Hotspot profile already exists."
+    sudo nmcli connection modify "$CON_NAME" ipv4.dns "192.168.4.1"
+    sudo nmcli connection modify "$CON_NAME" ipv4.ignore-auto-dns yes
 fi
 
 # Turn on hotspot

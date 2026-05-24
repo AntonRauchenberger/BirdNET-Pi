@@ -47,6 +47,7 @@ class APIManager:
         origins = [
             "https://antonrauchenberger.github.io",
             "http://localhost:5173",
+            "https://192-168-4-1.sslip.io",
         ]
 
         self.app.add_middleware(
