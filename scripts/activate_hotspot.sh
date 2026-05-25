@@ -30,6 +30,10 @@ sudo nmcli device disconnect wlan0 > /dev/null 2>&1
 # Turn on hotspot
 echo "Activating hotspot..."
 sudo nmcli connection up "$CON_NAME"
+sudo nmcli connection modify "$CON_NAME" connection.zone trusted
+
+# Activate kernel routing
+sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1
 
 echo "Restarting Caddy to bind TLS certificate to Hotspot IP..."
 sudo systemctl restart caddy
