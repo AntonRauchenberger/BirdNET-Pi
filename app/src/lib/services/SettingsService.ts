@@ -97,7 +97,11 @@ export default class SettingsService {
                 const deviceValue = deviceSettingsObject[defaultSetting.id];
 
                 if (deviceValue !== undefined) {
-                    defaultSetting.value = deviceValue;
+                    if (defaultSetting.type === "boolean") {
+                        defaultSetting.value = deviceValue === "1" || deviceValue === true;
+                    } else {
+                        defaultSetting.value = deviceValue;
+                    }
                 }
             });
 
@@ -129,7 +133,14 @@ export default class SettingsService {
             const settingsToUpdate: Record<string, boolean | string | number | null | undefined> = {};
 
             newSettings.forEach((setting) => {
-                settingsToUpdate[setting.id] = setting.value;
+                let settingValue = undefined;
+                if (setting.type === "boolean") {
+                    settingValue = setting.value === true ? "1" : "0";
+                } else {
+                    settingValue = setting.value;
+                }
+
+                settingsToUpdate[setting.id] = settingValue;
             });
 
             await ApiService.callApi("/device/settings", undefined, "PUT", settingsToUpdate);

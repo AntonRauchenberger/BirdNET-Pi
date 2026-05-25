@@ -49,6 +49,9 @@ install_birdnet() {
     git -C "$HOME/BirdNET-Pi/e-Paper" pull --ff-only || true
   fi
 
+  # Add sslip domain to cloud-init template if not already present
+  echo "192.168.4.1    192-168-4-1.sslip.io" | sudo tee -a /etc/cloud/templates/hosts.debian.tmpl
+
   echo "Establishing a python virtual environment"
   python3 -m venv birdnet
   source ./birdnet/bin/activate

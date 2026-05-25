@@ -220,29 +220,24 @@ EOF
 
 install_Caddyfile() {
   [ -d /etc/caddy ] || mkdir /etc/caddy
-  if [ -f /etc/caddy/Caddyfile ];then
+  if [ -f /etc/caddy/Caddyfile ]; then
     cp /etc/caddy/Caddyfile{,.original}
   fi
-  if ! [ -z ${CADDY_PWD} ];then
-  HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
-  cat << EOF > /etc/caddy/Caddyfile
-{
-  pki {
-    ca local {
-      name "BirdNET-Pi Local CA"
-    }
-  }
-}
 
-http:// ${BIRDNETPI_URL} {
+  if ! [ -z ${CADDY_PWD} ]; then
+    HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
+    cat << EOF > /etc/caddy/Caddyfile
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
-  # Fängt /app, /app/sw.js, /app/assets/*, /app/manifest.webmanifest ab!
-  handle /app* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    uri strip_prefix /app
-    try_files {path} /index.html
-    file_server
+  handle /device* {
+    reverse_proxy localhost:2026
+  }
+  handle /latestdetections* {
+    reverse_proxy localhost:2026
+  }
+  handle /sync* {
+    reverse_proxy localhost:2026
   }
   
   handle {
@@ -264,9 +259,7 @@ http:// ${BIRDNETPI_URL} {
     basicauth /terminal* {
       birdnet ${HASHWORD}
     }
-    reverse_proxy /device* localhost:2026
-    reverse_proxy /latestdetections* localhost:2026
-    reverse_proxy /sync* localhost:2026
+    
     reverse_proxy /stream localhost:8000
     php_fastcgi unix//run/php/php-fpm.sock
     reverse_proxy /log* localhost:8080
@@ -277,14 +270,20 @@ http:// ${BIRDNETPI_URL} {
 }
 
 http://192.168.4.1 {
-  tls internal
-
-  handle /app* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    uri strip_prefix /app
-    try_files {path} /index.html
+  handle /cert {
+    root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+    rewrite * /root.crt
+    header Content-Type "application/x-x509-ca-cert"
     file_server
   }
+
+  handle {
+    error "Please connect to https://192-168-4-1.sslip.io" 403
+  }
+}
+
+192-168-4-1.sslip.io {
+  tls internal
 
   handle /device* {
     reverse_proxy localhost:2026
@@ -303,28 +302,20 @@ http://192.168.4.1 {
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
-{
-  pki {
-    ca local {
-      name "BirdNET-Pi Local CA"
-    }
-  }
-}
-
-http:// ${BIRDNETPI_URL} {
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
-  handle /app* {
-    root * ${HOME}/BirdNET-Pi/web-app-dist
-    uri strip_prefix /app
-    try_files {path} /index.html
-    file_server
+  handle /device* {
+    reverse_proxy localhost:2026
+  }
+  handle /latestdetections* {
+    reverse_proxy localhost:2026
+  }
+  handle /sync* {
+    reverse_proxy localhost:2026
   }
   
   handle {
-    reverse_proxy /device* localhost:2026
-    reverse_proxy /latestdetections* localhost:2026
-    reverse_proxy /sync* localhost:2026
     reverse_proxy /stream localhost:8000
     php_fastcgi unix//run/php/php-fpm.sock
     reverse_proxy /log* localhost:8080
@@ -335,14 +326,20 @@ http:// ${BIRDNETPI_URL} {
 }
 
 http://192.168.4.1 {
-  tls internal
-
-  handle /app* {
-    root * /home/admin/BirdNET-Pi/web-app-dist
-    uri strip_prefix /app
-    try_files {path} /index.html
+  handle /cert {
+    root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+    rewrite * /root.crt
+    header Content-Type "application/x-x509-ca-cert"
     file_server
   }
+
+  handle {
+    error "Please connect to https://192-168-4-1.sslip.io" 403
+  }
+}
+
+192-168-4-1.sslip.io {
+  tls internal
 
   handle /device* {
     reverse_proxy localhost:2026
@@ -365,6 +362,13 @@ EOF
   usermod -aG $USER caddy
   usermod -aG video caddy
   chmod g+r+x $HOME
+
+  # Add sslip domain to cloud-init template if not already present
+  if [ -f /etc/cloud/templates/hosts.debian.tmpl ]; then
+    if ! grep -q "192-168-4-1.sslip.io" /etc/cloud/templates/hosts.debian.tmpl; then
+      echo "192.168.4.1    192-168-4-1.sslip.io" >> /etc/cloud/templates/hosts.debian.tmpl
+    fi
+  fi
 }
 
 install_avahi_aliases() {
