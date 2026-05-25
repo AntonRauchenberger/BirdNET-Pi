@@ -23,7 +23,7 @@ else
     sudo nmcli connection modify "$CON_NAME" ipv4.ignore-auto-dns yes
 fi
 
-# Disconnect existing wlan connections to prevent conflicts with hotspot activation
+# Disconnect existing wlan connections to prevent conflicts
 echo "Disconnecting wlan0 from current networks..."
 sudo nmcli device disconnect wlan0 > /dev/null 2>&1
 
@@ -35,7 +35,10 @@ sudo nmcli connection modify "$CON_NAME" connection.zone trusted
 # Activate kernel routing
 sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1
 
+echo "Reloading NetworkManager DNS cache..."
+sudo systemctl reload NetworkManager
+
 echo "Restarting Caddy to bind TLS certificate to Hotspot IP..."
 sudo systemctl restart caddy
 
-echo "Hotspot is up and Caddy is ready"
+echo "Hotspot is up, DNS is updated and Caddy is ready!"
