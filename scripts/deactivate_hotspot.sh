@@ -10,6 +10,9 @@ if nmcli connection show --active | grep -q "$CON_NAME"; then
     # Force WLAN scan to reconnect to home Wi-Fi faster
     echo "Searching for known Wi-Fi networks..."
     sudo nmcli device wifi rescan
+    
+    echo "Restarting Caddy to adapt to home network environment..."
+    sudo systemctl restart caddy
 else
     echo "Hotspot is not active."
 fi

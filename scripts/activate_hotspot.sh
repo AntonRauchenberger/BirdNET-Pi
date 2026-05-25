@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Configturation
+# Configuration
 SSID="MyBirdNETPiHotspot"
 PASSWORD="MyPassword123"
 IP_ADDR="192.168.4.1/24"
@@ -23,6 +23,15 @@ else
     sudo nmcli connection modify "$CON_NAME" ipv4.ignore-auto-dns yes
 fi
 
+# Disconnect existing wlan connections to prevent conflicts with hotspot activation
+echo "Disconnecting wlan0 from current networks..."
+sudo nmcli device disconnect wlan0 > /dev/null 2>&1
+
 # Turn on hotspot
 echo "Activating hotspot..."
 sudo nmcli connection up "$CON_NAME"
+
+echo "Restarting Caddy to bind TLS certificate to Hotspot IP..."
+sudo systemctl restart caddy
+
+echo "Hotspot is up and Caddy is ready"
