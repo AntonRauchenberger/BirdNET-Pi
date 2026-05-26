@@ -10,6 +10,40 @@ HOTSPOT_DOMAIN="192-168-4-1.sslip.io"
 NM_DNSMASQ_SHARED_DIR="/etc/NetworkManager/dnsmasq-shared.d"
 NM_DNSMASQ_SHARED_FILE="${NM_DNSMASQ_SHARED_DIR}/90-birdnet-offline.conf"
 
+wait_for_networkmanager() {
+    local retries=20
+    local count=0
+
+    while [ "$count" -lt "$retries" ]; do
+        if nmcli -t -f RUNNING general 2>/dev/null | grep -q "running"; then
+            return 0
+        fi
+        sleep 1
+        count=$((count + 1))
+    done
+
+    return 1
+}
+
+activate_hotspot_connection() {
+    local retries=4
+    local count=1
+
+    while [ "$count" -le "$retries" ]; do
+        echo "Activating hotspot (attempt ${count}/${retries})..."
+        sudo nmcli radio wifi on > /dev/null 2>&1 || true
+
+        if sudo nmcli connection up "$CON_NAME" ifname wlan0; then
+            return 0
+        fi
+
+        sleep 2
+        count=$((count + 1))
+    done
+
+    return 1
+}
+
 ensure_offline_dns_override() {
     echo "Configuring NetworkManager shared dnsmasq for offline DNS..."
     sudo mkdir -p "$NM_DNSMASQ_SHARED_DIR"
@@ -54,9 +88,19 @@ echo "Disconnecting wlan0 from current networks..."
 sudo nmcli device disconnect wlan0 > /dev/null 2>&1
 
 # Turn on hotspot
-echo "Activating hotspot..."
+echo "Preparing NetworkManager..."
 sudo systemctl restart NetworkManager
-sudo nmcli connection up "$CON_NAME"
+
+if ! wait_for_networkmanager; then
+    echo "NetworkManager did not become ready in time."
+    exit 1
+fi
+
+if ! activate_hotspot_connection; then
+    echo "Failed to activate hotspot after multiple attempts."
+    exit 1
+fi
+
 sudo nmcli connection modify "$CON_NAME" connection.zone trusted
 
 # Activate kernel routing
