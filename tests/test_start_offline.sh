@@ -6,7 +6,7 @@ bash ../scripts/activate_hotspot.sh
 echo "Waiting for NetworkManager to settle..."
 sleep 1
 
-echo "Simulating total offline mode (deleting default internet route)..."
-sudo ip route del default
+echo "Simulating REAL forest offline mode..."
+sudo ip link set eth0 down
 
-echo "Offline mode active"
+echo "Pi is now completely offline and running in hotspot mode"
