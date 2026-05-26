@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import shutil
 import threading
+import time
 
 from pathlib import Path
 from typing import Any
@@ -117,7 +118,8 @@ class DataProvider:
         disable_script = scripts_dir / "deactivate_hotspot.sh"
 
         try:
-            target_script = disable_script if self.is_hotspot_enabled() else enable_script
+            hotspot_enabled_before = self.is_hotspot_enabled()
+            target_script = disable_script if hotspot_enabled_before else enable_script
             if not target_script.exists():
                 print(f"Hotspot script not found: {target_script}")
                 return self.is_hotspot_enabled()
@@ -125,6 +127,10 @@ class DataProvider:
             result = subprocess.run(["bash", str(target_script)], check=False, capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"Hotspot toggle failed ({result.returncode}): {result.stderr.strip()}")
+                return self.is_hotspot_enabled()
+
+            desired_hotspot_state = not hotspot_enabled_before
+            return self._wait_for_hotspot_state(desired_hotspot_state)
         except Exception as e:
             print(f"Error toggling hotspot: {e}")
 
@@ -137,6 +143,10 @@ class DataProvider:
             return False
 
         try:
+            active_wifi_connection = self._get_active_wifi_connection_name()
+            if active_wifi_connection:
+                return active_wifi_connection == connection_name
+
             result = subprocess.run(
                 ["nmcli", "-t", "-f", "DEVICE,STATE,CONNECTION", "dev", "status"],
                 check=False,
@@ -161,6 +171,45 @@ class DataProvider:
         except Exception as e:
             print(f"Error checking hotspot status: {e}")
             return False
+
+    def _wait_for_hotspot_state(self, expected_enabled: bool, timeout_seconds: float = 10.0) -> bool:
+        """Wait briefly until NetworkManager reflects the expected hotspot state."""
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if self.is_hotspot_enabled() == expected_enabled:
+                return expected_enabled
+            time.sleep(0.4)
+        return self.is_hotspot_enabled()
+
+    def _get_active_wifi_connection_name(self) -> str | None:
+        """Return active Wi-Fi connection name from NetworkManager device status."""
+        try:
+            result = subprocess.run(
+                ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device", "status"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=1.5,
+            )
+
+            for line in result.stdout.splitlines():
+                parts = line.split(":", 3)
+                if len(parts) < 4:
+                    continue
+                device, dev_type, state, connection = parts
+                if not device.startswith("wlan"):
+                    continue
+                if dev_type != "wifi":
+                    continue
+                if state != "connected":
+                    continue
+                connection = connection.strip()
+                if connection and connection != "--":
+                    return connection
+        except Exception:
+            return None
+
+        return None
 
     def fetch_gps_state_data(self) -> dict:
         # In a real implementation, this would fetch the current GPS status and coordinates from the backend.
@@ -265,6 +314,12 @@ class DataProvider:
     
     def _get_wifi_ssid(self) -> str:
         """Get currently connected Wi-Fi SSID from NetworkManager."""
+        hotspot_connection_name = self._get_hotspot_connection_name()
+
+        active_wifi_connection = self._get_active_wifi_connection_name()
+        if active_wifi_connection and active_wifi_connection != hotspot_connection_name:
+            return active_wifi_connection
+
         try:
             result = subprocess.run(
                 ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
@@ -277,14 +332,14 @@ class DataProvider:
             for line in result.stdout.splitlines():
                 if line.startswith("yes:"):
                     ssid = line.split(":", 1)[1].strip()
-                    if ssid:
+                    if ssid and ssid != self._get_hotspot_ssid():
                         return ssid
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
         except Exception as e:
             print(f"Error reading SSID: {e}")
-        
-        return "MyBirdNETPiHotspot"
+
+        return "Not connected"
 
     def _get_hotspot_ssid(self) -> str:
         """Get the hotspot SSID from activate_hotspot.sh."""
