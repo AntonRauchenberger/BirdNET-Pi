@@ -38,6 +38,28 @@ install_scripts() {
   ln -sf ${my_dir}/scripts/* /usr/local/bin/
 }
 
+install_hotspot_dns_offline_override() {
+  local nm_dnsmasq_shared_dir="/etc/NetworkManager/dnsmasq-shared.d"
+  local nm_dnsmasq_shared_file="${nm_dnsmasq_shared_dir}/90-birdnet-offline.conf"
+  local hotspot_ip="192.168.4.1"
+  local hotspot_domain="192-168-4-1.sslip.io"
+
+  mkdir -p "${nm_dnsmasq_shared_dir}"
+  cat << EOF > "${nm_dnsmasq_shared_file}"
+# BirdNET-Pi offline authoritative DNS mapping for hotspot clients
+domain-needed
+bogus-priv
+no-resolv
+local=/sslip.io/
+address=/${hotspot_domain}/${hotspot_ip}
+host-record=${hotspot_domain},${hotspot_ip}
+EOF
+
+  if ! grep -q "${hotspot_domain}" /etc/hosts; then
+    echo "${hotspot_ip} ${hotspot_domain}" >> /etc/hosts
+  fi
+}
+
 install_birdnet_analysis() {
   cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_analysis.service
 [Unit]
@@ -564,6 +586,7 @@ install_services() {
 
   install_depends
   install_scripts
+  install_hotspot_dns_offline_override
   install_Caddyfile
   install_avahi_aliases
   install_birdnet_analysis
