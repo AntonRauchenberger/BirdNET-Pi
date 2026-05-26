@@ -260,6 +260,7 @@ class DataProvider:
                 check=False,
                 capture_output=True,
                 text=True,
+                timeout=1.0 
             )
 
             for line in result.stdout.splitlines():
@@ -267,12 +268,12 @@ class DataProvider:
                     ssid = line.split(":", 1)[1].strip()
                     if ssid:
                         return ssid
-        except FileNotFoundError:
+        except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
         except Exception as e:
             print(f"Error reading SSID: {e}")
         
-        return "Not connected"
+        return "MyBirdNETPiHotspot"
 
     def _get_hotspot_ssid(self) -> str:
         """Get the hotspot SSID from activate_hotspot.sh."""
@@ -321,10 +322,9 @@ class DataProvider:
         return "Not connected"
 
     def _get_device_ip(self) -> str:
-        """Get current device IP address used for outbound traffic."""
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                # This does not send traffic; it asks the OS for the default route source IP.
+                sock.settimeout(0.1)
                 sock.connect(("8.8.8.8", 80))
                 ip = sock.getsockname()[0]
                 if ip and ip != "127.0.0.1":
@@ -333,14 +333,13 @@ class DataProvider:
             pass
 
         try:
-            # Fallback for environments without a default route at the moment.
             for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
                 if ip and not ip.startswith("127."):
                     return ip
         except Exception:
             pass
 
-        return "Not connected"
+        return "192.168.4.1" # IP from hotspot
 
     def _get_hotspot_connection_name(self) -> str:
         """Get hotspot connection name from activate_hotspot.sh."""
