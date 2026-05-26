@@ -23,6 +23,25 @@ install_depends() {
     python3-pip python3-venv python3-dev swig build-essential lsof net-tools inotify-tools
 }
 
+install_networkmanager_dnsmasq_backend() {
+  local nm_conf="/etc/NetworkManager/NetworkManager.conf"
+
+  sudo apt update
+  sudo apt install dnsmasq -y
+
+  if ! grep -q '^dns=dnsmasq$' "${nm_conf}"; then
+    if grep -q '^\[main\]$' "${nm_conf}"; then
+      sudo perl -0pi -e 's/^\[main\]$/[main]\ndns=dnsmasq/m' "${nm_conf}"
+    else
+      printf '\n[main]\ndns=dnsmasq\n' | sudo tee -a "${nm_conf}" > /dev/null
+    fi
+  fi
+
+  sudo systemctl stop dnsmasq
+  sudo systemctl disable dnsmasq
+  sudo systemctl restart NetworkManager
+}
+
 set_hostname() {
   if [ "$(hostname)" == "raspberrypi" ];then
     hostnamectl set-hostname birdnetpi
@@ -253,13 +272,13 @@ http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
   handle /device* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /latestdetections* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /sync* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   
   handle {
@@ -308,13 +327,13 @@ http://192.168.4.1 {
   tls internal
 
   handle /device* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /latestdetections* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /sync* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
 
   handle {
@@ -328,13 +347,13 @@ http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
   handle /device* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /latestdetections* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /sync* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   
   handle {
@@ -364,13 +383,13 @@ http://192.168.4.1 {
   tls internal
 
   handle /device* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /latestdetections* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
   handle /sync* {
-    reverse_proxy localhost:2026
+    reverse_proxy 127.0.0.1:2026
   }
 
   handle {
@@ -585,6 +604,7 @@ install_services() {
   install_tmp_mount
 
   install_depends
+  install_networkmanager_dnsmasq_backend
   install_scripts
   install_hotspot_dns_offline_override
   install_Caddyfile

@@ -138,6 +138,17 @@ class DataProvider:
 
         try:
             result = subprocess.run(
+                ["nmcli", "-t", "-f", "DEVICE,STATE,CONNECTION", "dev", "status"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            for line in result.stdout.splitlines():
+                device, state, active_connection = (line.split(":", 2) + ["", "", ""])[:3]
+                if device.startswith("wlan") and state.startswith("connected") and active_connection == connection_name:
+                    return True
+
+            result = subprocess.run(
                 ["nmcli", "-t", "-f", "NAME", "connection", "show", "--active"],
                 check=False,
                 capture_output=True,
