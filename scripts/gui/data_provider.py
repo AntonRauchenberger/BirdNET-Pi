@@ -301,8 +301,12 @@ class DataProvider:
         return 100
 
     def _get_device_location(self) -> dict | None:
-        # TODO implement
-        return {"latitude": 49.0200, "longitude": 12.0900}
+        deviceSettings = get_settings()
+    
+        latitude = deviceSettings.get("latitude", 49.0200)
+        longitude = deviceSettings.get("longitude", 12.0900)
+
+        return {"latitude": latitude, "longitude": longitude}
     
     def _get_storage_usage_percent(self) -> int:
         """Get storage usage percentage of root filesystem"""
