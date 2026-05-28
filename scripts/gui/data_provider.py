@@ -212,12 +212,13 @@ class DataProvider:
         return None
 
     def fetch_gps_state_data(self) -> dict:
-        # In a real implementation, this would fetch the current GPS status and coordinates from the backend.
+        deviceSettings = get_settings()
+        currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         return {
-            "status": "ON",
-            "latitude": "52.5200 N",
-            "longitude": "13.4050 E",
-            "last_update": "2024-06-01 12:34:56",
+            "latitude": deviceSettings.get("latitude", "0.0"),
+            "longitude": deviceSettings.get("longitude", "0.0"),
+            "last_update": deviceSettings.get("last_gps_update", currentTime),
         }
 
     def get_list_total_pages(self, page_size: int) -> int:

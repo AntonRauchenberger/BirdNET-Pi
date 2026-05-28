@@ -166,6 +166,9 @@ def save_settings(settings_path='/etc/birdnet/birdnet.conf', new_settings: dict 
     _settings = None
     _load_settings(settings_path=settings_path, force_reload=True)
 
+def save_single_setting(key, value, settings_path='/etc/birdnet/birdnet.conf'):
+    save_settings(settings_path=settings_path, new_settings={key: value})
+
 
 def get_open_files_in_dir(dir_name):
     result = subprocess.run(['lsof', '-w', '-Fn', '+D', f'{dir_name}'], check=False, capture_output=True)

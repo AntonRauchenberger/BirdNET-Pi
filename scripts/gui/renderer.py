@@ -234,7 +234,8 @@ def render_gps_screen(state_data):
     image = Image.new("RGB", (WIDTH, HEIGHT), "white")
     draw = ImageDraw.Draw(image)
 
-    status = str(state_data.get("status", "OFF"))
+    gps_active = bool(state_data.get("gps_active", False))
+    status = "ON" if gps_active else "OFF"
     latitude = str(state_data.get("latitude", "Unknown Latitude"))
     longitude = str(state_data.get("longitude", "Unknown Longitude"))
     last_update = str(state_data.get("last_update", "Unknown Time"))
