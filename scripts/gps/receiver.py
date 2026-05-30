@@ -1,3 +1,7 @@
+"""
+Handles the interaction with the Neo 6M GPS module.
+"""
+
 import serial
 
 from ..utils.helpers import save_single_setting

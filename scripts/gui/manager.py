@@ -23,12 +23,14 @@ if __package__ is None or __package__ == "":
     from display_driver import create_device
     from data_provider import DataProvider
     from ..gps.receiver import GPSReceiver
+    from ..utils.helpers import get_settings
 else:
     from .input_handler import ButtonInputHandler
     from .renderer import render
     from .display_driver import create_device
     from .data_provider import DataProvider
     from ..gps.receiver import GPSReceiver
+    from ..utils.helpers import get_settings
 
 # Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -71,8 +73,10 @@ class GUIManager:
         self.live_analyzation_active = False
         self.screen_reset_timer = None
 
+        device_settings = get_settings()
+
         self.gps_active = False
-        self.gps_intervall = 900
+        self.gps_intervall = device_settings.get("GPS_INTERVAL", 900)  # Default to 15 minutes if not set
 
         self.states = {
             StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, self.refresh_start_screen_data, self.data_provider.fetch_initial_state_data),
