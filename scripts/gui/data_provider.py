@@ -54,7 +54,8 @@ class DataProvider:
         return datetime.datetime.now() - datetime.timedelta(seconds=uptime_seconds)
 
     def fetch_initial_state_data(self) -> dict:
-        last_detection = self._get_from_db("SELECT com_name, confidence, count(*) as total_detections FROM detections ORDER BY date DESC, time DESC LIMIT 1")
+        last_detection = self._get_from_db("SELECT com_name, confidence, date, time FROM detections ORDER BY date DESC, time DESC LIMIT 1")
+        total_detections = self._get_from_db("SELECT COUNT(*) FROM detections")
 
         boot_time = self._get_boot_time()
         uptime_days = (datetime.datetime.now() - boot_time).days
@@ -66,7 +67,7 @@ class DataProvider:
         return {
             "last_detected_bird": last_detection[0][0] if last_detection else "N/A",
             "last_detected_confidence": confidence_value,
-            "total_detections": last_detection[0][2] if last_detection else "N/A",
+            "total_detections": total_detections[0][0] if total_detections else "N/A",
             "active since_date": boot_time.strftime("%Y-%m-%d"),
             "active since_days": str(uptime_days),
             "system_name": socket.gethostname(),
