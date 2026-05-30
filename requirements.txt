@@ -20,3 +20,4 @@ soundfile
 psutil
 fastapi
 uvicorn
+pyserial

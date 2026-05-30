@@ -2,12 +2,22 @@
 Handles the interaction with the Neo 6M GPS module.
 """
 
+import time
 import serial
 
 from ..utils.helpers import save_single_setting
 
 SERIAL_PORT = '/dev/ttyS0' 
 BAUD_RATE = 9600
+
+# Official u_blox UBX commands for power management
+UBX_DEEP_SLEEP = b'\xb5\x62\x06\x04\x04\x00\x00\x00\x08\x00\x16\x74'
+UBX_STANDBY_ON = b'\xb5\x62\x06\x11\x02\x00\x08\x01\x22\x92'
+UBX_STANDBY_OFF = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
+
+# Official u-blox UBX-CFG-RXM command for continuous mode (sets the receiver permanently back to maximum performance)
+UBX_FORCE_CONTINUOUS = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
+
 
 class GPSReceiver:
 
@@ -84,3 +94,51 @@ class GPSReceiver:
             save_single_setting("latitude", gps_data["latitude"])
             save_single_setting("longitude", gps_data["longitude"])
             save_single_setting("last_gps_update", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    @staticmethod
+    def activate_sleep_mode():
+        try:
+            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
+                ser.write(UBX_DEEP_SLEEP)
+                ser.flush()
+                
+        except Exception as e:
+            print(f"Error activating GPS sleep mode: {e}")
+
+    @staticmethod
+    def deactivate_sleep_mode():
+        try:
+            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
+                # Send 3 dummy bytes to trigger wake-up via edge change on RX line
+                ser.write(b'\xFF\xFF\xFF')
+                ser.flush()
+
+                # Wait for the receiver to boot and stabilize baud rate
+                time.sleep(0.8)
+
+                # Set receiver permanently back to maximum performance
+                ser.write(UBX_FORCE_CONTINUOUS)
+                ser.flush()
+
+        except Exception as e:
+            print(f"Error deactivating GPS sleep mode: {e}")
+
+    @staticmethod
+    def activate_standby_mode():
+        try:
+            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
+                ser.write(UBX_STANDBY_ON)
+                ser.flush()
+
+        except Exception as e:
+            print(f"Error activating GPS standby mode: {e}")
+
+    @staticmethod
+    def deactivate_standby_mode():
+        try:
+            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
+                ser.write(UBX_STANDBY_OFF)
+                ser.flush()
+
+        except Exception as e:
+            print(f"Error deactivating GPS standby mode: {e}")

@@ -1,0 +1,329 @@
+[NEO-6M]: $GPRMC,175157.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175158.00,V,,,,,,,300526,,,N*70ff/exit):
+
+[NEO-6M]: $GPRMC,175159.00,V,,,,,,,300526,,,N*71ff/exit):
+
+[NEO-6M]: $GPRMC,175200.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+[NEO-6M]: $GPRMC,175201.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175202.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175203.00,V,,,,,,,300526,,,N*7Dff/exit):
+
+[NEO-6M]: $GPRMC,175204.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175205.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175206.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175207.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175208.00,V,,,,,,,300526,,,N*76ff/exit):
+
+[NEO-6M]: $GPRMC,175209.00,V,,,,,,,300526,,,N*77ff/exit):
+
+[NEO-6M]: $GPRMC,175210.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175211.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+[NEO-6M]: $GPRMC,175212.00,V,,,,,,,300526,,,N*7Dff/exit):
+
+[NEO-6M]: $GPRMC,175213.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175214.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175215.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175216.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175217.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175218.00,V,,,,,,,300526,,,N*77ff/exit):
+
+[NEO-6M]: $GPRMC,175219.00,V,,,,,,,300526,,,N*76ff/exit):
+
+[NEO-6M]: $GPRMC,175220.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175221.00,V,,,,,,,300526,,,N*7Dff/exit): standby_on
+
+[NEO-6M]: $GPRMC,175222.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+Enter command (sleep/wake/standby_on/standby_off/exit): standby_on
+
+[NEO-6M]: $GPRMC,175223.00,V,,,,,,,300526,,,N*7F
+
+[NEO-6M]: $GPRMC,175224.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175225.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175226.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175227.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+Enter command (sleep/wake/standby_on/standby_off/exit): standby_on
+
+
+
+--> Sending command: STANDBY / POWER SAVE MODE ON...
+
+Note: The module is entering cyclic power save mode.
+
+
+
+[NEO-6M]: $GPRMC,175229.00,V,,,,,,,300526,,,N*75
+
+[NEO-6M]: $GPRMC,175230.00,V,,,,,,,300526,,,N*7Dff/exit):
+
+[NEO-6M]: $GPRMC,175231.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175232.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175233.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+[NEO-6M]: $GPRMC,175234.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175235.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175236.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175237.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175238.00,V,,,,,,,300526,,,N*75ff/exit):
+
+[NEO-6M]: $GPRMC,175239.00,V,,,,,,,300526,,,N*74ff/exit):
+
+[NEO-6M]: $GPRMC,175240.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175241.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175242.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175243.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+Enter command (sleep/wake/standby_on/standby_off/exit): standby_off
+
+
+
+--> Sending command: STANDBY / POWER SAVE MODE OFF...
+
+Note: The module is back to continuous high-performance mode.
+
+
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,,V,,,,,,,,,,N*53by_on/standby_off/exit):
+
+[NEO-6M]: $GPRMC,175411.52,V,,,,,,,,,,N*7Dndby_off/exit):
+
+[NEO-6M]: $GPRMC,175412.00,V,,,,,,,,,,N*79ndby_off/exit):
+
+[NEO-6M]: $GPRMC,175413.00,V,,,,,,,,,,N*78ndby_off/exit):
+
+[NEO-6M]: $GPRMC,175414.00,V,,,,,,,,,,N*7Fndby_off/exit):
+
+[NEO-6M]: $GPRMC,175415.00,V,,,,,,,,,,N*7Endby_off/exit):
+
+[NEO-6M]: $GPRMC,175416.00,V,,,,,,,,,,N*7Dndby_off/exit):
+
+[NEO-6M]: $GPRMC,175414.00,V,,,,,,,300526,,,N*7Dff/exit):
+
+[NEO-6M]: $GPRMC,175415.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175416.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175417.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+[NEO-6M]: $GPRMC,175418.00,V,,,,,,,300526,,,N*71ff/exit):
+
+[NEO-6M]: $GPRMC,175419.00,V,,,,,,,300526,,,N*70ff/exit):
+
+[NEO-6M]: $GPRMC,175420.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175421.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175422.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175423.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175424.00,V,,,,,,,300526,,,N*7Eff/exit):
+
+[NEO-6M]: $GPRMC,175425.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175426.00,V,,,,,,,300526,,,N*7Cff/exit):
+
+[NEO-6M]: $GPRMC,175427.00,V,,,,,,,300526,,,N*7Dff/exit):
+
+[NEO-6M]: $GPRMC,175428.00,V,,,,,,,300526,,,N*72ff/exit):
+
+[NEO-6M]: $GPRMC,175429.00,V,,,,,,,300526,,,N*73ff/exit):
+
+[NEO-6M]: $GPRMC,175430.00,V,,,,,,,300526,,,N*7Bff/exit):
+
+[NEO-6M]: $GPRMC,175431.00,V,,,,,,,300526,,,N*7Aff/exit):
+
+[NEO-6M]: $GPRMC,175432.00,V,,,,,,,300526,,,N*79ff/exit):
+
+[NEO-6M]: $GPRMC,175433.00,V,,,,,,,300526,,,N*78ff/exit):
+
+[NEO-6M]: $GPRMC,175434.00,V,,,,,,,300526,,,N*7Fff/exit):
+
+[NEO-6M]: $GPRMC,175435.00,V,,,,,,,300526,,,N*7Eff/exit):

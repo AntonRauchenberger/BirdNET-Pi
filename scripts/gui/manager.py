@@ -188,6 +188,11 @@ class GUIManager:
             time.sleep(self.gps_intervall)
             GPSReceiver.handle_gps_work(self.gps_active)
 
+            device_settings = get_settings()
+            gpsIntervallSetting = device_settings.get("GPS_INTERVAL", self.gps_intervall)
+            if gpsIntervallSetting != self.gps_intervall:
+                self.gps_intervall = gpsIntervallSetting
+
     def switch_gps_state(self) -> None:
         self.gps_active = not self.gps_active
         GPSReceiver.handle_gps_work(self.gps_active)
