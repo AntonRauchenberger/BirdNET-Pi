@@ -293,6 +293,11 @@ IDFILE=$HOME/BirdNET-Pi/IdentifiedSoFar.txt
 LogLevel_BirdnetRecordingService="error"
 LogLevel_LiveAudioStreamService="error"
 LogLevel_SpectrogramViewerService="error"
+
+## GPS settings
+
+GPS_INTERVAL=1800
+LAST_GPS_UPDATE=0
 EOF
 }
 

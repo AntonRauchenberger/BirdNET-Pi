@@ -54,7 +54,8 @@ class DataProvider:
         return datetime.datetime.now() - datetime.timedelta(seconds=uptime_seconds)
 
     def fetch_initial_state_data(self) -> dict:
-        last_detection = self._get_from_db("SELECT com_name, confidence, count(*) as total_detections FROM detections ORDER BY date DESC, time DESC LIMIT 1")
+        last_detection = self._get_from_db("SELECT com_name, confidence, date, time FROM detections ORDER BY date DESC, time DESC LIMIT 1")
+        total_detections = self._get_from_db("SELECT COUNT(*) FROM detections")
 
         boot_time = self._get_boot_time()
         uptime_days = (datetime.datetime.now() - boot_time).days
@@ -66,7 +67,7 @@ class DataProvider:
         return {
             "last_detected_bird": last_detection[0][0] if last_detection else "N/A",
             "last_detected_confidence": confidence_value,
-            "total_detections": last_detection[0][2] if last_detection else "N/A",
+            "total_detections": total_detections[0][0] if total_detections else "N/A",
             "active since_date": boot_time.strftime("%Y-%m-%d"),
             "active since_days": str(uptime_days),
             "system_name": socket.gethostname(),
@@ -212,12 +213,12 @@ class DataProvider:
         return None
 
     def fetch_gps_state_data(self) -> dict:
-        # In a real implementation, this would fetch the current GPS status and coordinates from the backend.
+        deviceSettings = get_settings()
+
         return {
-            "status": "ON",
-            "latitude": "52.5200 N",
-            "longitude": "13.4050 E",
-            "last_update": "2024-06-01 12:34:56",
+            "latitude": deviceSettings.get("LATITUDE", "0.0"),
+            "longitude": deviceSettings.get("LONGITUDE", "0.0"),
+            "last_update": deviceSettings.get("LAST_GPS_UPDATE", "Never"),
         }
 
     def get_list_total_pages(self, page_size: int) -> int:
@@ -300,8 +301,12 @@ class DataProvider:
         return 100
 
     def _get_device_location(self) -> dict | None:
-        # TODO implement
-        return {"latitude": 49.0200, "longitude": 12.0900}
+        deviceSettings = get_settings()
+    
+        latitude = deviceSettings.get("latitude", 49.0200)
+        longitude = deviceSettings.get("longitude", 12.0900)
+
+        return {"latitude": latitude, "longitude": longitude}
     
     def _get_storage_usage_percent(self) -> int:
         """Get storage usage percentage of root filesystem"""

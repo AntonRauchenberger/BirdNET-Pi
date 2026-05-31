@@ -1,5 +1,5 @@
 import { Setting } from "../../lib/types";
-import { Earth, Globe, CalendarClock, Bell, Router, Wifi, RefreshCw, KeyRound, Database, DatabaseZap, Package, Tag, AudioWaveform, ALargeSmall, MapPin, HatGlasses, DatabaseBackup, ShieldAlert, Bird, Gpu, Tv, Videotape, BookHeadphones, Link, Blend, Gauge, Ear, Wrench, Activity, WifiSync, Diff, ScrollText } from "lucide-react";
+import { Earth, Globe, Bell, Router, Wifi, RefreshCw, KeyRound, Database, DatabaseZap, Package, Tag, AudioWaveform, ALargeSmall, MapPin, HatGlasses, DatabaseBackup, ShieldAlert, Bird, Gpu, Tv, Videotape, BookHeadphones, Link, Blend, Gauge, Ear, Wrench, Activity, WifiSync, Diff, ScrollText, LocateFixed } from "lucide-react";
 
 export const DEFAULT_SETTINGS: Setting[] = [
     {
@@ -108,6 +108,20 @@ export const DEFAULT_SETTINGS: Setting[] = [
         type: "string",
         icon: <ALargeSmall size={18} />,
         value: "birdnet",
+        deviceInternal: true,
+    },
+    {
+        id: "GPS_INTERVAL",
+        name: "GPS Interval",
+        description: "Interval for GPS updates in seconds",
+        defaultValue: 900,
+        tab: "LOCATION",
+        topTab: "BASIC",
+        type: "number",
+        icon: <LocateFixed size={18} />,
+        value: 900,
+        min: 60,
+        max: 3600,
         deviceInternal: true,
     },
     {
