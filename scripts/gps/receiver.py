@@ -81,12 +81,14 @@ class GPSReceiver:
                                 lon = GPSReceiver._nmea_to_decimal(raw_lon, lon_dir)
                                 
                                 if lat and lon:
+                                    print(f"GPS fix acquired: Latitude={lat}, Longitude={lon}")
                                     return {"latitude": lat, "longitude": lon, "status": "success"}
                             elif status == 'V':
                                 # Keep track if we only see 'V' sentences, which means the GPS is active but has no fix yet
                                 has_no_fix_sentence = True
                                 
                 if has_no_fix_sentence:
+                    print("GPS is active but has no fix yet.")
                     return {"latitude": None, "longitude": None, "status": "no_fix"}
                     
                 return {"latitude": None, "longitude": None, "status": "waiting"}
