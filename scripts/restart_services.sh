@@ -12,6 +12,7 @@ services=(chart_viewer.service
   icecast2.service
   birdnet_recording.service
   birdnet_analysis.service
+  birdnet_gps.service
   birdnet_display_gui.service
   birdnet_gui_api.service
   birdnet_log.service

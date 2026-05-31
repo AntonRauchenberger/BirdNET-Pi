@@ -216,10 +216,15 @@ class DataProvider:
         deviceSettings = get_settings()
 
         return {
+            "gps_active": self._is_setting_enabled(deviceSettings.get("GPS_UPDATES_ENABLED", "0")),
             "latitude": deviceSettings.get("LATITUDE", "0.0"),
             "longitude": deviceSettings.get("LONGITUDE", "0.0"),
             "last_update": deviceSettings.get("LAST_GPS_UPDATE", "Never"),
         }
+
+    @staticmethod
+    def _is_setting_enabled(value: str) -> bool:
+        return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
     def get_list_total_pages(self, page_size: int) -> int:
         return max(1, (len(self.fetch_list_state_data()["bird_list"]) + page_size - 1) // page_size)

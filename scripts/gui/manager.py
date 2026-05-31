@@ -22,15 +22,13 @@ if __package__ is None or __package__ == "":
     from renderer import render
     from display_driver import create_device
     from data_provider import DataProvider
-    from ..gps.receiver import GPSReceiver
-    from ..utils.helpers import get_settings
+    from ..utils.helpers import get_settings, save_single_setting
 else:
     from .input_handler import ButtonInputHandler
     from .renderer import render
     from .display_driver import create_device
     from .data_provider import DataProvider
-    from ..gps.receiver import GPSReceiver
-    from ..utils.helpers import get_settings
+    from ..utils.helpers import get_settings, save_single_setting
 
 # Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -72,11 +70,7 @@ class GUIManager:
 
         self.live_analyzation_active = False
         self.screen_reset_timer = None
-
-        device_settings = get_settings()
-
-        self.gps_active = False
-        self.gps_intervall = self._get_gps_interval_seconds(device_settings)
+        self.gps_active = self._setting_to_bool(get_settings().get("GPS_UPDATES_ENABLED", "0"))
 
         self.states = {
             StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, self.refresh_start_screen_data, self.data_provider.fetch_initial_state_data),
@@ -89,15 +83,13 @@ class GUIManager:
             ),
             StateNames.LIST: GUIState(StateNames.LIST, StateNames.SYNC, self.next_list_page, lambda: self.data_provider.fetch_list_state_data(self.list_page)),
             StateNames.SYNC: GUIState(StateNames.SYNC, StateNames.GPS, self.start_sync, self.data_provider.fetch_sync_state_data),
-            StateNames.GPS: GUIState(StateNames.GPS, StateNames.START, self.switch_gps_state, lambda: {**self.data_provider.fetch_gps_state_data(), "gps_active": self.gps_active}),
+            StateNames.GPS: GUIState(StateNames.GPS, StateNames.START, self.switch_gps_state, self.data_provider.fetch_gps_state_data),
         }
         self.current_state = self.states[start_state]
         self.last_detected_bird = None
         self.button_input_handler = None
 
         self.start()
-
-        self.start_gps_loop()
 
         try:
             self.button_input_handler = ButtonInputHandler(self)
@@ -148,6 +140,10 @@ class GUIManager:
     def start_sync(self) -> None:
         self.data_provider.toggle_hotspot()
 
+    @staticmethod
+    def _setting_to_bool(value) -> bool:
+        return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
     def render_live_analyze_result(self, detections) -> None:
         if not self.live_analyzation_active:
             return
@@ -177,41 +173,11 @@ class GUIManager:
         self.screen_reset_timer.daemon = True
         self.screen_reset_timer.start()
 
-    def start_gps_loop(self):
-        gps_thread = threading.Thread(target=self.gps_worker_loop, daemon=True)
-        gps_thread.start()
-
-    @staticmethod
-    def _get_gps_interval_seconds(device_settings) -> int:
-        try:
-            interval_seconds = int(device_settings.get("GPS_INTERVAL", 1800))
-        except (TypeError, ValueError):
-            interval_seconds = 1800
-
-        return max(1, interval_seconds)
-
-    def gps_worker_loop(self):
-        GPSReceiver.handle_gps_work(self.gps_active)
-
-        while True:
-            time.sleep(self.gps_intervall)
-            GPSReceiver.handle_gps_work(self.gps_active)
-
-            device_settings = get_settings()
-            gpsIntervallSetting = self._get_gps_interval_seconds(device_settings)
-            if gpsIntervallSetting != self.gps_intervall:
-                self.gps_intervall = gpsIntervallSetting
-
     def switch_gps_state(self) -> None:
         self.gps_active = not self.gps_active
-
-        if self.gps_active:
-            GPSReceiver.handle_gps_work(self.gps_active)
-
-            self.current_state.reset_state_data()
-            self.render_current_state()
-        else:
-            GPSReceiver.activate_sleep_mode()
+        save_single_setting("GPS_UPDATES_ENABLED", "1" if self.gps_active else "0")
+        self.current_state.reset_state_data()
+        self.render_current_state()
 
 
 def main() -> None:

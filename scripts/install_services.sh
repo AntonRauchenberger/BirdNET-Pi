@@ -100,7 +100,8 @@ install_display_gui_service() {
   cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_display_gui.service
 [Unit]
 Description=BirdNET Display GUI
-After=network.target
+After=network.target birdnet_gps.service
+Wants=birdnet_gps.service
 
 [Service]
 Restart=always
@@ -129,6 +130,40 @@ EOF
 
   sudo systemctl daemon-reload
   sudo systemctl enable birdnet_display_gui.service
+}
+
+install_gps_service() {
+  cat << EOF > $HOME/BirdNET-Pi/templates/birdnet_gps.service
+[Unit]
+Description=BirdNET GPS Service
+After=network.target
+
+[Service]
+Restart=always
+Type=simple
+RestartSec=2
+
+User=${USER}
+WorkingDirectory=$HOME/BirdNET-Pi
+
+Environment="PYTHONUNBUFFERED=1"
+Environment="TMPDIR=/tmp"
+Environment="PYTHONPATH=/usr/lib/python3/dist-packages"
+
+ExecStart=$PYTHON_VIRTUAL_ENV /usr/local/bin/birdnet_gps_service.py
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=birdnet_gps_service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  sudo ln -sf $HOME/BirdNET-Pi/templates/birdnet_gps.service /etc/systemd/system/birdnet_gps.service
+
+  sudo systemctl daemon-reload
+  sudo systemctl enable birdnet_gps.service
 }
 
 install_gui_api_service() {
@@ -610,6 +645,7 @@ install_services() {
   install_Caddyfile
   install_avahi_aliases
   install_birdnet_analysis
+  install_gps_service
   install_display_gui_service
   install_gui_api_service
   install_birdnet_stats_service
