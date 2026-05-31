@@ -156,7 +156,8 @@ def run_analysis(file):
     exclude_list = loadCustomSpeciesList(os.path.expanduser("~/BirdNET-Pi/exclude_species_list.txt"))
     whitelist_list = loadCustomSpeciesList(os.path.expanduser("~/BirdNET-Pi/whitelist_species_list.txt"))
 
-    conf = get_settings()
+    # Force reload to see latest longitude and latitude settings in analysis results
+    conf = get_settings(force_reload=True)
 
     if BENCHMARKING_SERVICE:
         BENCHMARKING_SERVICE.set_phase("model loading")

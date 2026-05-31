@@ -213,7 +213,7 @@ class DataProvider:
         return None
 
     def fetch_gps_state_data(self) -> dict:
-        deviceSettings = get_settings()
+        deviceSettings = get_settings(force_reload=True)
 
         return {
             "gps_active": self._is_setting_enabled(deviceSettings.get("GPS_UPDATES_ENABLED", "0")),
