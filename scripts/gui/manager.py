@@ -14,21 +14,24 @@ from enum import Enum
 
 # Allow direct execution via "python3 manager.py" for testing and debugging
 if __package__ is None or __package__ == "":
-    gui_dir = Path(__file__).resolve().parent
-    if str(gui_dir) not in sys.path:
-        sys.path.insert(0, str(gui_dir))
+    scripts_dir = Path(__file__).resolve().parents[1]
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
 
-    from input_handler import ButtonInputHandler
-    from renderer import render
-    from display_driver import create_device
-    from data_provider import DataProvider
-    from ..utils.helpers import get_settings, save_single_setting
+    from gui.input_handler import ButtonInputHandler
+    from gui.renderer import render
+    from gui.display_driver import create_device
+    from gui.data_provider import DataProvider
+    from utils.helpers import get_settings, save_single_setting
 else:
     from .input_handler import ButtonInputHandler
     from .renderer import render
     from .display_driver import create_device
     from .data_provider import DataProvider
-    from ..utils.helpers import get_settings, save_single_setting
+    try:
+        from ..utils.helpers import get_settings, save_single_setting
+    except ImportError:
+        from utils.helpers import get_settings, save_single_setting
 
 # Derive DB_PATH locally to avoid a circular import with scripts.utils.helpers
 _REPO_ROOT = Path(__file__).resolve().parents[2]
