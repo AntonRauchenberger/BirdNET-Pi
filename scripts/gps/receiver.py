@@ -6,7 +6,10 @@ import datetime
 import time
 import serial
 
-from ..utils.helpers import save_single_setting
+try:
+    from ..utils.helpers import save_single_setting
+except ImportError:
+    from utils.helpers import save_single_setting
 
 SERIAL_PORT = '/dev/ttyS0' 
 BAUD_RATE = 9600

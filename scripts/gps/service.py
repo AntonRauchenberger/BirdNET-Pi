@@ -4,9 +4,12 @@ import time
 
 try:
     from .receiver import GPSReceiver
-    from ..utils.helpers import get_settings
 except ImportError:
     from gps.receiver import GPSReceiver
+
+try:
+    from ..utils.helpers import get_settings
+except ImportError:
     from utils.helpers import get_settings
 
 
