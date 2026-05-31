@@ -76,7 +76,7 @@ class GUIManager:
         device_settings = get_settings()
 
         self.gps_active = False
-        self.gps_intervall = device_settings.get("GPS_INTERVAL", 900)  # Default to 15 minutes if not set
+        self.gps_intervall = self._get_gps_interval_seconds(device_settings)
 
         self.states = {
             StateNames.START: GUIState(StateNames.START, StateNames.LIVE_ANALYZE, self.refresh_start_screen_data, self.data_provider.fetch_initial_state_data),
@@ -181,6 +181,15 @@ class GUIManager:
         gps_thread = threading.Thread(target=self.gps_worker_loop, daemon=True)
         gps_thread.start()
 
+    @staticmethod
+    def _get_gps_interval_seconds(device_settings) -> int:
+        try:
+            interval_seconds = int(device_settings.get("GPS_INTERVAL", 1800))
+        except (TypeError, ValueError):
+            interval_seconds = 1800
+
+        return max(1, interval_seconds)
+
     def gps_worker_loop(self):
         GPSReceiver.handle_gps_work(self.gps_active)
 
@@ -189,13 +198,20 @@ class GUIManager:
             GPSReceiver.handle_gps_work(self.gps_active)
 
             device_settings = get_settings()
-            gpsIntervallSetting = device_settings.get("GPS_INTERVAL", self.gps_intervall)
+            gpsIntervallSetting = self._get_gps_interval_seconds(device_settings)
             if gpsIntervallSetting != self.gps_intervall:
                 self.gps_intervall = gpsIntervallSetting
 
     def switch_gps_state(self) -> None:
         self.gps_active = not self.gps_active
-        GPSReceiver.handle_gps_work(self.gps_active)
+
+        if self.gps_active:
+            GPSReceiver.handle_gps_work(self.gps_active)
+
+            self.current_state.reset_state_data()
+            self.render_current_state()
+        else:
+            GPSReceiver.activate_sleep_mode()
 
 
 def main() -> None:

@@ -214,12 +214,11 @@ class DataProvider:
 
     def fetch_gps_state_data(self) -> dict:
         deviceSettings = get_settings()
-        currentTime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         return {
-            "latitude": deviceSettings.get("latitude", "0.0"),
-            "longitude": deviceSettings.get("longitude", "0.0"),
-            "last_update": deviceSettings.get("last_gps_update", currentTime),
+            "latitude": deviceSettings.get("LATITUDE", "0.0"),
+            "longitude": deviceSettings.get("LONGITUDE", "0.0"),
+            "last_update": deviceSettings.get("LAST_GPS_UPDATE", "Never"),
         }
 
     def get_list_total_pages(self, page_size: int) -> int:

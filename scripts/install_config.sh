@@ -296,7 +296,8 @@ LogLevel_SpectrogramViewerService="error"
 
 ## GPS settings
 
-GPS_INTERVAL=900
+GPS_INTERVAL=1800
+LAST_GPS_UPDATE=0
 EOF
 }
 

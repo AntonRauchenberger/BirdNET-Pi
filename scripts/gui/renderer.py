@@ -235,7 +235,7 @@ def render_gps_screen(state_data):
     draw = ImageDraw.Draw(image)
 
     gps_active = bool(state_data.get("gps_active", False))
-    status = "ON" if gps_active else "OFF"
+    update_status = "ON" if gps_active else "OFF"
     latitude = str(state_data.get("latitude", "Unknown Latitude"))
     longitude = str(state_data.get("longitude", "Unknown Longitude"))
     last_update = str(state_data.get("last_update", "Unknown Time"))
@@ -243,7 +243,7 @@ def render_gps_screen(state_data):
     components = [
         *_get_header_components("GPS"),
         *_get_footer_components(footer_text="OK: GPS ON/OFF", current_page=5),
-        Text(8, 29, f"Status: {status}", font_size=16, color="black"),
+        Text(8, 29, f"Updates: {update_status}", font_size=16, color="black"),
         Text(8, 44, f"Latitude: {latitude}", font_size=16, color="black"),
         Text(8, 59, f"Longitude: {longitude}", font_size=16, color="black"),
         Text(8, 74, f"Updated: {last_update}", font_size=16, color="black"),
