@@ -7,8 +7,6 @@ BAUD_RATE = 9600
 
 # Official u_blox UBX commands for power management
 UBX_DEEP_SLEEP = b'\xb5\x62\x06\x04\x04\x00\x00\x00\x08\x00\x16\x74'
-UBX_STANDBY_ON = b'\xb5\x62\x06\x11\x02\x00\x08\x01\x22\x92'
-UBX_STANDBY_OFF = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
 
 # Global flag to temporarily pause printing of NMEA data
 print_nmea = True
@@ -76,18 +74,6 @@ def main():
             ser.write(UBX_FORCE_CONTINUOUS)
             ser.flush()
             print("Note: NMEA data lines should NOW be coming in continuously every second.\n")
-
-        elif cmd == "standby_on":
-            print("\n--> Sending command: STANDBY / POWER SAVE MODE ON...")
-            ser.write(UBX_STANDBY_ON)
-            ser.flush()
-            print("Note: The module is entering cyclic power save mode.\n")
-
-        elif cmd == "standby_off":
-            print("\n--> Sending command: STANDBY / POWER SAVE MODE OFF...")
-            ser.write(UBX_STANDBY_OFF)
-            ser.flush()
-            print("Note: The module is back to continuous high-performance mode.\n")
 
         elif cmd == "exit":
             break
