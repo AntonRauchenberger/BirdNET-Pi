@@ -19,10 +19,8 @@ GPS_SIGNAL_SETTLE_DELAY = 20
 GPS_UPDATE_ATTEMPTS = 3
 GPS_RETRY_DELAY = 30
 
-# Official u_blox UBX commands for power management
+# Official u_blox UBX command
 UBX_DEEP_SLEEP = b'\xb5\x62\x06\x04\x04\x00\x00\x00\x08\x00\x16\x74'
-UBX_STANDBY_ON = b'\xb5\x62\x06\x11\x02\x00\x08\x01\x22\x92'
-UBX_STANDBY_OFF = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
 
 # Official u-blox UBX-CFG-RXM command for continuous mode (sets the receiver permanently back to maximum performance)
 UBX_FORCE_CONTINUOUS = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
@@ -151,23 +149,3 @@ class GPSReceiver:
 
         except Exception as e:
             print(f"Error deactivating GPS sleep mode: {e}")
-
-    @staticmethod
-    def activate_standby_mode():
-        try:
-            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
-                ser.write(UBX_STANDBY_ON)
-                ser.flush()
-
-        except Exception as e:
-            print(f"Error activating GPS standby mode: {e}")
-
-    @staticmethod
-    def deactivate_standby_mode():
-        try:
-            with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
-                ser.write(UBX_STANDBY_OFF)
-                ser.flush()
-
-        except Exception as e:
-            print(f"Error deactivating GPS standby mode: {e}")
