@@ -43,7 +43,7 @@ class GPSReceiver:
             decimal = degrees + (minutes / 60.0)
             if direction in ['S', 'W']:
                 decimal = -decimal
-            return f"{decimal:.6f}"
+            return f"{decimal:.4f}"
         except (TypeError, ValueError):
             return None
 
