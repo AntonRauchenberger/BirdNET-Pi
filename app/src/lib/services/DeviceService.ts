@@ -1,6 +1,7 @@
 import { BenchmarkReport, DeviceDetails } from "../types";
 import ApiService from "./ApiService";
 import DatabaseService from "./DatabaseService";
+import SettingsService from "./SettingsService";
 
 export default class DeviceService {
     private static toNumberOrUndefined(value: unknown): number | undefined {
@@ -92,12 +93,6 @@ export default class DeviceService {
         return normalizedReports;
     }
 
-    static async startBenchmarking(): Promise<void> {
-        await ApiService.callApi("/device/benchmarking/start", {
-            method: "POST",
-        });
-    }
-
     static async downloadBenchmarkReport(report: BenchmarkReport): Promise<Blob | null> {
         try {
             const response = await ApiService.getAudioFile("/device/benchmarking/download", {
@@ -115,5 +110,21 @@ export default class DeviceService {
             console.error("Error downloading report:", error);
             return null;
         }
+    }
+
+    static async startBenchmarking(): Promise<void> {
+        const scenarioSetting = await SettingsService.getSetting("scenarioName");
+        const scenarioName =
+            typeof scenarioSetting?.value === "string" && scenarioSetting.value.trim()
+                ? scenarioSetting.value.trim()
+                : "App Test";
+
+        await ApiService.callApi(
+            "/device/benchmarking/start",
+            {
+                scenario: scenarioName,
+            },
+            "POST",
+        );
     }
 }

@@ -1,9 +1,10 @@
-import { Play } from "lucide-react";
+import { Play, CircleX, Check } from "lucide-react";
 import { DeviceDetails } from "../../lib/types";
 
 const TopCard = (props: {
     deviceInfo: DeviceDetails | null;
     startBenchmarking: () => void;
+    currentState: "idle" | "error" | "success";
 }) => {
 
     const styles = {
@@ -66,14 +67,34 @@ const TopCard = (props: {
 
     return (
         <div style={styles.topCard}>
-            <div style={styles.startButton} onClick={props.startBenchmarking}>
-                <div style={{ transform: "translateY(3px)" }}>
-                    <Play size={20} aria-hidden="true" />
+            {props.currentState === "idle" ? (
+                <div style={styles.startButton} onClick={props.startBenchmarking}>
+                    <div style={{ transform: "translateY(3px)" }}>
+                        <Play size={20} aria-hidden="true" />
+                    </div>
+                    <div style={styles.startButtonText}>
+                        Start Benchmark
+                    </div>
                 </div>
-                <div style={styles.startButtonText}>
-                    Start Benchmark
+            ) : props.currentState === "error" ? (
+                <div style={{ ...styles.startButton, background: "red" }}>
+                    <div style={{ transform: "translateY(3px)" }}>
+                        <CircleX size={20} aria-hidden="true" />
+                    </div>
+                    <div style={styles.startButtonText}>
+                        Error starting benchmark
+                    </div>
                 </div>
-            </div>
+            ) : props.currentState === "success" ? (
+                <div style={{ ...styles.startButton, background: "green" }}>
+                    <div style={{ transform: "translateY(3px)" }}>
+                        <Check size={20} aria-hidden="true" />
+                    </div>
+                    <div style={styles.startButtonText}>
+                        Started successfully
+                    </div>
+                </div>
+            ) : null}
 
             <div style={styles.subCardsWrapper}>
                 <div style={styles.subCard}>

@@ -89,8 +89,10 @@ class APIManager:
             return reportFile
         
         @self.app.post("/device/benchmarking/start", response_model=None)
-        async def start_device_benchmarking() -> None:
-            self.data_provider.start_device_benchmarking()
+        async def start_device_benchmarking(scenario: str) -> Response:
+            started = self.data_provider.start_device_benchmarking(scenario)
+            if not started:
+                return Response(status_code=500)
             return Response(status_code=202)
 
         @self.app.get("/latestdetections")

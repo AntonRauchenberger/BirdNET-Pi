@@ -13,6 +13,7 @@ const Bench = () => {
     const [reports, setReports] = useState<BenchmarkReport[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails | null>(null);
+    const [currentState, setCurrentState] = useState<"idle" | "error" | "success">("idle");
 
     const startBenchmarking = async () => {
         if (!deviceInfo || deviceInfo?.name === "Not connected") {
@@ -21,12 +22,21 @@ const Bench = () => {
 
         setIsLoading(true);
 
-        await DeviceService.startBenchmarking();
+        try {
+            await DeviceService.startBenchmarking();
+            setCurrentState("success");
 
-        const fetchedReports = await DeviceService.getBenchmarkReports();
-        setReports(fetchedReports);
-
-        setIsLoading(false);
+            const fetchedReports = await DeviceService.getBenchmarkReports();
+            setReports(fetchedReports);
+        } catch (error) {
+            console.warn("Failed to start benchmarking:", error);
+            setCurrentState("error");
+        } finally {
+            setIsLoading(false);
+            setTimeout(() => {
+                setCurrentState("idle");
+            }, 2000);
+        }
     }
 
     const downloadReport = async (report: BenchmarkReport) => {
@@ -122,7 +132,7 @@ const Bench = () => {
             />
 
             <div style={{ marginTop: "20px" }}>
-                <TopCard deviceInfo={deviceInfo} startBenchmarking={startBenchmarking} />
+                <TopCard deviceInfo={deviceInfo} startBenchmarking={startBenchmarking} currentState={currentState} />
             </div>
 
             <div style={{ marginTop: "20px" }}>

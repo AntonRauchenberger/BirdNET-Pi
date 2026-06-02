@@ -12,4 +12,4 @@ class BenchmarkTimerNames(Enum):
     AUDIO_PROCESSING = "audio processing"
     POST_PROCESSING_DETECTIONS = "post processing detections"
 
-BENCHMARKING_SCENARIO = "App Test"
+BENCHMARKING_SCENARIO = "App start"

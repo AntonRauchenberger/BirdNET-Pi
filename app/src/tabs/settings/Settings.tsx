@@ -24,6 +24,16 @@ export const DEFAULT_SETTINGS: Setting[] = [
         value: false,
     },
     {
+        id: "scenarioName",
+        name: "Scenario Name",
+        description: "Keep organized by assigning a scenario name to the benchmarking tests.",
+        defaultValue: "App start",
+        tab: "BENCHMARKING",
+        type: "string",
+        icon: <ALargeSmall size={18} />,
+        value: "App start",
+    },
+    {
         id: "mapTilerApiKey",
         name: "MapTiler API Key",
         description: "API key for MapTiler to unlock improved map features",

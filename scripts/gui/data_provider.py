@@ -589,6 +589,40 @@ class DataProvider:
             filename=resolved_requested_file.name,
         )
     
-    def start_device_benchmarking(self) -> FileResponse | None:
-        # TODO implement
-        pass
+    def start_device_benchmarking(self, scenario: str) -> bool:
+        scripts_dir = Path(__file__).resolve().parent.parent
+        project_root = scripts_dir.parent
+        benchmark_script = scripts_dir / "benchmarking.sh"
+
+        scenario_name = str(scenario or "").strip()
+        if not scenario_name:
+            return False
+
+        if not benchmark_script.exists() or not benchmark_script.is_file():
+            return False
+
+        log_dir = project_root / "benchmarking_results" / scenario_name
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+        log_file = log_dir / f"{timestamp}__benchmarking_runner.log"
+
+        print(benchmark_script, scenario_name, log_file)
+
+        try:
+            log_handle = open(log_file, "w")
+            log_handle.write(f"[{datetime.datetime.now()}] Starting benchmark: scenario={scenario_name}\n")
+            log_handle.write(f"[{datetime.datetime.now()}] Command: sudo bash {benchmark_script} {scenario_name} 10 true\n")
+            log_handle.flush()
+
+            subprocess.Popen(
+                ["sudo", "bash", str(benchmark_script), scenario_name, "10", "true"],
+                cwd=str(scripts_dir),
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=log_handle,
+                start_new_session=True,
+            )
+            return True
+        except Exception as e:
+            print(f"Error starting benchmark process: {e}")
+            return False
