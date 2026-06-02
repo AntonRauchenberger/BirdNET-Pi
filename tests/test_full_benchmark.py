@@ -11,7 +11,7 @@ from scripts.utils.classes import ParseFileName
 from scripts.utils.benchmarking import BenchmarkService
 from scripts.gui.manager import GUIManager
 from scripts.utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
-from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, DB_PATH
+from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, DB_PATH, BENCHMARKING_RESULTS_DIR
 import scripts.utils.reporting as reporting
 from tests.helpers import TESTDATA
 
@@ -45,7 +45,16 @@ class TestFullBenchmark(unittest.TestCase):
 
     def setUp(self):
         self._ensure_detection_table()
-        self._benchmark_results_dir = tempfile.mkdtemp(prefix='birdnet-benchmark-')
+        self._benchmark_results_dir = BENCHMARKING_RESULTS_DIR
+        self._benchmark_results_dir_is_temp = False
+        try:
+            os.makedirs(self._benchmark_results_dir, exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=self._benchmark_results_dir):
+                pass
+        except OSError:
+            # Fall back only if the default benchmark directory is not writable.
+            self._benchmark_results_dir = tempfile.mkdtemp(prefix='birdnet-benchmark-')
+            self._benchmark_results_dir_is_temp = True
         source = os.path.join(TESTDATA, 'Pica pica_30s.wav')
         self.test_file = os.path.join(TESTDATA, '2024-02-24-birdnet-16:19:37.wav')
         self._birddb_dir = os.path.expanduser('~/BirdNET-Pi')
@@ -80,7 +89,8 @@ class TestFullBenchmark(unittest.TestCase):
                 # Keep directory if other files were created by the integration run.
                 pass
 
-        shutil.rmtree(self._benchmark_results_dir, ignore_errors=True)
+        if self._benchmark_results_dir_is_temp:
+            shutil.rmtree(self._benchmark_results_dir, ignore_errors=True)
             
         BENCHMARKING_SERVICE.set(None)
 
