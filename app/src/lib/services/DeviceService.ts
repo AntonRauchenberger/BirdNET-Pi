@@ -32,6 +32,7 @@ export default class DeviceService {
                 longitude: undefined,
                 latitude: undefined,
                 lastUpdate: undefined,
+                isBenchmarking: undefined,
             };
         }
 
@@ -58,7 +59,13 @@ export default class DeviceService {
             normalizedDeviceDetails,
         );
 
-        return normalizedDeviceDetails;
+        return {
+            ...normalizedDeviceDetails,
+            isBenchmarking:
+                typeof responseData.isBenchmarking === "boolean"
+                    ? responseData.isBenchmarking
+                    : undefined
+        };
     }
 
     static async getBenchmarkReports(): Promise<BenchmarkReport[]> {

@@ -7,6 +7,7 @@ export interface DeviceDetails {
     longitude?: number;
     latitude?: number;
     lastUpdate?: string;
+    isBenchmarking?: boolean;
 }
 
 export interface Setting {

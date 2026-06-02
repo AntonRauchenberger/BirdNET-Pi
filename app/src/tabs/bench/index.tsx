@@ -13,10 +13,10 @@ const Bench = () => {
     const [reports, setReports] = useState<BenchmarkReport[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails | null>(null);
-    const [currentState, setCurrentState] = useState<"idle" | "error" | "success">("idle");
+    const [currentState, setCurrentState] = useState<"inactive" | "processing" | "error" | "success">("inactive");
 
     const startBenchmarking = async () => {
-        if (!deviceInfo || deviceInfo?.name === "Not connected") {
+        if (!deviceInfo || deviceInfo?.name === "Not connected" || deviceInfo?.isBenchmarking) {
             return
         }
 
@@ -28,14 +28,18 @@ const Bench = () => {
 
             const fetchedReports = await DeviceService.getBenchmarkReports();
             setReports(fetchedReports);
+
+            setTimeout(() => {
+                setCurrentState("processing");
+            }, 2000);
         } catch (error) {
             console.warn("Failed to start benchmarking:", error);
             setCurrentState("error");
+            setTimeout(() => {
+                setCurrentState("inactive");
+            }, 2000);
         } finally {
             setIsLoading(false);
-            setTimeout(() => {
-                setCurrentState("idle");
-            }, 2000);
         }
     }
 
@@ -77,6 +81,14 @@ const Bench = () => {
 
         setIsLoading(false);
     }
+
+    useEffect(() => {
+        if (deviceInfo?.isBenchmarking === true) {
+            setCurrentState("processing");
+        } else {
+            setCurrentState("inactive");
+        }
+    }, [deviceInfo]);
 
     useEffect(() => {
         fetchReports();

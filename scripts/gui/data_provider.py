@@ -450,6 +450,23 @@ class DataProvider:
             return connectivity == "full"
         except Exception:
             return False
+        
+    def _is_benchmarking(self)->bool:
+        """Return True when a benchmarking.sh process is currently running."""
+        try:
+            result = subprocess.run(
+                ["bash", "-lc", "ps -ef | grep benchmarking.sh | grep -v grep"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            if result.returncode != 0:
+                return False
+
+            return any(line.strip() for line in result.stdout.splitlines())
+        except Exception:
+            return False
     
     def get_device_details(self) -> dict:
         device_name = socket.gethostname()
@@ -463,6 +480,8 @@ class DataProvider:
         
         wifi_ssid = self._get_wifi_ssid()
         location = self._get_device_location()
+
+        is_benchmarking = self._is_benchmarking()
         
         return {
             "name": device_name,
@@ -473,6 +492,7 @@ class DataProvider:
             "longitude": location["longitude"] if location else None,
             "latitude": location["latitude"] if location else None,
             "lastUpdate": datetime.datetime.now(),
+            "isBenchmarking": is_benchmarking,
         }
 
     def get_audio_file(self, audio_path: str, species_com_name: str) -> FileResponse | None:

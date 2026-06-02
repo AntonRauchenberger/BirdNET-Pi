@@ -1,11 +1,26 @@
 import { Play, CircleX, Check } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DeviceDetails } from "../../lib/types";
 
 const TopCard = (props: {
     deviceInfo: DeviceDetails | null;
     startBenchmarking: () => void;
-    currentState: "idle" | "error" | "success";
+    currentState: "inactive" | "processing" | "error" | "success";
 }) => {
+    const [showProcessingIcon, setShowProcessingIcon] = useState(true);
+
+    useEffect(() => {
+        if (props.currentState !== "processing") {
+            setShowProcessingIcon(true);
+            return;
+        }
+
+        const interval = setInterval(() => {
+            setShowProcessingIcon((prev) => !prev);
+        }, 500);
+
+        return () => clearInterval(interval);
+    }, [props.currentState]);
 
     const styles = {
         topCard: {
@@ -67,7 +82,7 @@ const TopCard = (props: {
 
     return (
         <div style={styles.topCard}>
-            {props.currentState === "idle" ? (
+            {props.currentState === "inactive" ? (
                 <div style={styles.startButton} onClick={props.startBenchmarking}>
                     <div style={{ transform: "translateY(3px)" }}>
                         <Play size={20} aria-hidden="true" />
@@ -92,6 +107,15 @@ const TopCard = (props: {
                     </div>
                     <div style={styles.startButtonText}>
                         Started successfully
+                    </div>
+                </div>
+            ) : props.currentState === "processing" ? (
+                <div style={styles.startButton}>
+                    <div style={{ transform: "translateY(3px)", opacity: showProcessingIcon ? 1 : 0.2, transition: "opacity 0.2s ease" }}>
+                        <Play size={20} aria-hidden="true" />
+                    </div>
+                    <div style={styles.startButtonText}>
+                        Benchmarking in progress ...
                     </div>
                 </div>
             ) : null}
