@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from scripts.utils.analysis import run_analysis
 from scripts.utils.classes import ParseFileName
@@ -125,12 +126,16 @@ class TestFullBenchmark(unittest.TestCase):
         # Reporting (Logs, JSON, Notifications, GUI-Updates)
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_REPORTING.value)
 
-        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
-        reporting.update_json_file(test_file, detections)
-        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
+        # Keep reporting path aligned with test-configured settings (especially
+        # RECORDING_LENGTH), otherwise extract_safe can clamp stop to a smaller
+        # runtime value from /etc config and trigger invalid sox trim ranges.
+        with patch('scripts.utils.reporting.get_settings', return_value=conf):
+            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
+            reporting.update_json_file(test_file, detections)
+            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_JSON_FILE.value)
 
-        BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
-        for detection in detections:
+            BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
+            for detection in detections:
                 # Keep benchmark execution robust: some models can emit reversed
                 # windows occasionally (stop < start), which breaks sox trim.
                 if detection.stop <= detection.start:
@@ -140,10 +145,10 @@ class TestFullBenchmark(unittest.TestCase):
                 detection.file_name_extr = reporting.extract_detection(test_file, detection)
                 reporting.write_to_file(test_file, detection)
                 reporting.write_to_db(test_file, detection)
-        time.sleep(0.3)  # Simulate DB overhead
-        BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
+            time.sleep(0.3)  # Simulate DB overhead
+            BENCHMARKING_SERVICE.stop_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
 
-        reporting.apprise(test_file, detections)
+            reporting.apprise(test_file, detections)
 
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.SERVER_POST.value)
         time.sleep(0.5)  # Simulate reporting overhead
