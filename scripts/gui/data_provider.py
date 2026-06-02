@@ -556,7 +556,39 @@ class DataProvider:
 
         reports.sort(key=lambda item: item["datetime"], reverse=True)
         return reports
+
+    def get_device_benchmark_report_file(self, scenario: str, file_name: str) -> FileResponse | None:
+        script_dir = Path(__file__).resolve().parent.parent
+        project_root = script_dir.parent
+        benchmarking_results_dir = project_root / "benchmarking_results"
+
+        if not benchmarking_results_dir.exists() or not benchmarking_results_dir.is_dir():
+            return None
+
+        scenario_dir = benchmarking_results_dir / scenario
+        if not scenario_dir.exists() or not scenario_dir.is_dir():
+            return None
+
+        requested_file = scenario_dir / file_name
+
+        try:
+            resolved_scenario_dir = scenario_dir.resolve()
+            resolved_requested_file = requested_file.resolve()
+        except FileNotFoundError:
+            return None
+
+        # Prevent path traversal and only allow existing report files.
+        if resolved_scenario_dir not in resolved_requested_file.parents:
+            return None
+        if not resolved_requested_file.is_file():
+            return None
+
+        return FileResponse(
+            str(resolved_requested_file),
+            media_type="text/html",
+            filename=resolved_requested_file.name,
+        )
     
-    def start_device_benchmarking(self) -> None:
+    def start_device_benchmarking(self) -> FileResponse | None:
         # TODO implement
         pass

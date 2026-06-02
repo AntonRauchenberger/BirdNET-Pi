@@ -30,7 +30,24 @@ const Bench = () => {
     }
 
     const downloadReport = async (report: BenchmarkReport) => {
-        console.log("TODO", report)
+        setIsLoading(true);
+
+        const downloadedReport = await DeviceService.downloadBenchmarkReport(report);
+        if (!downloadedReport) {
+            setIsLoading(false);
+            return;
+        }
+
+        const objectUrl = window.URL.createObjectURL(downloadedReport);
+        const linkElement = document.createElement("a");
+        linkElement.href = objectUrl;
+        linkElement.download = report.fileName || "benchmark_summary.html";
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+        window.URL.revokeObjectURL(objectUrl);
+
+        setIsLoading(false);
     }
 
     const fetchReports = async () => {

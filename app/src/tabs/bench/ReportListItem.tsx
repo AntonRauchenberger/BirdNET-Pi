@@ -94,9 +94,7 @@ const ReportListItem = (props: {
                             <HardDrive size={15} />
                         </div>
                         <div>{bytesToMegabytes(props.report.fileSize)} MB</div>
-                        {props.report.scenario && (
-                            <div> · {props.report.scenario}</div>
-                        )}
+                        <div> · {props.report.scenario}</div>
                     </div>
                 </div>
             </div>

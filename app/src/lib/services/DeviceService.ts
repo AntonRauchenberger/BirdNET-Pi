@@ -97,4 +97,23 @@ export default class DeviceService {
             method: "POST",
         });
     }
+
+    static async downloadBenchmarkReport(report: BenchmarkReport): Promise<Blob | null> {
+        try {
+            const response = await ApiService.getAudioFile("/device/benchmarking/download", {
+                scenario: report.scenario,
+                file_name: report.fileName,
+            });
+            if (response === false || response === null) {
+                console.error("Failed to download report.");
+                return null;
+            }
+
+            const blob = await response.blob();
+            return blob;
+        } catch (error) {
+            console.error("Error downloading report:", error);
+            return null;
+        }
+    }
 }

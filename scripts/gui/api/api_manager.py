@@ -80,6 +80,13 @@ class APIManager:
             if reports is None:
                 return Response(status_code=204)
             return reports
+
+        @self.app.get("/device/benchmarking/download", response_model=None)
+        async def get_device_benchmark_reports_file(scenario: str, file_name: str) -> FileResponse | Response:
+            reportFile = self.data_provider.get_device_benchmark_report_file(scenario=scenario, file_name=file_name)
+            if reportFile is None:
+                return Response(status_code=204)
+            return reportFile
         
         @self.app.post("/device/benchmarking/start", response_model=None)
         async def start_device_benchmarking() -> None:

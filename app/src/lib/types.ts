@@ -63,5 +63,5 @@ export interface BenchmarkReport {
     fileSize: number;
     fileType: string;
     fileName: string;
-    scenario?: string;
+    scenario: string;
 }
