@@ -307,9 +307,9 @@ class DataProvider:
 
     def _get_device_location(self) -> dict | None:
         deviceSettings = get_settings()
-    
-        latitude = deviceSettings.get("latitude", 49.0200)
-        longitude = deviceSettings.get("longitude", 12.0900)
+
+        latitude = deviceSettings.get("LATITUDE", "49.0200")
+        longitude = deviceSettings.get("LONGITUDE", "12.0900")
 
         return {"latitude": latitude, "longitude": longitude}
     
@@ -450,6 +450,23 @@ class DataProvider:
             return connectivity == "full"
         except Exception:
             return False
+        
+    def _is_benchmarking(self)->bool:
+        """Return True when a benchmarking.sh process is currently running."""
+        try:
+            result = subprocess.run(
+                ["bash", "-lc", "ps -ef | grep benchmarking.sh | grep -v grep"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            if result.returncode != 0:
+                return False
+
+            return any(line.strip() for line in result.stdout.splitlines())
+        except Exception:
+            return False
     
     def get_device_details(self) -> dict:
         device_name = socket.gethostname()
@@ -463,6 +480,8 @@ class DataProvider:
         
         wifi_ssid = self._get_wifi_ssid()
         location = self._get_device_location()
+
+        is_benchmarking = self._is_benchmarking()
         
         return {
             "name": device_name,
@@ -473,6 +492,7 @@ class DataProvider:
             "longitude": location["longitude"] if location else None,
             "latitude": location["latitude"] if location else None,
             "lastUpdate": datetime.datetime.now(),
+            "isBenchmarking": is_benchmarking,
         }
 
     def get_audio_file(self, audio_path: str, species_com_name: str) -> FileResponse | None:
@@ -508,3 +528,121 @@ class DataProvider:
 
     def update_device_settings(self, new_settings: dict) -> None:
         save_settings(new_settings=new_settings)
+
+    def get_device_benchmark_reports(self) -> list[dict[str, Any]]:
+        script_dir = Path(__file__).resolve().parent.parent
+        project_root = script_dir.parent
+        benchmarking_results_dir = project_root / "benchmarking_results"
+
+        # First check if the directory exists and is a directory
+        if not benchmarking_results_dir.exists() or not benchmarking_results_dir.is_dir():
+            return []
+
+        reports: list[dict[str, Any]] = []
+
+        for scenario_dir in sorted(benchmarking_results_dir.iterdir()):
+            if not scenario_dir.is_dir():
+                continue
+
+            for report_file in sorted(scenario_dir.glob("*benchmark_summary.html")):
+                file_name = report_file.name
+                file_size = report_file.stat().st_size
+                file_type = report_file.suffix.lstrip(".").lower() or "unknown"
+                scenario_name = scenario_dir.name
+                report_datetime = "Unknown"
+
+                # Expected naming format: YYYY_MM_DD_HH_MM__Scenario Name__benchmark_summary.html
+                name_without_suffix = report_file.stem
+                parts = name_without_suffix.split("__", 2)
+                if len(parts) == 3 and parts[2] == "benchmark_summary":
+                    timestamp_parts = parts[0].split("_")
+                    if len(timestamp_parts) == 5 and all(part.isdigit() for part in timestamp_parts):
+                        report_datetime = (
+                            f"{timestamp_parts[0]}-{timestamp_parts[1]}-{timestamp_parts[2]} "
+                            f"{timestamp_parts[3]}:{timestamp_parts[4]}:00"
+                        )
+                    if parts[1].strip():
+                        scenario_name = parts[1].strip()
+
+                reports.append(
+                    {
+                        "datetime": report_datetime,
+                        "fileSize": file_size,
+                        "fileType": file_type,
+                        "fileName": file_name,
+                        "scenario": scenario_name,
+                    }
+                )
+
+        reports.sort(key=lambda item: item["datetime"], reverse=True)
+        return reports
+
+    def get_device_benchmark_report_file(self, scenario: str, file_name: str) -> FileResponse | None:
+        script_dir = Path(__file__).resolve().parent.parent
+        project_root = script_dir.parent
+        benchmarking_results_dir = project_root / "benchmarking_results"
+
+        if not benchmarking_results_dir.exists() or not benchmarking_results_dir.is_dir():
+            return None
+
+        scenario_dir = benchmarking_results_dir / scenario
+        if not scenario_dir.exists() or not scenario_dir.is_dir():
+            return None
+
+        requested_file = scenario_dir / file_name
+
+        try:
+            resolved_scenario_dir = scenario_dir.resolve()
+            resolved_requested_file = requested_file.resolve()
+        except FileNotFoundError:
+            return None
+
+        # Prevent path traversal and only allow existing report files.
+        if resolved_scenario_dir not in resolved_requested_file.parents:
+            return None
+        if not resolved_requested_file.is_file():
+            return None
+
+        return FileResponse(
+            str(resolved_requested_file),
+            media_type="text/html",
+            filename=resolved_requested_file.name,
+        )
+    
+    def start_device_benchmarking(self, scenario: str) -> bool:
+        scripts_dir = Path(__file__).resolve().parent.parent
+        project_root = scripts_dir.parent
+        benchmark_script = scripts_dir / "benchmarking.sh"
+
+        scenario_name = str(scenario or "").strip()
+        if not scenario_name:
+            return False
+
+        if not benchmark_script.exists() or not benchmark_script.is_file():
+            return False
+
+        log_dir = project_root / "benchmarking_results" / scenario_name
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+        log_file = log_dir / f"{timestamp}__benchmarking_runner.log"
+
+        print(benchmark_script, scenario_name, log_file)
+
+        try:
+            log_handle = open(log_file, "w")
+            log_handle.write(f"[{datetime.datetime.now()}] Starting benchmark: scenario={scenario_name}\n")
+            log_handle.write(f"[{datetime.datetime.now()}] Command: sudo bash {benchmark_script} {scenario_name} 10 true\n")
+            log_handle.flush()
+
+            subprocess.Popen(
+                ["sudo", "bash", str(benchmark_script), scenario_name, "10", "true"],
+                cwd=str(scripts_dir),
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=log_handle,
+                start_new_session=True,
+            )
+            return True
+        except Exception as e:
+            print(f"Error starting benchmark process: {e}")
+            return False

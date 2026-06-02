@@ -74,6 +74,27 @@ class APIManager:
         async def update_device_settings(new_settings: dict) -> None:
             self.data_provider.update_device_settings(new_settings)
 
+        @self.app.get("/device/benchmarking/reports", response_model=None)
+        async def get_device_benchmark_reports() -> dict | None:
+            reports = self.data_provider.get_device_benchmark_reports()
+            if reports is None:
+                return Response(status_code=204)
+            return reports
+
+        @self.app.get("/device/benchmarking/download", response_model=None)
+        async def get_device_benchmark_reports_file(scenario: str, file_name: str) -> FileResponse | Response:
+            reportFile = self.data_provider.get_device_benchmark_report_file(scenario=scenario, file_name=file_name)
+            if reportFile is None:
+                return Response(status_code=204)
+            return reportFile
+        
+        @self.app.post("/device/benchmarking/start", response_model=None)
+        async def start_device_benchmarking(scenario: str) -> Response:
+            started = self.data_provider.start_device_benchmarking(scenario)
+            if not started:
+                return Response(status_code=500)
+            return Response(status_code=202)
+
         @self.app.get("/latestdetections")
         async def get_latest(limit: int = Query(default=20, ge=1, le=500)) -> list[Any]:
             return self.data_provider.get_latest_bird_detections(limit=limit)

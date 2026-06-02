@@ -7,6 +7,7 @@ export interface DeviceDetails {
     longitude?: number;
     latitude?: number;
     lastUpdate?: string;
+    isBenchmarking?: boolean;
 }
 
 export interface Setting {
@@ -55,4 +56,13 @@ export interface Detection {
     sens: number;
     overlap: number;
     fileName: string;
+}
+
+export interface BenchmarkReport {
+    id?: number;
+    datetime: string;
+    fileSize: number;
+    fileType: string;
+    fileName: string;
+    scenario: string;
 }

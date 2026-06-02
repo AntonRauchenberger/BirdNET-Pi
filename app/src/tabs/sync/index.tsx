@@ -7,6 +7,7 @@ import DeviceService from "../../lib/services/DeviceService";
 import ListService from "../../lib/services/ListService";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import CloudService from "../../lib/services/CloudService";
+import InfoCard from "../../components/InfoCard";
 
 const Sync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -262,16 +263,6 @@ const Sync = () => {
             fontSize: "15px",
             fontWeight: "500",
         },
-        infoCard: {
-            background: "var(--card)",
-            padding: "13px",
-            borderRadius: "20px",
-            textAlign: "left" as const,
-            fontSize: "12px",
-            marginTop: "20px",
-            border: "var(--card-border)",
-            width: "330px",
-        },
         syncStatusWrapper: {
             background: "var(--card)",
             padding: "13px",
@@ -384,10 +375,8 @@ const Sync = () => {
                     </div>
                 </div>
 
-                <div style={styles.infoCard}>
-                    <span style={{ opacity: 0.6 }}>
-                        Make sure the sync mode is enabled on your device, you are connected to its hotspot and the certificate is installed.
-                    </span>
+                <div style={{ marginTop: "20px" }}>
+                    <InfoCard text="Make sure the sync mode is enabled on your device, you are connected to its hotspot and the certificate is installed." />
                 </div>
             </div>
             {isLoading && <LoadingSpinner />}

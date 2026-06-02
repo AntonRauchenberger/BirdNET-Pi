@@ -103,7 +103,7 @@ body {
     max-width: var(--iphone-max-width);
     margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0.2rem;
     padding: 0.4rem 0.5rem calc(0.55rem + env(safe-area-inset-bottom));
     border-top: var(--card-border);
