@@ -9,7 +9,7 @@ from scripts.utils.classes import ParseFileName
 from scripts.utils.benchmarking import BenchmarkService
 from scripts.gui.manager import GUIManager
 from scripts.utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
-from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, BENCHMARKING_RESULTS_DIR, DB_PATH, GUI_MANAGER
+from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, BENCHMARKING_RESULTS_DIR, DB_PATH
 import scripts.utils.reporting as reporting
 from tests.helpers import TESTDATA
 
@@ -78,7 +78,6 @@ class TestFullBenchmark(unittest.TestCase):
                 pass
             
         BENCHMARKING_SERVICE.set(None)
-        GUI_MANAGER.set(None)
 
     def test_full_pipeline_benchmark(self):
         if shutil.which('sox') is None:
@@ -102,14 +101,6 @@ class TestFullBenchmark(unittest.TestCase):
             BenchmarkService(model_path=model_file, project_path=BASE_PATH,
                             scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True, results_dir=BENCHMARKING_RESULTS_DIR)
         )
-        if BENCHMARKING_SCENARIO.__contains__("Pi"):
-            backend = "waveshare"
-        else:
-            backend = "emulator"
-
-        GUI_MANAGER.set(
-            GUIManager(backend=backend, clear=False)
-        )
 
         # Phase 1: Collect idle measurements (simulating idle mode, e.g., continuous listening)
         print("Starting idle phase (simulating listening mode)...")
@@ -126,9 +117,6 @@ class TestFullBenchmark(unittest.TestCase):
         detections = run_analysis(test_file)
 
         BENCHMARKING_SERVICE.set_phase("reporting")
-
-        # Show on display
-        GUI_MANAGER.render_live_analyze_result(detections)
 
         # Reporting (Logs, JSON, Notifications, GUI-Updates)
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.TOTAL_REPORTING.value)
