@@ -13,6 +13,8 @@ project_root="$(cd -- "$script_dir/.." && pwd)"
 scenario_dir="$project_root/benchmarking_results/$scenario_name"
 python_script="$project_root/scripts/utils/evaluating.py"
 venv_python="$project_root/birdnet/bin/python"
+timestamp="$(date +"%Y_%m_%d_%H_%M")"
+output_file="$scenario_dir/${timestamp}__${scenario_name}__benchmark_summary.html"
 
 if [[ ! -d "$scenario_dir" ]]; then
 	echo "Scenario directory not found: $scenario_dir" >&2
@@ -28,4 +30,4 @@ else
 	exit 1
 fi
 
-"$python_bin" "$python_script" --scenario "$scenario_name" --output "$scenario_dir/benchmark_summary.html"
+"$python_bin" "$python_script" --scenario "$scenario_name" --output "$output_file"

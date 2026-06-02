@@ -19,6 +19,7 @@ fi
 
 SCENARIO_NAME="${1:-}"
 BENCHMARK_RUNS="${2:-10}"
+EVALUATE="${3:-false}"
 if [[ -z "${SCENARIO_NAME}" ]]; then
 	read -r -p "Enter benchmark scenario name (e.g. Pi4, Pi Zero, Local Laptop): " SCENARIO_NAME
 fi
@@ -30,6 +31,12 @@ fi
 
 if ! [[ "${BENCHMARK_RUNS}" =~ ^[1-9][0-9]*$ ]]; then
 	echo "Error: repeats must be a positive integer." >&2
+	exit 1
+fi
+
+EVALUATE="${EVALUATE,,}"
+if [[ "${EVALUATE}" != "true" && "${EVALUATE}" != "false" ]]; then
+	echo "Error: evaluate must be either 'true' or 'false'." >&2
 	exit 1
 fi
 
@@ -103,5 +110,11 @@ for ((run = 1; run <= BENCHMARK_RUNS; run++)); do
 	echo "----- Full benchmark run ${run}/${BENCHMARK_RUNS} -----"
 	python -m pytest -q -s tests/test_full_benchmark.py -k test_full_pipeline_benchmark
 done
+
+if [[ "${EVALUATE}" == "true" ]]; then
+	echo "[6/6] Running evaluation for scenario ${SCENARIO_NAME}..."
+	cd "${SCRIPT_DIR}"
+	sudo ./evaluating.sh "${SCENARIO_NAME}"
+fi
 
 echo "Done: Benchmark setup + scenario update + ${BENCHMARK_RUNS} test runs completed successfully."

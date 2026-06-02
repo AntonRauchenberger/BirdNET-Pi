@@ -7,6 +7,10 @@ const ReportListItem = (props: {
 }) => {
 
     const removeSeccondsFromDatetime = (datetime: string) => {
+        if (datetime.includes("NaN") || isNaN(Date.parse(datetime))) {
+            return "Unknown date";
+        }
+
         const date = new Date(datetime);
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -14,6 +18,10 @@ const ReportListItem = (props: {
         const hours = String(date.getHours()).padStart(2, "0");
         const minutes = String(date.getMinutes()).padStart(2, "0");
         return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+
+    const bytesToMegabytes = (bytes: number) => {
+        return (bytes / (1024 * 1024)).toFixed(2);
     }
 
     const styles = {
@@ -67,6 +75,7 @@ const ReportListItem = (props: {
             "fontWeight": "500",
             "alignItems": "center",
             "justifyContent": "center",
+            "width": "87px",
         }
     };
 
@@ -84,8 +93,10 @@ const ReportListItem = (props: {
                         <div style={{ transform: "translateY(2px)" }}>
                             <HardDrive size={15} />
                         </div>
-                        <div>1.2 MB</div>
-                        <div> · HTML</div>
+                        <div>{bytesToMegabytes(props.report.fileSize)} MB</div>
+                        {props.report.scenario && (
+                            <div> · {props.report.scenario}</div>
+                        )}
                     </div>
                 </div>
             </div>

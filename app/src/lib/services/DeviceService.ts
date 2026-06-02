@@ -1,4 +1,4 @@
-import { DeviceDetails } from "../types";
+import { BenchmarkReport, DeviceDetails } from "../types";
 import ApiService from "./ApiService";
 import DatabaseService from "./DatabaseService";
 
@@ -58,5 +58,43 @@ export default class DeviceService {
         );
 
         return normalizedDeviceDetails;
+    }
+
+    static async getBenchmarkReports(): Promise<BenchmarkReport[]> {
+        const responseData = await ApiService.callApi("/device/benchmarking/reports");
+
+        if (!Array.isArray(responseData)) {
+            return [];
+        }
+
+        const normalizedReports: BenchmarkReport[] = responseData.map(
+            (reportData) => ({
+                datetime:
+                    typeof reportData.datetime === "string"
+                        ? reportData.datetime
+                        : "Unknown date",
+                fileType:
+                    typeof reportData.fileType === "string"
+                        ? reportData.fileType
+                        : "unknown",
+                fileSize: this.toNumberOrUndefined(reportData.fileSize) ?? 0,
+                fileName:
+                    typeof reportData.fileName === "string"
+                        ? reportData.fileName
+                        : "unknown",
+                scenario:
+                    typeof reportData.scenario === "string"
+                        ? reportData.scenario
+                        : undefined,
+            }),
+        );
+
+        return normalizedReports;
+    }
+
+    static async startBenchmarking(): Promise<void> {
+        await ApiService.callApi("/device/benchmarking/start", {
+            method: "POST",
+        });
     }
 }

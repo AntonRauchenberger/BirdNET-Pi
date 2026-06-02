@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import InfoCard from "../../components/InfoCard";
 import TabHeader from "../../components/TabHeader";
 import { BenchmarkReport, DeviceDetails } from "../../lib/types";
@@ -6,6 +6,7 @@ import TopCard from "./TopCard";
 import ReportListItem from "./ReportListItem";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { RotateCw } from "lucide-react";
+import DeviceService from "../../lib/services/DeviceService";
 
 
 const Bench = () => {
@@ -18,12 +19,41 @@ const Bench = () => {
             return
         }
 
-        console.log("TODO")
+        setIsLoading(true);
+
+        await DeviceService.startBenchmarking();
+
+        const fetchedReports = await DeviceService.getBenchmarkReports();
+        setReports(fetchedReports);
+
+        setIsLoading(false);
     }
 
     const downloadReport = async (report: BenchmarkReport) => {
         console.log("TODO", report)
     }
+
+    const fetchReports = async () => {
+        setIsLoading(true);
+
+        const deviceDetails = await DeviceService.getDeviceDetails();
+        setDeviceInfo(deviceDetails);
+
+        if (deviceDetails.name === "Not connected") {
+            setReports([]);
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchedReports = await DeviceService.getBenchmarkReports();
+        setReports(fetchedReports);
+
+        setIsLoading(false);
+    }
+
+    useEffect(() => {
+        fetchReports();
+    }, []);
 
     const styles = {
         reportsHeaderWrapper: {
@@ -88,7 +118,7 @@ const Bench = () => {
                         <div style={styles.reportsHeader}>
                             Available Reports
                         </div>
-                        <div style={styles.refreshButton} onClick={() => { }}>
+                        <div style={styles.refreshButton} onClick={fetchReports}>
                             <RotateCw
                                 size={20}
                                 aria-hidden="true"
