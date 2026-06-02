@@ -6,6 +6,7 @@ import Sync from "./tabs/sync";
 import Map from "./tabs/map";
 import Settings from "./tabs/settings";
 import Birds from "./tabs/birds/indes";
+import Bench from "./tabs/bench";
 
 function App() {
     const [activeTab, setActiveTab] = useState("SYNC");
@@ -20,6 +21,8 @@ function App() {
                 return <Map />;
             case "SETTINGS":
                 return <Settings />;
+            case "BENCH":
+                return <Bench />
             default:
                 return <div>Tab not found</div>;
         }

@@ -56,3 +56,11 @@ export interface Detection {
     overlap: number;
     fileName: string;
 }
+
+export interface BenchmarkReport {
+    id?: number;
+    datetime: string;
+    fileSize: number;
+    fileType: string;
+    fileName: string;
+}
