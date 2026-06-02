@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import shutil
+import tempfile
 import time
 import unittest
 
@@ -9,7 +10,7 @@ from scripts.utils.classes import ParseFileName
 from scripts.utils.benchmarking import BenchmarkService
 from scripts.gui.manager import GUIManager
 from scripts.utils.constants import BenchmarkTimerNames, BENCHMARKING_SCENARIO
-from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, BENCHMARKING_RESULTS_DIR, DB_PATH
+from scripts.utils.helpers import MODEL_PATH, get_settings, BENCHMARKING_SERVICE, BASE_PATH, DB_PATH
 import scripts.utils.reporting as reporting
 from tests.helpers import TESTDATA
 
@@ -43,6 +44,7 @@ class TestFullBenchmark(unittest.TestCase):
 
     def setUp(self):
         self._ensure_detection_table()
+        self._benchmark_results_dir = tempfile.mkdtemp(prefix='birdnet-benchmark-')
         source = os.path.join(TESTDATA, 'Pica pica_30s.wav')
         self.test_file = os.path.join(TESTDATA, '2024-02-24-birdnet-16:19:37.wav')
         self._birddb_dir = os.path.expanduser('~/BirdNET-Pi')
@@ -76,6 +78,8 @@ class TestFullBenchmark(unittest.TestCase):
             except OSError:
                 # Keep directory if other files were created by the integration run.
                 pass
+
+        shutil.rmtree(self._benchmark_results_dir, ignore_errors=True)
             
         BENCHMARKING_SERVICE.set(None)
 
@@ -94,12 +98,12 @@ class TestFullBenchmark(unittest.TestCase):
         if not os.path.exists(model_file):
             self.skipTest(f"Integration benchmark requires model file: {model_file}")
 
-        os.makedirs(BENCHMARKING_RESULTS_DIR, exist_ok=True)
+        os.makedirs(self._benchmark_results_dir, exist_ok=True)
 
         # Initialize Global Classes
         BENCHMARKING_SERVICE.set(
             BenchmarkService(model_path=model_file, project_path=BASE_PATH,
-                            scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True, results_dir=BENCHMARKING_RESULTS_DIR)
+                            scenario=BENCHMARKING_SCENARIO, enable_cpu_metrics=True, results_dir=self._benchmark_results_dir)
         )
 
         # Phase 1: Collect idle measurements (simulating idle mode, e.g., continuous listening)
@@ -127,6 +131,12 @@ class TestFullBenchmark(unittest.TestCase):
 
         BENCHMARKING_SERVICE.start_timer(BenchmarkTimerNames.UPDATE_DB_AND_FILE.value)
         for detection in detections:
+                # Keep benchmark execution robust: some models can emit reversed
+                # windows occasionally (stop < start), which breaks sox trim.
+                if detection.stop <= detection.start:
+                    detection.start, detection.stop = sorted((detection.start, detection.stop))
+                    if detection.stop <= detection.start:
+                        detection.stop = min(float(conf['RECORDING_LENGTH']), detection.start + 0.01)
                 detection.file_name_extr = reporting.extract_detection(test_file, detection)
                 reporting.write_to_file(test_file, detection)
                 reporting.write_to_db(test_file, detection)
