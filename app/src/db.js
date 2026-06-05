@@ -17,6 +17,7 @@ db.version(1).stores({
     sens,
     overlap,
     fileName,
+    syncedToBirdWeather,
     [date+time]
   `,
     settings: `

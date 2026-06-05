@@ -16,6 +16,10 @@ export default class DatabaseService {
         return await (db as any)[table].toArray();
     }
 
+    static async getAllFromDatabaseWhere(table: string, predicate: (row: any) => boolean) {
+        return await (db as any)[table].filter(predicate).toArray();
+    }
+
     static async getSingleRowFromDatabase(table: string) {
         return await (db as any)[table].get(1);
     }
