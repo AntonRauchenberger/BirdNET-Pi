@@ -23,6 +23,7 @@ CREATE TABLE public.detections (
     sens NUMERIC,
     overlap NUMERIC,
     "fileName" TEXT,
+    "syncedToBirdWeather" BOOLEAN DEFAULT FALSE,
     "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 

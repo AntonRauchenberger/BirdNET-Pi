@@ -64,6 +64,7 @@ export default class DatabaseService {
             sens: cloudItem.sens,
             overlap: cloudItem.overlap,
             fileName: cloudItem.fileName,
+            syncedToBirdWeather: Boolean(cloudItem.syncedToBirdWeather),
         });
     }
 

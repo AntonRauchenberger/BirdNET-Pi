@@ -62,6 +62,7 @@ export default class CloudService {
                     sens: normalizedData.sens,
                     overlap: normalizedData.overlap,
                     fileName: normalizedData.fileName,
+                    syncedToBirdWeather: Boolean(normalizedData.syncedToBirdWeather),
                 };
             case "settings":
                 normalizedData = data as Setting;
