@@ -77,8 +77,6 @@ const Birds = () => {
         setBirdweatherCredentialsSet(birdweatherCredentialsSet);
         if (!birdweatherCredentialsSet) {
             setCurrentBirdweatherUploadStatus("forbidden");
-        } else {
-            setCurrentBirdweatherUploadStatus("downloadReady");
         }
 
         setIsLoading(false);
