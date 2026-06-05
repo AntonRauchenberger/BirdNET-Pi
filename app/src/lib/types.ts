@@ -56,6 +56,7 @@ export interface Detection {
     sens: number;
     overlap: number;
     fileName: string;
+    syncedToBirdWeather?: boolean;
 }
 
 export interface BenchmarkReport {

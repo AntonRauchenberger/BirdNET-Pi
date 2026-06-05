@@ -6,9 +6,9 @@ import SpeciesListItem from "./SpeciesListItem";
 import SpeciesDetails from "./SpeciesDetails";
 import ListService from "../../lib/services/ListService";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { CloudUpload, CloudCheck, CloudAlert, Ban, CloudDownload } from "lucide-react";
 import SettingsService from "../../lib/services/SettingsService";
 import CloudService from "../../lib/services/CloudService";
+import SyncButtons from "./SyncButtons";
 
 const Birds = () => {
     const [species, setSpecies] = useState<Species[]>([]);
@@ -26,6 +26,9 @@ const Birds = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [uploadCredentialsSet, setUploadCredentialsSet] = useState(false);
     const [currentUploadStatus, setCurrentUploadStatus] = useState<"idle" | "downloadReady" | "success" | "error" | "forbidden">("idle");
+    const [currentBirdweatherUploadStatus, setCurrentBirdweatherUploadStatus] = useState<"idle" | "downloadReady" | "success" | "error" | "forbidden">("idle");
+    const [birdweatherCredentialsSet, setBirdweatherCredentialsSet] = useState(false);
+
 
     const filteredSpecies = species
         .filter(
@@ -68,6 +71,16 @@ const Birds = () => {
             setCurrentUploadStatus("downloadReady");
         }
 
+        const birdweatherCredential = await SettingsService.getSetting("birdWeatherToken");
+        const birdweatherCredentialsSet = birdweatherCredential?.value !== undefined && birdweatherCredential?.value !== "";
+
+        setBirdweatherCredentialsSet(birdweatherCredentialsSet);
+        if (!birdweatherCredentialsSet) {
+            setCurrentBirdweatherUploadStatus("forbidden");
+        } else {
+            setCurrentBirdweatherUploadStatus("downloadReady");
+        }
+
         setIsLoading(false);
     };
 
@@ -94,6 +107,32 @@ const Birds = () => {
         } finally {
             setTimeout(() => {
                 setCurrentUploadStatus("idle");
+            }, 2000);
+        }
+    }
+
+    const startBirdweatherUpload = async () => {
+        console.log("Starting birdweather upload...");
+        if (!birdweatherCredentialsSet) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            if (species.length !== 0) {
+                await CloudService.syncToBirdWeather();
+            }
+
+            setIsLoading(false);
+
+            setCurrentBirdweatherUploadStatus("success");
+
+        } catch (error) {
+            console.error("Error syncing to birdweather:", error);
+            setCurrentBirdweatherUploadStatus("error");
+        } finally {
+            setTimeout(() => {
+                setCurrentBirdweatherUploadStatus("idle");
             }, 2000);
         }
     }
@@ -137,51 +176,12 @@ const Birds = () => {
                 subTitle={`${species.length} species · ${species.reduce((acc, s) => acc + s.detections, 0)} detections`}
             />
 
-            <div style={{ position: "relative" }}>
-                <div style={styles.uploadButton} onClick={startUpload}>
-                    {currentUploadStatus === "success" ? (
-                        <>
-                            <CloudCheck
-                                size={20}
-                                aria-hidden="true" /><div>
-                                Success
-                            </div>
-                        </>
-                    ) : currentUploadStatus === "downloadReady" ? (
-                        <>
-                            <CloudDownload
-                                size={20}
-                                aria-hidden="true" /><div>
-                                Load
-                            </div>
-                        </>
-                    ) : currentUploadStatus === "forbidden" ? (
-                        <>
-                            <Ban
-                                size={20}
-                                aria-hidden="true" /><div>
-                                Upload
-                            </div>
-                        </>
-                    ) : currentUploadStatus === "error" ? (
-                        <>
-                            <CloudAlert
-                                size={20}
-                                aria-hidden="true" /><div>
-                                Error
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <CloudUpload
-                                size={20}
-                                aria-hidden="true" /><div>
-                                Upload
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
+            <SyncButtons
+                currentCloudUploadStatus={currentUploadStatus}
+                startCloudUpload={startUpload}
+                currentBirdWeatherUploadStatus={currentBirdweatherUploadStatus}
+                startBirdWeatherUpload={startBirdweatherUpload}
+            />
 
             <Filters filter={filter} setFilter={setFilter} />
 

@@ -34,6 +34,16 @@ export const DEFAULT_SETTINGS: Setting[] = [
         value: "App start",
     },
     {
+        id: "birdWeatherToken",
+        name: "BirdWeather Token",
+        description: "Token for BirdWeather to share your detections with the community platform",
+        defaultValue: "",
+        tab: "CREDENTIALS",
+        type: "string",
+        icon: <Bird size={18} />,
+        value: "",
+    },
+    {
         id: "mapTilerApiKey",
         name: "MapTiler API Key",
         description: "API key for MapTiler to unlock improved map features",

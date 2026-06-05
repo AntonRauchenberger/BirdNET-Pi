@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import SettingsService from "./SettingsService";
 import DatabaseService from "./DatabaseService";
 import { Detection, Setting } from "../types";
+import { BIRDWEATHER_BASE_URL } from "../constants";
 
 export default class CloudService {
     static normalizeSettingValue(value: any, type?: string) {
@@ -61,6 +62,7 @@ export default class CloudService {
                     sens: normalizedData.sens,
                     overlap: normalizedData.overlap,
                     fileName: normalizedData.fileName,
+                    syncedToBirdWeather: Boolean(normalizedData.syncedToBirdWeather),
                 };
             case "settings":
                 normalizedData = data as Setting;
@@ -218,6 +220,73 @@ export default class CloudService {
 
         } catch (error) {
             console.error("Error syncing to Supabase:", error);
+        }
+    }
+
+    static async syncToBirdWeather() {
+        try {
+            const birdWeatherToken = await SettingsService.getSetting("birdWeatherToken");
+            if (!birdWeatherToken?.value) {
+                throw new Error("Missing BirdWeather token");
+            }
+
+            const url = `${BIRDWEATHER_BASE_URL}stations/${birdWeatherToken.value}/detections`;
+
+            const detections = await DatabaseService.getAllFromDatabaseWhere("detections", (detection: any) => !detection.syncedToBirdWeather);
+            if (detections.length === 0) {
+                console.log("No detections to sync with BirdWeather");
+                return;
+            }
+
+            for (const detection of detections) {
+                try {
+                    const rawDate = String(detection.date ?? "").trim();
+                    const rawTime = String(detection.time ?? "").trim();
+                    const normalizedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime;
+                    const timestamp = new Date(`${rawDate}T${normalizedTime}`);
+
+                    if (Number.isNaN(timestamp.getTime())) {
+                        console.error(
+                            `Skipping detection ${detection.id}: invalid date/time (${rawDate} ${rawTime}).`,
+                        );
+                        continue;
+                    }
+
+                    const data = {
+                        timestamp: timestamp.toISOString(),
+                        common_name: detection.commonName,
+                        scientific_name: detection.scientificName,
+                        latitude: detection.latitude,
+                        longitude: detection.longitude,
+                        confidence: detection.confidence,
+                    }
+
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    // Mark detection as synced in local database
+                    await DatabaseService.putOrOverwrite("detections", {
+                        ...detection,
+                        syncedToBirdWeather: true,
+                    });
+
+                    console.log(`Detection ${detection.id} synced to BirdWeather successfully.`);
+                } catch (err) {
+                    console.error(`Error syncing detection ${detection.id} to BirdWeather:`, err);
+                }
+            }
+
+        } catch (error) {
+            console.error("Error syncing to BirdWeather:", error);
         }
     }
 

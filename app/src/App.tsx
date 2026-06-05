@@ -5,8 +5,8 @@ import Navbar from "./components/Navbar";
 import Sync from "./tabs/sync";
 import Map from "./tabs/map";
 import Settings from "./tabs/settings";
-import Birds from "./tabs/birds/indes";
 import Bench from "./tabs/bench";
+import Birds from "./tabs/birds";
 
 function App() {
     const [activeTab, setActiveTab] = useState("SYNC");
@@ -14,7 +14,7 @@ function App() {
     const renderActiveTab = () => {
         switch (activeTab) {
             case "BIRDS":
-                return <Birds />;
+                return <Birds />
             case "SYNC":
                 return <Sync />;
             case "MAP":
