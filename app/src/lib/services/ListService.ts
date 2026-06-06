@@ -42,6 +42,14 @@ export default class ListService {
                     current.date < earliest.date ? current : earliest,
             );
 
+            let uncommon = false;
+            for (const detection of groupedDetections) {
+                if (detection.uncommon) {
+                    uncommon = true;
+                    break;
+                }
+            }
+
             const species: Species = {
                 commonName,
                 scientificName,
@@ -52,6 +60,7 @@ export default class ListService {
                 longitude: lastDetection.longitude,
                 firstSeen: firstDetection.date,
                 fileName: lastDetection.fileName,
+                uncommon: uncommon,
             };
 
             const imageUrl = await this.getBirdImage(species);

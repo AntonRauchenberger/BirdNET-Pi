@@ -116,7 +116,7 @@ export const SpeciesDetails = (props: {
         card: {
             background: "var(--card)",
             borderRadius: "1.5rem 1.5rem 0 0",
-            border: "var(--card-border)",
+            border: props.species.uncommon ? "5px solid var(--sunlit-clay)" : "var(--card-border)",
             boxShadow: "var(--shadow-soft)",
             position: "fixed" as const,
             bottom: "45px",
@@ -124,7 +124,7 @@ export const SpeciesDetails = (props: {
             width: "89%",
             maxWidth: "var(--iphone-max-width)",
             transform: "translateX(-50%)",
-            padding: "1.25rem",
+            padding: props.species.uncommon ? "1rem" : "1.25rem",
             maxHeight: "90vh",
             overflowY: "auto" as const,
             animation: isClosing
@@ -271,6 +271,16 @@ export const SpeciesDetails = (props: {
             gap: "3px",
             alignItems: "center",
         },
+        rareBadge: {
+            "position": "absolute" as const,
+            "transform": "translate3d(89px, 13px, 0px)",
+            "background": "var(--gradiant-clay)",
+            "padding": "1px 10px",
+            "color": "var(--card)",
+            "fontSize": "12px",
+            "fontWeight": "600",
+            "borderRadius": "20px"
+        }
     };
 
     return (
@@ -318,6 +328,11 @@ export const SpeciesDetails = (props: {
             `}</style>
             <div style={styles.backgroundBlur} onClick={handleClose}></div>
             <div style={styles.card}>
+                {props.species.uncommon && (
+                    <div style={{ position: "relative" }}>
+                        <div style={styles.rareBadge}>UNCOMMON</div>
+                    </div>
+                )}
                 <div style={styles.anchorWrapper}>
                     <div style={styles.anchorBar}></div>
                 </div>

@@ -65,6 +65,7 @@ export default class DatabaseService {
             overlap: cloudItem.overlap,
             fileName: cloudItem.fileName,
             syncedToBirdWeather: Boolean(cloudItem.syncedToBirdWeather),
+            uncommon: Boolean(cloudItem.uncommon),
         });
     }
 

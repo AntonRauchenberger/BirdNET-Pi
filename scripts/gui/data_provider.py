@@ -248,7 +248,7 @@ class DataProvider:
         return pending_detections[0][0], len(pending_species) if pending_species else 0
     
     def get_sync_data(self, offset: int = 0, limit: int = 50) -> list[Any]:
-        detections = self._get_from_db("SELECT * FROM detections WHERE synced = FALSE LIMIT ? OFFSET ?", (limit, offset))
+        detections = self._get_from_db("SELECT date, time, sci_name, com_name, confidence, lat, lon, cutoff, week, sens, overlap, file_name, uncommon FROM detections WHERE synced = FALSE LIMIT ? OFFSET ?", (limit, offset))
 
         if detections is None:
             return []
@@ -269,6 +269,7 @@ class DataProvider:
                 "sens": row[9],
                 "overlap": row[10],
                 "file_name": row[11],
+                "uncommon": bool(row[12])
             })
             fetchedTimestamps.append((row[0], row[1]))
 

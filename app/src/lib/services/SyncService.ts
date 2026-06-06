@@ -47,6 +47,7 @@ export default class SyncService {
             sens: row.sens,
             overlap: row.overlap,
             fileName: row.file_name,
+            uncommon: row?.uncommon || false,
         };
     }
 

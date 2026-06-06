@@ -40,6 +40,7 @@ export interface Species {
     firstSeen: number;
     fileName: string;
     imageUrl?: string;
+    uncommon?: boolean;
 }
 
 export interface Detection {
@@ -57,6 +58,7 @@ export interface Detection {
     overlap: number;
     fileName: string;
     syncedToBirdWeather?: boolean;
+    uncommon?: boolean;
 }
 
 export interface BenchmarkReport {

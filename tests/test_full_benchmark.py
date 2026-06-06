@@ -35,7 +35,9 @@ class TestFullBenchmark(unittest.TestCase):
                   Week INT,
                   Sens FLOAT,
                   Overlap FLOAT,
-                  File_Name VARCHAR(100) NOT NULL
+                  File_Name VARCHAR(100) NOT NULL,
+                  Synced BOOLEAN DEFAULT FALSE,
+                  Uncommon BOOLEAN DEFAULT FALSE
                 )
                 """
             )
