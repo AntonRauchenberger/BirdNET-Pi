@@ -69,6 +69,10 @@ const SpeciesListItem = ({
             background: "var(--gradiant-clay)",
             borderRadius: "30px",
         },
+        speciesAmount: {
+            fontSize: "14px",
+            opacity: "0.8",
+        }
     };
 
     return (
@@ -93,7 +97,7 @@ const SpeciesListItem = ({
                 <div style={styles.speciesCardValueContainer}>
                     <div>
                         <div style={styles.speciesCommonName}>
-                            {species.commonName}
+                            {species.commonName} <span style={styles.speciesAmount}>({species.detections})</span>
                         </div>
                         <div style={styles.speciesScientificName}>
                             {species.scientificName}

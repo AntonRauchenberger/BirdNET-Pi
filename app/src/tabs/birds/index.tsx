@@ -16,10 +16,14 @@ const Birds = () => {
         searchInput: string;
         alphabeticSort: null | "asc" | "desc";
         confidenceSort: null | "asc" | "desc";
+        amountSort: null | "asc" | "desc";
+        dateSort: null | "asc" | "desc";
     }>({
         searchInput: "",
         alphabeticSort: null,
         confidenceSort: null,
+        amountSort: null,
+        dateSort: null,
     });
     const [currentSelectedSpecies, setCurrentSelectedSpecies] =
         useState<Species | null>(null);
@@ -51,6 +55,20 @@ const Birds = () => {
             if (filter.alphabeticSort !== null) {
                 const cmp = a.commonName.localeCompare(b.commonName);
                 return filter.alphabeticSort === "asc" ? cmp : -cmp;
+            }
+            if (filter.amountSort !== null) {
+                const diff =
+                    filter.amountSort === "asc"
+                        ? a.detections - b.detections
+                        : b.detections - a.detections;
+                if (diff !== 0) return diff;
+            }
+            if (filter.dateSort !== null) {
+                const diff =
+                    filter.dateSort === "asc"
+                        ? a.lastCall - b.lastCall
+                        : b.lastCall - a.lastCall;
+                if (diff !== 0) return diff;
             }
             return 0;
         });
