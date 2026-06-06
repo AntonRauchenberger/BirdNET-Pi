@@ -45,6 +45,13 @@ const Birds = () => {
                     .includes(filter.searchInput.toLowerCase()),
         )
         .sort((a, b) => {
+            if (filter.dateSort !== null) {
+                const diff =
+                    filter.dateSort === "asc"
+                        ? a.lastCall - b.lastCall
+                        : b.lastCall - a.lastCall;
+                if (diff !== 0) return diff;
+            }
             if (filter.confidenceSort !== null) {
                 const diff =
                     filter.confidenceSort === "asc"
@@ -61,13 +68,6 @@ const Birds = () => {
                     filter.amountSort === "asc"
                         ? a.detections - b.detections
                         : b.detections - a.detections;
-                if (diff !== 0) return diff;
-            }
-            if (filter.dateSort !== null) {
-                const diff =
-                    filter.dateSort === "asc"
-                        ? a.lastCall - b.lastCall
-                        : b.lastCall - a.lastCall;
                 if (diff !== 0) return diff;
             }
             return 0;

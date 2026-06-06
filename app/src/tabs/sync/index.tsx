@@ -200,6 +200,7 @@ const Sync = () => {
             console.error("Sync error:", error);
         } finally {
             setIsSyncing(false);
+            setSyncProgress(0);
         }
     };
 
