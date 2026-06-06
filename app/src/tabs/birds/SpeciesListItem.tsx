@@ -16,7 +16,7 @@ const SpeciesListItem = ({
             borderRadius: "1.5rem",
             padding: "0.7rem",
             boxShadow: "var(--shadow-soft)",
-            border: "var(--card-border)",
+            border: species.uncommon ? "3px solid var(--sunlit-clay)" : "var(--card-border)",
             gap: "10px",
         },
         birdImnageContainer: {
@@ -69,10 +69,29 @@ const SpeciesListItem = ({
             background: "var(--gradiant-clay)",
             borderRadius: "30px",
         },
+        speciesAmount: {
+            fontSize: "14px",
+            opacity: "0.8",
+        },
+        rareBadge: {
+            "position": "absolute" as const,
+            "transform": "translate3d(200px, -59px, 0px)",
+            "background": "var(--gradiant-clay)",
+            "padding": "1px 10px",
+            "color": "var(--card)",
+            "fontSize": "12px",
+            "fontWeight": "600",
+            "borderRadius": "20px"
+        }
     };
 
     return (
         <div style={styles.speciesCard} onClick={onClick}>
+            {species.uncommon && (
+                <div style={{ position: "relative" }}>
+                    <div style={styles.rareBadge}>UNCOMMON</div>
+                </div>
+            )}
             <div style={styles.birdImnageContainer}>
                 {species.imageUrl && species.imageUrl !== "" ? (
                     <img
@@ -93,7 +112,7 @@ const SpeciesListItem = ({
                 <div style={styles.speciesCardValueContainer}>
                     <div>
                         <div style={styles.speciesCommonName}>
-                            {species.commonName}
+                            {species.commonName} <span style={styles.speciesAmount}>({species.detections})</span>
                         </div>
                         <div style={styles.speciesScientificName}>
                             {species.scientificName}

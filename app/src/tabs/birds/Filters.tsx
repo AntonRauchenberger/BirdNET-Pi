@@ -4,6 +4,10 @@ import {
     ArrowUpAZ,
     ArrowUp10,
     ArrowDown10,
+    ArrowUpWideNarrow,
+    ArrowDownWideNarrow,
+    ClockArrowDown,
+    ClockArrowUp,
 } from "lucide-react";
 
 type SortState = null | "asc" | "desc";
@@ -19,12 +23,16 @@ const Filters = (props: {
         searchInput: string;
         alphabeticSort: SortState;
         confidenceSort: SortState;
+        amountSort: SortState;
+        dateSort: SortState;
     };
     setFilter: React.Dispatch<
         React.SetStateAction<{
             searchInput: string;
             alphabeticSort: SortState;
             confidenceSort: SortState;
+            amountSort: SortState;
+            dateSort: SortState;
         }>
     >;
 }) => {
@@ -39,6 +47,20 @@ const Filters = (props: {
         props.setFilter({
             ...props.filter,
             confidenceSort: cycleSort(props.filter.confidenceSort),
+        });
+    };
+
+    const switchAmountSort = () => {
+        props.setFilter({
+            ...props.filter,
+            amountSort: cycleSort(props.filter.amountSort),
+        });
+    };
+
+    const switchDateSort = () => {
+        props.setFilter({
+            ...props.filter,
+            dateSort: cycleSort(props.filter.dateSort),
         });
     };
 
@@ -138,6 +160,7 @@ const Filters = (props: {
                         <ArrowDownAZ size={22} />
                     )}
                 </div>
+
                 <div
                     onClick={switchConfidenceSort}
                     style={
@@ -150,6 +173,36 @@ const Filters = (props: {
                         <ArrowUp10 size={22} />
                     ) : (
                         <ArrowDown10 size={22} />
+                    )}
+                </div>
+
+                <div
+                    onClick={switchAmountSort}
+                    style={
+                        props.filter.amountSort !== null
+                            ? styles.filterIconActive
+                            : styles.filterIconPassive
+                    }
+                >
+                    {props.filter.amountSort === "asc" ? (
+                        <ArrowUpWideNarrow size={22} />
+                    ) : (
+                        <ArrowDownWideNarrow size={22} />
+                    )}
+                </div>
+
+                <div
+                    onClick={switchDateSort}
+                    style={
+                        props.filter.dateSort !== null
+                            ? styles.filterIconActive
+                            : styles.filterIconPassive
+                    }
+                >
+                    {props.filter.dateSort === "asc" ? (
+                        <ClockArrowUp size={22} />
+                    ) : (
+                        <ClockArrowDown size={22} />
                     )}
                 </div>
             </div>

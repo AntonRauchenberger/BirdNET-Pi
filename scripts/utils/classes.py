@@ -6,7 +6,7 @@ from tzlocal import get_localzone
 
 
 class Detection:
-    def __init__(self, file_date, start_time, stop_time, scientific_name, common_name, confidence):
+    def __init__(self, file_date, start_time, stop_time, scientific_name, common_name, confidence, synced=False, uncommon=False):
         self.start = float(start_time)
         self.stop = float(stop_time)
         self.datetime = file_date + datetime.timedelta(seconds=self.start)
@@ -21,9 +21,11 @@ class Detection:
         self.common_name = common_name
         self.common_name_safe = self.common_name.replace("'", "").replace(" ", "_")
         self.file_name_extr = None
+        self.synced = synced
+        self.uncommon = uncommon
 
     def __str__(self):
-        return f'Detection({self.species}, {self.common_name}, {self.confidence}, {self.iso8601})'
+        return f'Detection({self.species}, {self.common_name}, {self.confidence}, {self.iso8601}, Uncommon: {self.uncommon})'
 
 
 class ParseFileName:

@@ -50,7 +50,8 @@ const ReportListItem = (props: {
         },
         timestamp: {
             fontWeight: "500",
-            fontSize: "19px",
+            fontSize: "18px",
+            textAlign: "left" as const,
         },
         overviewWrapper: {
             "display": "flex",
@@ -94,7 +95,7 @@ const ReportListItem = (props: {
                             <HardDrive size={15} />
                         </div>
                         <div>{bytesToMegabytes(props.report.fileSize)} MB</div>
-                        <div> · {props.report.scenario}</div>
+                        <div style={{ fontSize: "12px" }}> · {props.report.scenario}</div>
                     </div>
                 </div>
             </div>

@@ -130,7 +130,7 @@ function get_db() {
 
 function fetch_species_array($sort_by, $date=null) {
   $db = get_db();
-  $where = (isset($date)) ? "WHERE Date == \"$date\"" : "";
+  $where = (isset($date)) ? "WHERE Date == \"$date\" AND Uncommon = 0" : "WHERE Uncommon = 0";
   if ($sort_by === "occurrences") {
     $statement = $db->prepare("SELECT Date, Time, File_Name, Com_Name, Sci_Name, COUNT(*) as Count, MAX(Confidence) as MaxConfidence FROM detections $where GROUP BY Sci_Name ORDER BY COUNT(*) DESC");
   } elseif ($sort_by === "confidence") {
@@ -147,7 +147,7 @@ function fetch_species_array($sort_by, $date=null) {
 
 function fetch_best_detection($com_name) {
   $db = get_db();
-  $statement = $db->prepare("SELECT Com_Name, Sci_Name, COUNT(*), MAX(Confidence), File_Name, Date, Time from detections WHERE Com_Name = \"$com_name\"");
+  $statement = $db->prepare("SELECT Com_Name, Sci_Name, COUNT(*), MAX(Confidence), File_Name, Date, Time from detections WHERE Com_Name = \"$com_name\" AND Uncommon = 0");
   ensure_db_ok($statement);
   $result = $statement->execute();
   return $result;
@@ -155,7 +155,7 @@ function fetch_best_detection($com_name) {
 
 function fetch_all_detections($sci_name, $sort_by, $date=null) {
   $db = get_db();
-  $filter = (isset($date)) ? "AND Date == \"$date\"" : "";
+  $filter = (isset($date)) ? "AND Date == \"$date\" AND Uncommon = 0" : "AND Uncommon = 0";
   if ($sort_by === "occurrences") {
     $statement = $db->prepare("SELECT * FROM detections WHERE Sci_Name == \"$sci_name\" $filter ORDER BY COUNT(*) DESC");
   } elseif ($sort_by === "confidence") {
@@ -171,27 +171,27 @@ function fetch_all_detections($sci_name, $sort_by, $date=null) {
 
 function get_summary() {
   $db = get_db();
-  $statement = $db->prepare('SELECT COUNT(*) FROM detections');
+  $statement = $db->prepare('SELECT COUNT(*) FROM detections WHERE Uncommon = 0');
   ensure_db_ok($statement);
   $result = $statement->execute();
   $totalcount = $result->fetchArray(SQLITE3_ASSOC);
 
-  $statement2 = $db->prepare('SELECT COUNT(*) FROM detections WHERE Date == DATE(\'now\', \'localtime\')');
+  $statement2 = $db->prepare('SELECT COUNT(*) FROM detections WHERE Date == DATE(\'now\', \'localtime\') AND Uncommon = 0');
   ensure_db_ok($statement2);
   $result2 = $statement2->execute();
   $todaycount = $result2->fetchArray(SQLITE3_ASSOC);
 
-  $statement3 = $db->prepare('SELECT COUNT(*) FROM detections WHERE Date == Date(\'now\', \'localtime\') AND TIME >= TIME(\'now\', \'localtime\', \'-1 hour\')');
+  $statement3 = $db->prepare('SELECT COUNT(*) FROM detections WHERE Date == Date(\'now\', \'localtime\') AND TIME >= TIME(\'now\', \'localtime\', \'-1 hour\') AND Uncommon = 0');
   ensure_db_ok($statement3);
   $result3 = $statement3->execute();
   $hourcount = $result3->fetchArray(SQLITE3_ASSOC);
 
-  $statement5 = $db->prepare('SELECT COUNT(DISTINCT(Sci_Name)) FROM detections WHERE Date == Date(\'now\',\'localtime\')');
+  $statement5 = $db->prepare('SELECT COUNT(DISTINCT(Sci_Name)) FROM detections WHERE Date == Date(\'now\',\'localtime\') AND Uncommon = 0');
   ensure_db_ok($statement5);
   $result5 = $statement5->execute();
   $todayspeciestally = $result5->fetchArray(SQLITE3_ASSOC);
 
-  $statement6 = $db->prepare('SELECT COUNT(DISTINCT(Sci_Name)) FROM detections');
+  $statement6 = $db->prepare('SELECT COUNT(DISTINCT(Sci_Name)) FROM detections WHERE Uncommon = 0');
   ensure_db_ok($statement6);
   $result6 = $statement6->execute();
   $totalspeciestally = $result6->fetchArray(SQLITE3_ASSOC);
