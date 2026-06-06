@@ -63,6 +63,7 @@ export default class CloudService {
                     overlap: normalizedData.overlap,
                     fileName: normalizedData.fileName,
                     syncedToBirdWeather: Boolean(normalizedData.syncedToBirdWeather),
+                    uncommon: Boolean(normalizedData.uncommon),
                 };
             case "settings":
                 normalizedData = data as Setting;
