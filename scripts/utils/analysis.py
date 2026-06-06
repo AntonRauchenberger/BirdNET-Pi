@@ -200,7 +200,17 @@ def run_analysis(file):
                 elif sci_name in exclude_list and len(exclude_list) != 0:
                     log.warning("Excluded as species in EXCLUDE_LIST: %s %s", sci_name, com_name)
                 elif sci_name not in predicted_species_list and len(predicted_species_list) != 0 and sci_name not in whitelist_list:
-                    log.warning("Excluded as below Species Occurrence Frequency Threshold: %s %s", sci_name, com_name)
+                    log.warning("Marked as uncommon, because of below Species Occurrence Frequency Threshold: %s %s", sci_name, com_name)
+                    d = Detection(
+                        file.file_date,
+                        time_slot.split(';')[0],
+                        time_slot.split(';')[1],
+                        sci_name,
+                        com_name,
+                        confidence,
+                        uncommon=True,
+                    )
+                    confident_detections.append(d)
                 else:
                     d = Detection(
                         file.file_date,
