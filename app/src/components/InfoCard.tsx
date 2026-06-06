@@ -11,11 +11,15 @@ const InfoCard = (props: {
             border: "var(--card-border)",
             width: "100%",
         },
+        text: {
+            opacity: 0.9,
+            fontWeight: "600",
+        }
     }
 
     return (
         <div style={styles.infoCard}>
-            <span style={{ opacity: 0.6 }}>
+            <span style={styles.text}>
                 {props.text}
             </span>
         </div>

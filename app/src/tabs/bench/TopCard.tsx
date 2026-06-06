@@ -1,4 +1,4 @@
-import { Play, CircleX, Check } from "lucide-react";
+import { Play, CircleX, Check, Ban } from "lucide-react";
 import { useEffect, useState } from "react";
 import { DeviceDetails } from "../../lib/types";
 
@@ -43,7 +43,6 @@ const TopCard = (props: {
             "padding": "10px",
             "borderRadius": "15px",
             "textDecoration": "none",
-            "opacity": props?.deviceInfo?.name && props?.deviceInfo?.name !== "Not connected" ? 1 : 0.6,
         },
         startButtonText: {
             "color": "var(--card)",
@@ -85,7 +84,11 @@ const TopCard = (props: {
             {props.currentState === "inactive" ? (
                 <div style={styles.startButton} onClick={props.startBenchmarking}>
                     <div style={{ transform: "translateY(3px)" }}>
-                        <Play size={20} aria-hidden="true" />
+                        {props.deviceInfo && props.deviceInfo.name && props.deviceInfo.name !== "Not connected" ? (
+                            <Play size={20} aria-hidden="true" />
+                        ) : (
+                            <Ban size={20} aria-hidden="true" />
+                        )}
                     </div>
                     <div style={styles.startButtonText}>
                         Start Benchmark

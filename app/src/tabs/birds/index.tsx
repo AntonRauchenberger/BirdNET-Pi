@@ -163,6 +163,10 @@ const Birds = () => {
             "opacity": uploadCredentialsSet ? 1 : 0.5,
             "width": "120px",
             "zIndex": 10,
+        },
+        placeholder: {
+            "marginTop": "20px",
+            "opacity": "0.6"
         }
     };
 
@@ -195,7 +199,7 @@ const Birds = () => {
                         />
                     ))
                 ) : (
-                    <div>No detections synced yet</div>
+                    <div style={styles.placeholder}>No detections synced yet</div>
                 )}
             </div>
 

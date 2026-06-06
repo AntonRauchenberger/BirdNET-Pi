@@ -177,7 +177,7 @@ const Bench = () => {
                     ))}
                     {reports.length === 0 && (
                         <div style={styles.fallback}>
-                            No reports available or not connected to device.
+                            No reports available or not connected to device
                         </div>
                     )}
                 </div>

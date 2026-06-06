@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import TabHeader from "../../components/TabHeader";
-import { Wifi, Download, Check } from "lucide-react";
+import {
+    Wifi,
+    Download,
+    Check,
+    WifiSync,
+    ShieldCheck,
+    Radio,
+} from "lucide-react";
 import SyncService from "../../lib/services/SyncService";
 import { SYNC_ROW_LIMIT } from "../../lib/constants";
 import DeviceService from "../../lib/services/DeviceService";
 import ListService from "../../lib/services/ListService";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import InfoCard from "../../components/InfoCard";
 
 const Sync = () => {
     const [isSyncing, setIsSyncing] = useState(false);
@@ -20,7 +26,7 @@ const Sync = () => {
     const temporaryStatusTimeoutRef = useRef<ReturnType<
         typeof setTimeout
     > | null>(null);
-    const [syncingInfo, setSyncingInfo] = useState("Transfering detections ...");
+    const [syncingInfo, setSyncingInfo] = useState("Transferring detections ...");
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -57,7 +63,7 @@ const Sync = () => {
 
         setIsSyncing(true);
         setSyncProgress(0);
-        setSyncingInfo("Transfering detections ...");
+        setSyncingInfo("Transferring detections ...");
 
         let offset = 0;
         let syncCompletedSuccessfully = true;
@@ -91,7 +97,7 @@ const Sync = () => {
 
         setIsSyncing(true);
         setSyncProgress(0);
-        setSyncingInfo("Transfering audio files ...");
+        setSyncingInfo("Transferring audio files ...");
 
         const speciesList = await ListService.getBirdsList();
         const speciesToSync = speciesList.slice(0, pendingAmount);
@@ -145,7 +151,7 @@ const Sync = () => {
         ) {
             setIsLoading(false);
             showTemporaryStatusMessage(
-                "Please connect to your device hotspot before syncing",
+                "Please connect to your device hotspot",
                 2000,
                 "error",
             );
@@ -197,48 +203,123 @@ const Sync = () => {
         }
     };
 
+    const currentStatusText = temporaryStatusMessage
+        ? temporaryStatusMessage
+        : isSyncing
+            ? "Syncing in progress"
+            : "Ready to sync";
+
+    const currentStatusColor =
+        temporaryStatusType === "error"
+            ? "red"
+            : temporaryStatusType === "info"
+                ? "var(--sunlit-clay)"
+                : temporaryStatusType === "success"
+                    ? "green"
+                    : isSyncing
+                        ? "var(--sunlit-clay)"
+                        : "green";
+
+    const currentSyncStep = isSyncing
+        ? syncingInfo.toLowerCase().includes("audio")
+            ? 2
+            : 1
+        : temporaryStatusType === "success"
+            ? 3
+            : 0;
+
+    const syncSteps = [
+        {
+            title: "Connect",
+            description: "Device hotspot",
+            active: currentSyncStep >= 0,
+            completed: currentSyncStep > 0,
+            icon: Wifi,
+        },
+        {
+            title: "Detections",
+            description: "Transfer sightings",
+            active: currentSyncStep === 1,
+            completed: currentSyncStep > 1,
+            icon: Download,
+        },
+        {
+            title: "Audio",
+            description: "Transfer audios",
+            active: currentSyncStep === 2,
+            completed: currentSyncStep > 2,
+            icon: Radio,
+        },
+    ];
+
+    const progressPanelText =
+        temporaryStatusType === "success"
+            ? "Sync complete"
+            : temporaryStatusType === "error"
+                ? "Sync interrupted"
+                : isSyncing
+                    ? syncingInfo
+                    : "Waiting to start";
+
     const styles = {
         contentWrapper: {
             display: "flex",
             flexDirection: "column" as const,
             alignItems: "center",
-            marginTop: "90px",
+            marginTop: "25px",
+            width: "100%",
+            maxWidth: "360px",
+            marginInline: "auto",
+            paddingInline: "2px",
+            gap: "14px",
+        },
+        heroCard: {
+            width: "100%",
+            borderRadius: "28px",
+            background: "var(--gradiant-leaf)",
+            boxShadow: "var(--shadow)",
+            padding: "22px 18px 16px",
+            display: "flex",
+            flexDirection: "column" as const,
+            alignItems: "center",
+            gap: "12px",
         },
         outerCircle: {
-            background: "var(--gradiant-leaf)",
-            width: "200px",
-            height: "200px",
+            background:
+                "radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--olive-leaf) 65%, var(--cornsilk)), var(--forest))",
+            width: "174px",
+            height: "174px",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: "var(--shadow-soft)",
         },
         innerCircle: {
-            background: "var(--card)",
+            background: "color-mix(in oklab, var(--card) 94%, var(--cornsilk))",
             borderRadius: "50%",
-            width: "150px",
-            height: "150px",
+            width: "128px",
+            height: "128px",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            color: "var(--black-forest)",
         },
         statusWrapper: {
             display: "flex",
             alignItems: "center",
-            gap: "7px",
-            marginTop: "30px",
+            gap: "9px",
+            background: "color-mix(in oklab, var(--cornsilk) 15%, transparent)",
+            borderRadius: "999px",
+            padding: "9px 14px",
+            width: "100%",
+            justifyContent: "center",
+            fontSize: "14px",
+            fontWeight: "600",
+            color: "var(--cornsilk)",
         },
         statusIcon: {
-            background:
-                temporaryStatusType === "error"
-                    ? "red"
-                    : temporaryStatusType === "info"
-                        ? "blue"
-                        : !isSyncing || temporaryStatusMessage
-                            ? "green"
-                            : isSyncing
-                                ? "orange"
-                                : "red",
+            background: currentStatusColor,
             width: "13px",
             height: "13px",
             borderRadius: "50%",
@@ -247,35 +328,78 @@ const Sync = () => {
                 : "none",
         },
         startButton: {
-            background: "var(--gradiant-leaf)",
-            width: "330px",
-            height: "50px",
-            color: "white",
+            background: "var(--gradiant-clay)",
+            width: "100%",
+            height: "56px",
+            color: "var(--card)",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            borderRadius: "35px",
-            marginTop: "45%",
-            fontSize: "15px",
-            fontWeight: "500",
+            borderRadius: "18px",
+            marginTop: "2px",
+            fontSize: "17px",
+            fontWeight: "700",
+            letterSpacing: "0.02em",
+            border: "none",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
+        },
+        startButtonHover: {
+            transform: "translateY(-1px)",
+            boxShadow: "var(--shadow-soft)",
         },
         syncStatusWrapper: {
             background: "var(--card)",
-            padding: "13px",
-            borderRadius: "20px",
+            padding: "14px",
+            borderRadius: "18px",
             textAlign: "left" as const,
-            fontSize: "12px",
-            marginTop: "20px",
+            fontSize: "13px",
             border: "var(--card-border)",
-            width: "330px",
-            position: "absolute" as const,
-            top: "55.5%",
+            width: "100%",
+            boxShadow: "var(--shadow-soft)",
+        },
+        syncStepGrid: {
+            width: "100%",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: "8px",
+        },
+        syncStepCard: {
+            borderRadius: "14px",
+            background: "var(--gradiant-leaf)",
+            padding: "10px 8px",
+            display: "flex",
+            flexDirection: "column" as const,
+            gap: "6px",
+            alignItems: "flex-start",
+            boxShadow: "var(--shadow-soft)",
+        },
+        syncStepIconWrap: {
+            width: "24px",
+            height: "24px",
+            borderRadius: "999px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        syncStepTitle: {
+            fontSize: "12px",
+            fontWeight: "700",
+            color: "var(--cornsilk)",
+            letterSpacing: "0.01em",
+        },
+        syncStepDescription: {
+            fontSize: "11px",
+            lineHeight: 1.25,
+            opacity: 0.8,
+            color: "rgba(254, 250, 224, 0.82)",
         },
         syncStatusBarContainer: {
             width: "100%",
-            background: "var(--cornsilk)",
-            height: "10px",
+            background: "var(--seccondary)",
+            height: "11px",
             borderRadius: "30px",
+            marginTop: "8px",
+            overflow: "hidden",
         },
         syncStatusBarValue: {
             height: "100%",
@@ -285,12 +409,57 @@ const Sync = () => {
             transition: "width 0.5s ease-in-out",
         },
         statusPositonWrapper: {
-            position: "absolute" as const,
-            top: "49%",
-            width: "85%",
+            width: "100%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+        },
+        actionArea: {
+            width: "100%",
+            display: "flex",
+            flexDirection: "column" as const,
+            gap: "14px",
+        },
+        infoCardWrapper: {
+            width: "100%",
+        },
+        progressMeta: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "13px",
+            color: "var(--black-forest)",
+            fontWeight: "600",
+            marginBottom: "4px",
+        },
+        progressPill: {
+            "fontSize": "11px",
+            "fontWeight": "700",
+            "borderRadius": "50%",
+            "padding": "4px 8px",
+            "color": "var(--card)",
+            "background": "var(--gradiant-clay)",
+            "width": "33px",
+            "height": "33px",
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+        },
+        statusRow: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "8px",
+            color: "var(--black-forest)",
+        },
+        statusLeftMeta: {
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            fontSize: "12px",
+            fontWeight: "600",
+            color: "rgba(40, 54, 24, 0.78)",
         },
     };
 
@@ -298,81 +467,87 @@ const Sync = () => {
         <div>
             <TabHeader
                 tab={"SYNC"}
-                title={"Pull fresh chirps"}
+                title={"Pull fresh birds"}
                 subTitle={"Get the latest detections from your device."}
             />
             <div style={styles.contentWrapper}>
-                <div style={styles.outerCircle}>
-                    <div style={styles.innerCircle}>
-                        {isSyncing ? (
-                            <Download size={75} aria-hidden="true" />
-                        ) : temporaryStatusType === "success" ? (
-                            <Check size={75} aria-hidden="true" />
-                        ) : (
-                            <Wifi size={75} aria-hidden="true" />
-                        )}
+                <div style={styles.heroCard}>
+                    <div style={styles.outerCircle}>
+                        <div style={styles.innerCircle}>
+                            {isSyncing ? (
+                                <Download size={72} aria-hidden="true" />
+                            ) : temporaryStatusType === "success" ? (
+                                <Check size={72} aria-hidden="true" />
+                            ) : (
+                                <Wifi size={72} aria-hidden="true" />
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={styles.statusPositonWrapper}>
+                        <div style={styles.statusWrapper}>
+                            <div style={styles.statusIcon}></div>
+                            <div style={{ maxWidth: "92%", textAlign: "center" as const }}>
+                                {currentStatusText}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div style={styles.statusPositonWrapper}>
-                    {temporaryStatusMessage ? (
-                        <div style={styles.statusWrapper}>
-                            <div style={styles.statusIcon}></div>
-                            <div style={{ maxWidth: "90%" }}>
-                                {temporaryStatusMessage}
-                            </div>
-                        </div>
-                    ) : !isSyncing ? (
-                        <div style={styles.statusWrapper}>
-                            <div style={styles.statusIcon}></div>
-                            <div style={{ maxWidth: "90%" }}>Ready to sync</div>
-                        </div>
-                    ) : isSyncing ? (
-                        <div style={styles.statusWrapper}>
-                            <div style={styles.statusIcon}></div>
-                            <div style={{ maxWidth: "90%" }}>Synching ...</div>
-                        </div>
-                    ) : (
-                        <div style={styles.statusWrapper}>
-                            <div style={styles.statusIcon}></div>
-                            <div style={{ maxWidth: "90%" }}>
-                                Connect to your device hotspot
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <div style={styles.actionArea}>
+                    <div style={styles.syncStepGrid}>
+                        {syncSteps.map((step) => {
+                            const StepIcon = step.icon;
 
-                {isSyncing && (
+                            return (
+                                <div
+                                    key={step.title}
+                                    style={styles.syncStepCard}
+                                >
+                                    <div
+                                        style={{
+                                            ...styles.syncStepIconWrap,
+                                            background: "color-mix(in oklab, var(--cornsilk) 15%, transparent)",
+                                            color: "var(--cornsilk)"
+                                        }}
+                                    >
+                                        <StepIcon size={14} />
+                                    </div>
+                                    <div style={styles.syncStepTitle}>{step.title}</div>
+                                    <div style={styles.syncStepDescription}>{step.description}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
                     <div style={styles.syncStatusWrapper}>
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                            }}
-                        >
-                            <div>{syncingInfo}</div>
-                            <div>{syncProgress}%</div>
+                        <div style={styles.statusRow}>
+                            <div style={styles.statusLeftMeta}>
+                                <ShieldCheck size={14} aria-hidden="true" />
+                                <span>Secure transfer</span>
+                            </div>
+                            <div style={styles.progressPill}>{syncProgress}%</div>
                         </div>
+
+                        <div style={styles.progressMeta}>
+                            <div>{progressPanelText}</div>
+                        </div>
+
                         <div style={styles.syncStatusBarContainer}>
                             <div style={styles.syncStatusBarValue}></div>
                         </div>
                     </div>
-                )}
 
-                <div>
-                    <div
+                    <button
                         onClick={startSync}
                         style={{
                             ...styles.startButton,
                             opacity: isSyncing ? 0.6 : 1,
                         }}
                     >
+                        <WifiSync size={20} aria-hidden="true" style={{ marginRight: "8px", transform: "translateY(-2px)" }} />
                         {isSyncing ? "Syncing..." : "Start Sync"}
-                    </div>
-                </div>
-
-                <div style={{ marginTop: "20px" }}>
-                    <InfoCard text="Make sure the sync mode is enabled on your device, you are connected to its hotspot and the certificate is installed." />
+                    </button>
                 </div>
             </div>
             {isLoading && <LoadingSpinner />}
