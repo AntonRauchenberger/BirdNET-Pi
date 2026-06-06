@@ -90,6 +90,10 @@ const Map = () => {
         longitude: number;
         lastUpdate?: string;
     } | null>(null);
+    const [userLocation, setUserLocation] = useState<{
+        latitude: number;
+        longitude: number;
+    } | null>(null);
     const [isMapKeyLoaded, setIsMapKeyLoaded] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -115,6 +119,45 @@ const Map = () => {
         };
 
         loadMapData();
+    }, []);
+
+    useEffect(() => {
+        if (typeof navigator === "undefined" || !navigator.geolocation) {
+            return;
+        }
+
+        let isActive = true;
+
+        const updateUserLocation = () => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    if (!isActive) {
+                        return;
+                    }
+
+                    setUserLocation({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                    });
+                },
+                (error) => {
+                    console.warn("Could not read current user location:", error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 8000,
+                    maximumAge: 0,
+                },
+            );
+        };
+
+        updateUserLocation();
+        const intervalId = window.setInterval(updateUserLocation, 10000);
+
+        return () => {
+            isActive = false;
+            window.clearInterval(intervalId);
+        };
     }, []);
 
     // Simple openstreet map is used if no key provided, otherwise maptiler with terrain
@@ -366,6 +409,13 @@ const Map = () => {
                             <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--copperwood); border: 2px solid var(--card);"></div>
                             <span>Your device</span>
                         </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; margin-left: 2px;">
+                            <div style="position: relative; width: 14px; height: 14px;">
+                                <div style="position: absolute; inset: 0; border-radius: 50%; background: rgba(43, 108, 176, 0.2);"></div>
+                                <div style="position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: rgb(43, 108, 176);"></div>
+                            </div>
+                            <span>Your location</span>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 10px; margin-left: 6px;">
                             <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--black-forest); opacity: 0.8;"></div>
                             <span>Bird detections</span>
@@ -378,6 +428,36 @@ const Map = () => {
                 legendElement.style.zIndex = "100";
 
                 mapContainer.current?.appendChild(legendElement);
+
+                map.addSource("user-location", {
+                    type: "geojson",
+                    data: {
+                        type: "FeatureCollection",
+                        features: [],
+                    },
+                });
+
+                map.addLayer({
+                    id: "user-location-layer-halo",
+                    type: "circle",
+                    source: "user-location",
+                    paint: {
+                        "circle-radius": 10,
+                        "circle-color": "rgba(43, 108, 176, 0.22)",
+                    },
+                });
+
+                map.addLayer({
+                    id: "user-location-layer",
+                    type: "circle",
+                    source: "user-location",
+                    paint: {
+                        "circle-radius": 5,
+                        "circle-color": "rgb(43, 108, 176)",
+                        "circle-stroke-width": 2,
+                        "circle-stroke-color": "rgba(255, 255, 255, 0.95)",
+                    },
+                });
 
                 const markerElement = document.createElement("div");
                 markerElement.className = "device-marker";
@@ -431,6 +511,31 @@ const Map = () => {
             }
         };
     }, [isMapKeyLoaded, mapKey, MAP_STYLE, deviceLocation]);
+
+    useEffect(() => {
+        if (!mapRef.current || !userLocation) {
+            return;
+        }
+
+        const source = mapRef.current.getSource("user-location") as maplibregl.GeoJSONSource | undefined;
+        if (!source) {
+            return;
+        }
+
+        source.setData({
+            type: "FeatureCollection",
+            features: [
+                {
+                    type: "Feature",
+                    geometry: {
+                        type: "Point",
+                        coordinates: [userLocation.longitude, userLocation.latitude],
+                    },
+                    properties: {},
+                },
+            ],
+        });
+    }, [userLocation]);
 
     const styles = {
         mapContainer: {

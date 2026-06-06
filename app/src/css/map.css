@@ -34,6 +34,33 @@
     height: 13px;
 }
 
+.user-location-marker {
+    position: relative;
+    width: 30px;
+    height: 30px;
+}
+
+.user-location-marker-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: rgba(43, 108, 176, 0.25);
+    animation: user-location-pulse 2s ease-out infinite;
+}
+
+.user-location-marker-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: rgb(43, 108, 176);
+    border: 2px solid var(--card);
+    box-shadow: 0 0 0 2px rgba(43, 108, 176, 0.22);
+}
+
 @keyframes device-marker-pulse {
     0% {
         transform: scale(0.7);
@@ -41,6 +68,17 @@
     }
     100% {
         transform: scale(1.8);
+        opacity: 0;
+    }
+}
+
+@keyframes user-location-pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.75;
+    }
+    100% {
+        transform: scale(1.9);
         opacity: 0;
     }
 }
@@ -81,6 +119,10 @@
 .device-popup-icon .device-marker-icon {
     width: 22px;
     height: 22px;
+}
+
+.user-location-popup-icon {
+    background: radial-gradient(circle at 30% 30%, #4e8fd0, #2b6cb0);
 }
 
 .device-popup-main {
