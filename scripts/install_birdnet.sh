@@ -31,6 +31,33 @@ fi
 
 source /etc/birdnet/birdnet.conf
 
+ensure_lgpio_system_lib() {
+  if ldconfig -p 2>/dev/null | grep -q 'liblgpio\.so'; then
+    return 0
+  fi
+
+  if [ -f /usr/lib/aarch64-linux-gnu/liblgpio.so ] || [ -f /usr/lib/x86_64-linux-gnu/liblgpio.so ]; then
+    return 0
+  fi
+
+  echo "Installing missing system library for python lgpio package"
+  sudo apt-get update -qq
+
+  for pkg in lgpio liblgpio-dev python3-lgpio; do
+    if apt-cache show "$pkg" >/dev/null 2>&1; then
+      if sudo apt-get install -y "$pkg"; then
+        break
+      fi
+    fi
+  done
+
+  if ! ldconfig -p 2>/dev/null | grep -q 'liblgpio\.so'; then
+    echo "Could not install liblgpio.so from apt repositories."
+    echo "Please install a package that provides liblgpio.so (for example liblgpio-dev) and re-run installer."
+    exit 1
+  fi
+}
+
 install_birdnet() {
   TMP_SIZE=$(df --output=avail /tmp | tail -n 1)
   if [[ $TMP_SIZE -lt 300000 ]]; then
@@ -57,6 +84,7 @@ install_birdnet() {
   source ./birdnet/bin/activate
   pip3 install wheel
   get_tf_whl
+  ensure_lgpio_system_lib
   LOOP_COUNT=2
   while ! pip3 install -U -r ./requirements_custom.txt
   do
