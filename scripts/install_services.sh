@@ -300,13 +300,6 @@ install_Caddyfile() {
     cp /etc/caddy/Caddyfile{,.original}
   fi
 
-  local caddy_primary_http_site
-  if [ -n "${BIRDNETPI_URL}" ]; then
-    caddy_primary_http_site="http://${BIRDNETPI_URL}"
-  else
-    caddy_primary_http_site="http://$(hostname).local"
-  fi
-
   if ! [ -z ${CADDY_PWD} ]; then
     HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
     cat << EOF > /etc/caddy/Caddyfile
@@ -318,7 +311,7 @@ install_Caddyfile() {
   }
 }
 
-${caddy_primary_http_site} {
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
   handle /device* {
@@ -408,7 +401,7 @@ EOF
   }
 }
 
-${caddy_primary_http_site} {
+http://${BIRDNETPI_URL} {
   root * ${EXTRACTED}
   
   handle /device* {
