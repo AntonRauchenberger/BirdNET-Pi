@@ -73,7 +73,6 @@ fi
 sudo nmcli connection modify "$CON_NAME" \
     ipv4.addresses "$IP_ADDR" \
     ipv4.method shared \
-    ipv4.dns "$HOTSPOT_IP" \
     ipv4.ignore-auto-dns yes \
     ipv4.never-default yes \
     ipv6.method disabled
