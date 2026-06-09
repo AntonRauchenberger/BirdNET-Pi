@@ -31,19 +31,51 @@ fi
 
 source /etc/birdnet/birdnet.conf
 
-ensure_lgpio_system_lib() {
+add_system_dist_packages_to_venv() {
+  local venv_python=$1
+  local site_packages
+
+  site_packages=$("$venv_python" - <<'PY'
+import site
+
+for path in site.getsitepackages():
+    if path.endswith("site-packages"):
+        print(path)
+        break
+PY
+)
+
+  [ -n "$site_packages" ] || return 1
+  printf '/usr/lib/python3/dist-packages\n' > "$site_packages/_birdnet_system_dist_packages.pth"
+}
+
+ensure_lgpio_support() {
+  INSTALL_PIP_LGPIO=0
+  export INSTALL_PIP_LGPIO
+
+  sudo apt-get update -qq
+
+  if apt-cache show python3-lgpio >/dev/null 2>&1; then
+    echo "Installing system python3-lgpio package"
+    sudo apt-get install -y python3-lgpio
+    add_system_dist_packages_to_venv "$my_dir/birdnet/bin/python3"
+    return 0
+  fi
+
   if ldconfig -p 2>/dev/null | grep -q 'liblgpio\.so'; then
+    INSTALL_PIP_LGPIO=1
+    export INSTALL_PIP_LGPIO
     return 0
   fi
 
   if [ -f /usr/lib/aarch64-linux-gnu/liblgpio.so ] || [ -f /usr/lib/x86_64-linux-gnu/liblgpio.so ]; then
+    INSTALL_PIP_LGPIO=1
+    export INSTALL_PIP_LGPIO
     return 0
   fi
 
   echo "Installing missing system library for python lgpio package"
-  sudo apt-get update -qq
-
-  for pkg in lgpio liblgpio-dev python3-lgpio; do
+  for pkg in lgpio liblgpio-dev; do
     if apt-cache show "$pkg" >/dev/null 2>&1; then
       if sudo apt-get install -y "$pkg"; then
         break
@@ -51,11 +83,15 @@ ensure_lgpio_system_lib() {
     fi
   done
 
-  if ! ldconfig -p 2>/dev/null | grep -q 'liblgpio\.so'; then
-    echo "Could not install liblgpio.so from apt repositories."
-    echo "Please install a package that provides liblgpio.so (for example liblgpio-dev) and re-run installer."
-    exit 1
+  if ldconfig -p 2>/dev/null | grep -q 'liblgpio\.so'; then
+    INSTALL_PIP_LGPIO=1
+    export INSTALL_PIP_LGPIO
+    return 0
   fi
+
+  echo "Could not install lgpio runtime support from apt repositories."
+  echo "Please install either python3-lgpio or a package that provides liblgpio.so and re-run installer."
+  exit 1
 }
 
 install_birdnet() {
@@ -84,7 +120,7 @@ install_birdnet() {
   source ./birdnet/bin/activate
   pip3 install wheel
   get_tf_whl
-  ensure_lgpio_system_lib
+  ensure_lgpio_support
   LOOP_COUNT=2
   while ! pip3 install -U -r ./requirements_custom.txt
   do
@@ -93,7 +129,11 @@ install_birdnet() {
     [ $LOOP_COUNT == 0 ] && exit 1
     sleep 5
   done
-  pip3 install pillow gpiozero lgpio spidev
+  GPIO_PACKAGES=(pillow gpiozero spidev)
+  if [ "${INSTALL_PIP_LGPIO}" = "1" ]; then
+    GPIO_PACKAGES+=(lgpio)
+  fi
+  pip3 install "${GPIO_PACKAGES[@]}"
   rm -rf $HOME/bird_tmp
 }
 
