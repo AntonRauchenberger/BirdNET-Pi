@@ -300,10 +300,25 @@ install_Caddyfile() {
     cp /etc/caddy/Caddyfile{,.original}
   fi
 
+  local caddy_primary_http_site
+  if [ -n "${BIRDNETPI_URL}" ]; then
+    caddy_primary_http_site="http://${BIRDNETPI_URL}"
+  else
+    caddy_primary_http_site="http://$(hostname).local"
+  fi
+
   if ! [ -z ${CADDY_PWD} ]; then
     HASHWORD=$(caddy hash-password --plaintext ${CADDY_PWD})
     cat << EOF > /etc/caddy/Caddyfile
-http://${BIRDNETPI_URL} {
+  {
+    pki {
+      ca local {
+        name "BirdNET-Pi Local CA"
+      }
+    }
+  }
+
+  ${caddy_primary_http_site} {
   root * ${EXTRACTED}
   
   handle /device* {
@@ -358,8 +373,15 @@ http://192.168.4.1 {
   }
 }
 
-192-168-4-1.sslip.io {
+https://192-168-4-1.sslip.io {
   tls internal
+
+  handle /cert {
+    root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+    rewrite * /root.crt
+    header Content-Type "application/x-x509-ca-cert"
+    file_server
+  }
 
   handle /device* {
     reverse_proxy 127.0.0.1:2026
@@ -378,7 +400,14 @@ http://192.168.4.1 {
 EOF
   else
     cat << EOF > /etc/caddy/Caddyfile
-http://${BIRDNETPI_URL} {
+  {
+    pki {
+      ca local {
+        name "BirdNET-Pi Local CA"
+      }
+    }
+  }
+  ${caddy_primary_http_site} {
   root * ${EXTRACTED}
   
   handle /device* {
@@ -414,8 +443,15 @@ http://192.168.4.1 {
   }
 }
 
-192-168-4-1.sslip.io {
+https://192-168-4-1.sslip.io {
   tls internal
+
+  handle /cert {
+    root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+    rewrite * /root.crt
+    header Content-Type "application/x-x509-ca-cert"
+    file_server
+  }
 
   handle /device* {
     reverse_proxy 127.0.0.1:2026

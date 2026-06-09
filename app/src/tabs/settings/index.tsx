@@ -9,7 +9,7 @@ import SettingsService from "../../lib/services/SettingsService";
 import DeviceService from "../../lib/services/DeviceService";
 import { ChevronRight, HardDriveUpload, RotateCw, ShieldCheck } from "lucide-react";
 import SubPage from "../../components/SubPage";
-import { CERTIFICATE_URL } from "../../lib/constants";
+import { getCertificateUrl } from "../../lib/constants";
 
 const Settings = () => {
     const [deviceInfo, setDeviceInfo] = useState<DeviceDetails>({
@@ -285,6 +285,7 @@ const Settings = () => {
 
     // Get unique tabs from settings
     const tabs = Array.from(new Set(settings.map((s) => s.tab)));
+    const certificateUrl = getCertificateUrl();
 
     return (
         <div style={{ position: "relative", minHeight: "100vh" }}>
@@ -300,7 +301,7 @@ const Settings = () => {
                     activeSubPage={activeSubPage}
                 />
 
-                <a style={styles.downloadButton} href={CERTIFICATE_URL}>
+                <a style={styles.downloadButton} href={certificateUrl}>
                     <div style={{ transform: "translateY(2px)" }}>
                         <ShieldCheck
                             size={24}
