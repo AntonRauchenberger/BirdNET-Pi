@@ -3,15 +3,21 @@ set -euo pipefail
 
 # Run full BirdNET-Pi benchmarking setup and tests:
 # 1) install sox
-# 2) install /etc/birdnet/birdnet.conf from tests/testdata/test_birdnet.conf
+# 2) prepare an isolated benchmark config from tests/testdata/test_birdnet.conf
 # 3) run benchmark-related tests
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 CONF_SOURCE="${REPO_DIR}/tests/testdata/test_birdnet.conf"
-CONF_TARGET_DIR="/etc/birdnet"
-CONF_TARGET="${CONF_TARGET_DIR}/birdnet.conf"
+CONF_TARGET=""
 CONSTANTS_FILE="${REPO_DIR}/scripts/utils/constants.py"
+
+cleanup() {
+	if [[ -n "${CONF_TARGET}" && -f "${CONF_TARGET}" ]]; then
+		rm -f "${CONF_TARGET}"
+	fi
+}
+trap cleanup EXIT
 
 if [[ "${EUID}" -ne 0 ]]; then
 	exec sudo bash "$0" "$@"
@@ -54,9 +60,9 @@ echo "[2/5] Installing sox..."
 apt-get update
 apt-get install -y sox
 
-echo "[3/5] Installing benchmark config to ${CONF_TARGET}..."
-mkdir -p "${CONF_TARGET_DIR}"
-install -m 0644 "${CONF_SOURCE}" "${CONF_TARGET}"
+CONF_TARGET="$(mktemp /tmp/birdnet-benchmark-conf.XXXXXX.conf)"
+echo "[3/5] Preparing isolated benchmark config at ${CONF_TARGET}..."
+install -m 0600 "${CONF_SOURCE}" "${CONF_TARGET}"
 
 echo "[3b/5] Adjusting config paths for current user..."
 CURRENT_USER="${SUDO_USER:-$(id -un)}"
@@ -106,9 +112,21 @@ echo "[5/5] Running benchmark tests (${BENCHMARK_RUNS}x full pipeline)..."
 cd "${REPO_DIR}"
 source birdnet/bin/activate
 
+if ! command -v unshare >/dev/null 2>&1; then
+	echo "Error: 'unshare' is required for isolated benchmark config handling." >&2
+	exit 1
+fi
+
 for ((run = 1; run <= BENCHMARK_RUNS; run++)); do
 	echo "----- Full benchmark run ${run}/${BENCHMARK_RUNS} -----"
-	python -m pytest -q -s tests/test_full_benchmark.py -k test_full_pipeline_benchmark
+	unshare --mount --propagation private bash -euo pipefail -c '
+		mkdir -p /etc/birdnet
+		if [[ ! -f /etc/birdnet/birdnet.conf ]]; then
+			touch /etc/birdnet/birdnet.conf
+		fi
+		mount --bind "$1" /etc/birdnet/birdnet.conf
+		python -m pytest -q -s tests/test_full_benchmark.py -k test_full_pipeline_benchmark
+	' _ "${CONF_TARGET}"
 done
 
 if [[ "${EVALUATE}" == "true" ]]; then
