@@ -13,7 +13,6 @@ print_nmea = True
 
 def lese_seriell(ser):
     """Background thread that continuously prints incoming lines"""
-    global print_nmea
     while True:
         try:
             if ser.is_open:
