@@ -28,8 +28,11 @@ class Logger:
 		self.file = open(filepath, "w")
 	
 	def write(self, msg: str):
-		print(msg, end="")
+		sys.__stdout__.write(msg)
 		self.file.write(msg)
+		self.file.flush()
+	
+	def flush(self):
 		self.file.flush()
 	
 	def close(self):
