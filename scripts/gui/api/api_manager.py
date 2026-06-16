@@ -111,7 +111,7 @@ class APIManager:
         
         @self.app.delete("/sync/deletesynceddata")
         async def delete_synced_data() -> dict:
-            self.data_provider.delete_synced_data()
+            self.data_provider.delete_synced_data(AUDIO_DIR)
             return {"status": "success"}
 
         @self.app.get("/sync/audiofile", response_model=None)

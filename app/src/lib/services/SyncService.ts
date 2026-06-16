@@ -5,6 +5,23 @@ import { Detection } from "../types";
 import SettingsService from "./SettingsService";
 
 export default class SyncService {
+    private static asBoolean(value: unknown): boolean {
+        if (typeof value === "boolean") {
+            return value;
+        }
+
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+        }
+
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+
+        return false;
+    }
+
     static async getPendingDetectionsAmount() {
         const responseData = await ApiService.callApi(
             "/sync/pendingdetectionsamount",
@@ -95,9 +112,9 @@ export default class SyncService {
     }
 
     static async deleteSyncedData(): Promise<boolean> {
-        const delteSyncedDataSetting =
+        const deleteSyncedDataSetting =
             await SettingsService.getSetting("deleteSyncedData");
-        if (delteSyncedDataSetting?.value !== true) {
+        if (!this.asBoolean(deleteSyncedDataSetting?.value)) {
             return true;
         }
 

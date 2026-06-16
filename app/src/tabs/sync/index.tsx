@@ -187,7 +187,10 @@ const Sync = () => {
             }
 
             if (successfulDetectionsSync && successfulAudioSync) {
-                await SyncService.deleteSyncedData();
+                const deletedSyncedData = await SyncService.deleteSyncedData();
+                if (!deletedSyncedData) {
+                    throw new Error("Failed to delete synced data on device");
+                }
             }
 
             setSyncProgress(100);
