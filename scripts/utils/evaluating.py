@@ -442,6 +442,8 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
          "Durchschnittsstrom"),
         ("I_max (A)",
          "Spitzenstrom: Kann die Batterie diesen Strom liefern, ohne dass die Spannung einbricht?"),
+        ("t (min)",
+         "Messdauer in Minuten."),
         ("E (Wh)",
             "Energiebedarf: Auf 1 Stunde hochgerechnet (E = P_avg * 1h)."),
     ]
@@ -459,6 +461,7 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
             f"<td>{html.escape(s['avg_voltage_v'])}</td>"
             f"<td>{html.escape(s['avg_current_a'])}</td>"
             f"<td>{html.escape(s['max_current_a'])}</td>"
+            f"<td>{html.escape(s['duration_min'])}</td>"
             f"<td>{html.escape(s['energy_wh'])}</td>"
             f"</tr>"
         )
@@ -533,14 +536,18 @@ def _build_electricity_section(electricity_dir: Path) -> str:
         return ""
 
     measurements = [
-        ("real_log.csv", "Normalbetrieb draußen (Real)"),
-        ("active_log.csv", "Durchgehende Analyse (Active)"),
-        ("idle_log.csv", "Ruhemodus (Idle)"),
+        ("real_log.csv", "Normalbetrieb draußen (Real)", False),
+        ("active_log.csv", "Durchgehende Analyse (Active)", False),
+        ("idle_log.csv", "Ruhemodus (Idle)", False),
+        ("sync_log.csv", "Datenabgleich (Sync)", True),
+        ("display_log.csv", "Display-Aktualisierung", True),
+        ("gps_log.csv", "GPS-Aktivität", True),
+        ("live_results_log.csv", "Live-Ergebnisse", True),
     ]
 
     # First pass: collect all stats for the load profile table
     all_stats: List[tuple[str, Dict[str, str]]] = []
-    for filename, label in measurements:
+    for filename, label, _optional in measurements:
         path = electricity_dir / filename
         if path.exists():
             all_stats.append((label, _electricity_stats(_read_electricity_file(path))))
@@ -548,9 +555,11 @@ def _build_electricity_section(electricity_dir: Path) -> str:
     load_profile_html = _generate_load_profile_html(all_stats) if all_stats else ""
 
     blocks = []
-    for filename, label in measurements:
+    for filename, label, optional in measurements:
         path = electricity_dir / filename
         if not path.exists():
+            if optional:
+                continue
             blocks.append(
                 f'<h3>{html.escape(label)}</h3>'
                 f'<p class="chart-missing">Datei nicht gefunden: {html.escape(filename)}</p>'
