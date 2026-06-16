@@ -5,6 +5,7 @@
 import argparse
 import datetime
 import sqlite3
+import subprocess
 import sys
 import time
 
@@ -187,6 +188,56 @@ def restore_database(db_path: Path, backup_path: Path, had_original: bool) -> No
 		backup_path.rename(db_path)
 
 
+def stop_display_service(service_name: str) -> bool:
+	"""Stop display service if it is active. Returns True if we should start it again later."""
+	status = subprocess.run(
+		["systemctl", "is-active", service_name],
+		check=False,
+		capture_output=True,
+		text=True,
+	)
+
+	if status.returncode != 0 or status.stdout.strip() != "active":
+		print(f"Service {service_name} is not active, continuing without stop")
+		return False
+
+	print(f"Stopping service {service_name}...")
+	stop_result = subprocess.run(
+		["sudo", "systemctl", "stop", service_name],
+		check=False,
+		capture_output=True,
+		text=True,
+	)
+
+	if stop_result.returncode != 0:
+		raise RuntimeError(
+			f"Failed to stop {service_name}: {stop_result.stderr.strip() or stop_result.stdout.strip()}"
+		)
+
+	print(f"Service {service_name} stopped")
+	return True
+
+
+def start_display_service(service_name: str, should_restart: bool) -> None:
+	if not should_restart:
+		return
+
+	print(f"Starting service {service_name}...")
+	start_result = subprocess.run(
+		["sudo", "systemctl", "start", service_name],
+		check=False,
+		capture_output=True,
+		text=True,
+	)
+
+	if start_result.returncode != 0:
+		raise RuntimeError(
+			f"Failed to start {service_name}: {start_result.stderr.strip() or start_result.stdout.strip()}"
+		)
+
+	print(f"Service {service_name} started")
+
+
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description="Display GUI stress test with DB backup/restore")
 	parser.add_argument("--backend", choices=["auto", "emulator", "waveshare"], default="waveshare")
@@ -197,6 +248,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument("--rest-seconds", type=int, default=300)
 	parser.add_argument("--stress-seconds", type=int, default=300)
 	parser.add_argument("--switch-interval", type=int, default=15)
+	parser.add_argument("--display-service", default="birdnet_display_gui.service")
 	return parser.parse_args()
 
 
@@ -208,8 +260,12 @@ def main() -> int:
 	backup_path = db_path.with_name(f"{db_path.name}.display_test_backup")
 	had_original = False
 	manager = None
+	should_restart_service = False
 
 	try:
+		if args.backend == "waveshare":
+			should_restart_service = stop_display_service(args.display_service)
+
 		print(f"Backing up current database: {db_path}")
 		backup_path, had_original = backup_database(db_path)
 
@@ -245,6 +301,11 @@ def main() -> int:
 			print("Original database restored")
 		except Exception as exc:
 			print(f"Failed to restore original database: {exc}")
+
+		try:
+			start_display_service(args.display_service, should_restart_service)
+		except Exception as exc:
+			print(f"Failed to restart display service: {exc}")
 
 
 if __name__ == "__main__":
