@@ -10,6 +10,7 @@ Process:
 """
 
 import datetime
+import signal
 import sqlite3
 import subprocess
 import sys
@@ -37,6 +38,17 @@ class Logger:
 	
 	def close(self):
 		self.file.close()
+
+
+def as_boolean(value) -> bool:
+	"""Normalize bool-like values (bool/int/str) to bool."""
+	if isinstance(value, bool):
+		return value
+	if isinstance(value, (int, float)):
+		return bool(value)
+	if isinstance(value, str):
+		return value.strip().lower() in {"1", "true", "yes", "on"}
+	return bool(value)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -312,7 +324,7 @@ def go_to_state(manager: GUIManager, target_state: StateNames) -> None:
 def wait_for_hotspot_state(manager: GUIManager, enabled: bool, timeout_seconds: int = 15) -> None:
 	deadline = time.monotonic() + timeout_seconds
 	while time.monotonic() < deadline:
-		if manager.data_provider.is_hotspot_enabled() == enabled:
+		if as_boolean(manager.data_provider.is_hotspot_enabled()) == enabled:
 			return
 		time.sleep(0.5)
 
@@ -322,7 +334,7 @@ def wait_for_hotspot_state(manager: GUIManager, enabled: bool, timeout_seconds: 
 
 def toggle_hotspot_via_ok(manager: GUIManager, enabled: bool) -> None:
 	go_to_state(manager, StateNames.SYNC)
-	current = manager.data_provider.is_hotspot_enabled()
+	current = as_boolean(manager.data_provider.is_hotspot_enabled())
 
 	if current == enabled:
 		print(f"Hotspot already {'enabled' if enabled else 'disabled'}")
@@ -335,10 +347,21 @@ def toggle_hotspot_via_ok(manager: GUIManager, enabled: bool) -> None:
 	manager.render_current_state()
 
 
+def _termination_handler(signum, _frame):
+	sig_name = signal.Signals(signum).name
+	raise KeyboardInterrupt(f"Received {sig_name}")
+
+
 def main() -> int:
 	logger = Logger(LOG_FILE)
 	original_stdout = sys.stdout
 	sys.stdout = logger
+	original_signal_handlers = {
+		signal.SIGHUP: signal.getsignal(signal.SIGHUP),
+		signal.SIGTERM: signal.getsignal(signal.SIGTERM),
+	}
+	signal.signal(signal.SIGHUP, _termination_handler)
+	signal.signal(signal.SIGTERM, _termination_handler)
 
 	db_path = DB_PATH.expanduser().resolve()
 
@@ -408,6 +431,8 @@ def main() -> int:
 			print(f"Failed to restart display service: {exc}")
 
 		sys.stdout = original_stdout
+		signal.signal(signal.SIGHUP, original_signal_handlers[signal.SIGHUP])
+		signal.signal(signal.SIGTERM, original_signal_handlers[signal.SIGTERM])
 		logger.close()
 		print(f"Test logs saved to {LOG_FILE}")
 
