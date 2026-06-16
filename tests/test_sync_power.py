@@ -17,6 +17,24 @@ import time
 
 from pathlib import Path
 
+# Setup logging to file
+LOG_FILE = Path("/tmp/test_sync_power.log")
+
+
+class Logger:
+	"""Log to both console and file."""
+	def __init__(self, filepath: Path):
+		self.filepath = filepath
+		self.file = open(filepath, "w")
+	
+	def write(self, msg: str):
+		print(msg, end="")
+		self.file.write(msg)
+		self.file.flush()
+	
+	def close(self):
+		self.file.close()
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
 	sys.path.insert(0, str(REPO_ROOT))
@@ -315,6 +333,10 @@ def toggle_hotspot_via_ok(manager: GUIManager, enabled: bool) -> None:
 
 
 def main() -> int:
+	logger = Logger(LOG_FILE)
+	original_stdout = sys.stdout
+	sys.stdout = logger
+
 	db_path = DB_PATH.expanduser().resolve()
 
 	backup_path = db_path.with_name(f"{db_path.name}.sync_test_backup")
@@ -323,9 +345,7 @@ def main() -> int:
 	should_restart_service = False
 
 	try:
-		if BACKEND == "waveshare":
-			should_restart_service = stop_display_service(DISPLAY_SERVICE)
-
+		print(f"Starting sync power test, logging to {LOG_FILE}")
 		print(f"Backing up current database: {db_path}")
 		backup_path, had_original = backup_database(db_path)
 
@@ -334,6 +354,9 @@ def main() -> int:
 		seed_detections(db_path, ROWS)
 		verify_detection_count(db_path, ROWS)
 		print(f"Inserted {ROWS} detections")
+
+		if BACKEND == "waveshare":
+			should_restart_service = stop_display_service(DISPLAY_SERVICE)
 
 		manager = GUIManager(
 			start_state=StateNames.START,
@@ -380,6 +403,10 @@ def main() -> int:
 			start_display_service(DISPLAY_SERVICE, should_restart_service)
 		except Exception as exc:
 			print(f"Failed to restart display service: {exc}")
+
+		sys.stdout = original_stdout
+		logger.close()
+		print(f"Test logs saved to {LOG_FILE}")
 
 
 if __name__ == "__main__":
