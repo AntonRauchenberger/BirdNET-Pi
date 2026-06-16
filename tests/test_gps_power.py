@@ -56,16 +56,16 @@ def main():
         elif cmd == "wake":
             print("\n--> Starting u-blox wake-up sequence...")
             
-            # 1. Hardware trigger: Generate edge change on RX line
+            # Hardware trigger: Generate edge change on RX line
             # We send 3 dummy bytes in a row to ensure the chip wakes up
             ser.write(b'\xFF\xFF\xFF')
             ser.flush()
             
-            # 2. Give the processor some time to stabilize the baud rate
+            # Give the processor some time to stabilize the baud rate
             print("Waiting 0.8 seconds for receiver boot and baud rate sync...")
             time.sleep(0.8)
             
-            # 3. Official u-blox UBX-CFG-RXM command for CONTINUOUS MODE (full operation)
+            # Official u-blox UBX-CFG-RXM command for CONTINUOUS MODE (full operation)
             # This string sets the receiver permanently back to maximum performance.
             UBX_FORCE_CONTINUOUS = b'\xb5\x62\x06\x11\x02\x00\x08\x00\x21\x91'
             
