@@ -63,6 +63,13 @@ Further hardware (can be used for offline and mobile interaction, but not requir
 - 2x Buttons: [Arcade Buttons](https://www.amazon.de/dp/B08L49F7DV?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1) (But also works with any other buttons with two pins)
 - GPS Modul: [GY-NEO6MV2 NEO-6M](https://www.amazon.de/dp/B088LR3488?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1)
 - Several Jumper cables to connect your hardware to the Raspberry Pi (e.g. [these](https://www.amazon.de/AZDelivery-Jumper-Arduino-Raspberry-Breadboard/dp/B074P726ZR/ref=sr_1_1_sspa?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=2QN55Z54UTPDE&dib=eyJ2IjoiMSJ9.QMvsCv-OL1-GLDfzEN_1jyPdDKf2RK1V8SqHyKsM9HfQmnZszW-ubKWXWCB4ktQ3lL1tqkoIbpmj11ttrXW2C2uNo_ulnL3ZpTO6PgZh9NFonRJ8UM1rVnOiVW-leHxv3joaRwpdSoMVscSVkpk6u9OJja-d5rNnR_KEWLTrJSRRN06LY-eVP-S5IWqd0uYEClgiv8in3G3xYd-DCDnKyUz3l8kZldcGzITH8OquRrqiaeZ-wp4fvW3TrRKHUfYG3FH5kyxvDWzCYJrdDbcD5wAektpWjDOztAAhdNfTKcA.U2o14r2fdM3iR1vFhJ2LEr2zDyRvSLM5vc0AnBLDits&dib_tag=se&keywords=jumper%2Bkabel&qid=1781281574&s=industrial&sprefix=jumper%2Bkabel%2Cindustrial%2C167&sr=1-1-spons&aref=VPtEopcrZd&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1))
+- Power source: An USB C power cable or a power bank for mobile usage
+
+**Power bank requirements:**
+
+- At least 10.000 mAh for better battery life
+- 5V and 3A output
+- e.g. [Hama Power Pack Performance 20](https://www.mediamarkt.de/de/product/_hama-power-pack-performance-20-powerbank-20000-anthrazit-2921244.html?storeId=401_Handy&utm_source=google&utm_medium=v2-sho&utm_campaign=de|mm|rt|v2-sho|pfm|nsp|PLA-bluePortal-2|na|d2c|NA|OSB0003N0U&utm_term=&utm_content=OSB0003N0U-TCID9732339591-TAID99088501669&gclsrc=aw.ds&gad_source=1&gad_campaignid=9732339591&gbraid=0AAAAADh5Kagw8jbVaTmHbqTMmzzwUcL6I&gclid=Cj0KCQjwrs7RBhDuARIsAIVfBD1g7RtbGs-mwMiouuTaR4_L-atTfENXy_71YWHfIP7EpG1oOMzh64QaAoR1EALw_wcB) (20.000 mAh)
 
 ## Installation
 
@@ -114,6 +121,11 @@ For the further hardware features, use these pinouts ([Help: Raspberry Pi Pins](
 |                   | DC    | Pin 22                      | GPIO 25        |                          |
 |                   | RST   | Pin 11                      | GPIO 17        |                          |
 |                   | BUSY  | Pin 18                      | GPIO 24        |                          |
+
+### Power usage estimation
+
+- **Approx. power consumption:** 3.2 Wh/h
+- **Estimated battery life with a 20.000 mAh power bank:** ~19 hours (this is a rough estimate and can vary based on the actual power consumption, which depends on the usage and the connected hardware)
 
 ## App
 
