@@ -117,18 +117,19 @@ def render_start_screen(state_data):
     draw = ImageDraw.Draw(image)
 
     last_detected_bird = str(state_data.get("last_detected_bird", "No detections yet"))
-    last_detected_confidence = str(state_data.get("last_detected_confidence", "0"))
     total_detections = str(state_data.get("total_detections", "0"))
     active_since_date = str(state_data.get("active since_date", "Unknown Date"))
     active_since_days = str(state_data.get("active since_days", "0"))
     system_name = str(state_data.get("system_name", "BirdNET-Pi"))
+    battery_percentage = int(state_data.get("battery_percentage", 100))
 
     components = [
         *_get_header_components(system_name),
         *_get_footer_components(footer_text="OK: Refresh", current_page=1),
         Text(10, 25, "LAST DETECTION", font_size=12, color="black"),
+        Text(WIDTH - 50, 25, "BATTERY", font_size=12, color="black"),
         Text(10, 35, f"{last_detected_bird}", font_size=16, color="black"),
-        Text(WIDTH - 35, 35, f"{last_detected_confidence}%", font_size=16, color="black"),
+        Text(WIDTH - 35, 35, f"{battery_percentage}%", font_size=16, color="black"),
         Line(8, 55, WIDTH - 8, 55, color="black", width=1),
         Line(WIDTH / 2, 55, WIDTH / 2, HEIGHT - 22, color="black", width=1),
         Text(10, 58, "TOTAL DETECTIONS", font_size=12, color="black"),

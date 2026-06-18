@@ -149,6 +149,30 @@ def _extract_phase_change_markers(curve_rows: List[Dict[str, str]]) -> List[tupl
     return markers
 
 
+def _draw_vertical_markers(
+    elements: List[str],
+    markers: List[tuple[float, str]],
+    map_x,
+    x_min: float,
+    x_max: float,
+    top: float,
+    plot_h: float,
+) -> None:
+    """Draws labeled vertical markers using the same style as the performance charts."""
+    for idx, (marker_t, marker_label) in enumerate(markers):
+        if marker_t < x_min or marker_t > x_max:
+            continue
+        x = map_x(marker_t)
+        color = _phase_color(marker_label)
+        label_y = top + 12 + ((idx % 2) * 10)
+        elements.append(
+            f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
+        )
+        elements.append(
+            f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(marker_label)}</text>'
+        )
+
+
 def _generate_single_metric_svg(
     times: List[float],
     values: List[float],
@@ -156,6 +180,7 @@ def _generate_single_metric_svg(
     y_label: str,
     line_color: str,
     phase_markers: Optional[List[tuple[float, str]]] = None,
+    markers: Optional[List[tuple[float, str]]] = None,
     width: int = 520,
     height: int = 260,
 ) -> str:
@@ -205,20 +230,11 @@ def _generate_single_metric_svg(
             f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#4b5a6a">{y_val:.1f}</text>'
         )
 
-    # Add vertical phase transition markers to correlate metric changes with phases
+    # Add vertical markers to correlate metric changes with named events
     if phase_markers:
-        for idx, (phase_t, phase_name) in enumerate(phase_markers):
-            if phase_t < x_min or phase_t > x_max:
-                continue
-            x = map_x(phase_t)
-            color = _phase_color(phase_name)
-            label_y = top + 12 + ((idx % 2) * 10)
-            elements.append(
-                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
-            )
-            elements.append(
-                f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(phase_name)}</text>'
-            )
+        _draw_vertical_markers(elements, phase_markers, map_x, x_min, x_max, top, plot_h)
+    if markers:
+        _draw_vertical_markers(elements, markers, map_x, x_min, x_max, top, plot_h)
 
     elements.extend(
         [
@@ -413,9 +429,33 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
     voltage_stats = _stats(voltages)
     power_stats = _stats(powers)
 
-    avg_power = power_stats["avg"]
-    # Simple 1-hour projection: E(Wh) = P_avg(W) * 1h.
-    energy_wh = avg_power
+    # Integrate power over the actually measured timeline using trapezoids.
+    # Result is exact for linear segments between samples and robust for uneven spacing.
+    time_power_pairs: List[tuple[float, float]] = []
+    for row in rows:
+        t = _to_float(row.get("Time", ""))
+        p = _to_float(row.get("Power", ""))
+        if t is None or p is None:
+            continue
+        time_power_pairs.append((t, p))
+
+    energy_wh: Optional[float] = None
+    if len(time_power_pairs) >= 2:
+        time_power_pairs.sort(key=lambda pair: pair[0])
+        energy_ws = 0.0
+        for (t0, p0), (t1, p1) in zip(time_power_pairs, time_power_pairs[1:]):
+            dt = t1 - t0
+            if dt <= 0:
+                continue
+            energy_ws += ((p0 + p1) / 2.0) * dt
+        energy_wh = energy_ws / 3600.0
+    elif power_stats["avg"] is not None and duration_seconds is not None:
+        # Fallback for sparse data: average power over measured duration.
+        energy_wh = power_stats["avg"] * (duration_seconds / 3600.0)
+
+    energy_wh_1h: Optional[float] = None
+    if energy_wh is not None and duration_seconds is not None and duration_seconds > 0:
+        energy_wh_1h = energy_wh * (3600.0 / duration_seconds)
 
     return {
         "avg_current_a": _fmt(current_stats["avg"], 4),
@@ -429,6 +469,7 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
         "max_power_w": _fmt(power_stats["max"], 4),
         "duration_min": _fmt(duration_minutes, 2),
         "energy_wh": _fmt(energy_wh, 4),
+        "energy_wh_1h": _fmt(energy_wh_1h, 4),
     }
 
 
@@ -436,16 +477,17 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
     """Builds a load-profile summary table for battery sizing at the top of the electricity section."""
     header_notes = [
         ("U_nom (V)",
-         "Nennspannung: Welche Spannung benötigt das System? (z.B. 5V, 12V). "
-         "Die Batterie muss diesen Bereich abdecken."),
+         "Nennspannung"),
         ("I_avg (A)",
          "Durchschnittsstrom"),
         ("I_max (A)",
-         "Spitzenstrom: Kann die Batterie diesen Strom liefern, ohne dass die Spannung einbricht?"),
+         "Spitzenstrom"),
         ("t (min)",
          "Messdauer in Minuten."),
         ("E (Wh)",
-            "Energiebedarf: Auf 1 Stunde hochgerechnet (E = P_avg * 1h)."),
+            "Energiebedarf während der tatsächlich gemessenen Zeit"),
+        ("E_1h (Wh)",
+            "Auf 1 Stunde normierter Energiebedarf (hoch/runtergerechnet)"),
     ]
 
     th_cells = "".join(
@@ -463,6 +505,7 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
             f"<td>{html.escape(s['max_current_a'])}</td>"
             f"<td>{html.escape(s['duration_min'])}</td>"
             f"<td>{html.escape(s['energy_wh'])}</td>"
+            f"<td>{html.escape(s['energy_wh_1h'])}</td>"
             f"</tr>"
         )
 
@@ -499,6 +542,13 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
     times_a, current_values = _extract_electricity_series(rows, "Time", "Current")
     times_v, voltage_values = _extract_electricity_series(rows, "Time", "Voltage")
     times_w, power_values = _extract_electricity_series(rows, "Time", "Power")
+    sync_markers = None
+    if label == "Datenabgleich (Sync)":
+        sync_markers = [
+            (5 * 60.0, "Hotspot aktivieren"),
+            (20 * 60.0, "Daten-Sync"),
+            (35 * 60.0, "Hotspot deaktivieren"),
+        ]
 
     amp_svg = _generate_single_metric_svg(
         times=times_a,
@@ -506,6 +556,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Stromstärke – {label}",
         y_label="Stromstärke (A)",
         line_color="#E67E22",
+        markers=sync_markers,
     )
     volt_svg = _generate_single_metric_svg(
         times=times_v,
@@ -513,6 +564,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Spannung – {label}",
         y_label="Spannung (V)",
         line_color="#2980B9",
+        markers=sync_markers,
     )
     watt_svg = _generate_single_metric_svg(
         times=times_w,
@@ -520,6 +572,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Leistung – {label}",
         y_label="Leistung (W)",
         line_color="#27AE60",
+        markers=sync_markers,
     )
     return (
         '<div class="elec-charts-grid">'

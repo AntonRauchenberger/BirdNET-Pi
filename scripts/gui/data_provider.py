@@ -71,6 +71,7 @@ class DataProvider:
             "active since_date": boot_time.strftime("%Y-%m-%d"),
             "active since_days": str(uptime_days),
             "system_name": socket.gethostname(),
+            "battery_percentage": self._get_battery_percentage(boot_time),
         }
 
     def fetch_list_state_data(self, current_page: int = 1) -> dict:
@@ -302,9 +303,24 @@ class DataProvider:
         self._execute_db_command("DELETE FROM detections WHERE synced = TRUE")
 
     
-    def _get_battery_percentage(self) -> int:
-        # TODO implement
-        return 100
+    def _get_battery_percentage(self, boot_time) -> int:
+        """Estimate remaining battery percentage based on elapsed time and average power consumption."""
+        E_USEABLE = 62.9  # Wh
+        P_AVG = 3.1758  # W 
+
+        try:
+            elapsed_seconds = (datetime.datetime.now() - boot_time).total_seconds()
+            if elapsed_seconds <= 0:
+                return 100
+
+            elapsed_hours = elapsed_seconds / 3600.0
+            consumed_wh = elapsed_hours * P_AVG
+            remaining_wh = E_USEABLE - consumed_wh
+
+            percentage = int(round((remaining_wh / E_USEABLE) * 100))
+            return max(0, min(100, percentage))
+        except Exception:
+            return 100
 
     def _get_device_location(self) -> dict | None:
         deviceSettings = get_settings()
@@ -471,13 +487,13 @@ class DataProvider:
     
     def get_device_details(self) -> dict:
         device_name = socket.gethostname()
-        
-        battery_percentage = self._get_battery_percentage()
-        
+                
         storage_usage_percent = self._get_storage_usage_percent()
         
         boot_time = self._get_boot_time()
         uptime_days = (datetime.datetime.now() - boot_time).days
+
+        battery_percentage = self._get_battery_percentage(boot_time)
         
         wifi_ssid = self._get_wifi_ssid()
         location = self._get_device_location()
