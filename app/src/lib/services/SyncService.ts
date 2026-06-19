@@ -75,7 +75,7 @@ export default class SyncService {
     static async syncData(
         offset: number,
         limit: number = SYNC_ROW_LIMIT,
-    ): Promise<boolean> {
+    ): Promise<number | false> {
         const rawData = await this.getSyncData(offset, limit);
         if (rawData === false) {
             return false;
@@ -83,7 +83,7 @@ export default class SyncService {
 
         const detections: Detection[] = rawData.map(this.mapRowToDetection);
         await this.saveSyncData(detections);
-        return true;
+        return detections.length;
     }
 
     static async syncAudioFiles(speciesComName: string): Promise<boolean> {

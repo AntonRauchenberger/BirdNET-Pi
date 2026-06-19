@@ -65,25 +65,33 @@ const Sync = () => {
         setSyncProgress(0);
         setSyncingInfo("Transferring detections ...");
 
-        let offset = 0;
+        let syncedDetections = 0;
         let syncCompletedSuccessfully = true;
-        while (offset < pendingAmount) {
-            const syncSuccess = await SyncService.syncData(offset);
-            if (!syncSuccess) {
-                console.error("Sync failed at offset:", offset);
+        while (syncedDetections < pendingAmount) {
+            // Always request from offset 0 because the device marks fetched rows
+            // as synced immediately, shrinking the pending result set.
+            const syncedBatchSize = await SyncService.syncData(0);
+            if (syncedBatchSize === false) {
+                console.error("Sync failed while transferring detections");
                 syncCompletedSuccessfully = false;
                 break;
             }
 
-            offset += SYNC_ROW_LIMIT;
+            if (syncedBatchSize === 0) {
+                console.error("Sync returned no detections although pending rows still exist");
+                syncCompletedSuccessfully = false;
+                break;
+            }
+
+            syncedDetections += syncedBatchSize;
 
             // Update progress based on offset and pendingAmount
             setSyncProgress(
-                Math.min(100, Math.round((offset / pendingAmount) * 100)),
+                Math.min(100, Math.round((syncedDetections / pendingAmount) * 100)),
             );
 
             console.log(
-                `Synced ${Math.min(offset, pendingAmount)} of ${pendingAmount} detections`,
+                `Synced ${Math.min(syncedDetections, pendingAmount)} of ${pendingAmount} detections`,
             );
         }
 
@@ -193,6 +201,16 @@ const Sync = () => {
                 }
             }
 
+            const remainingPendingAmounts =
+                await SyncService.getPendingDetectionsAmount();
+            if (
+                remainingPendingAmounts === false ||
+                remainingPendingAmounts.detectionsAmount > 0 ||
+                remainingPendingAmounts.speciesAmount > 0
+            ) {
+                throw new Error("Sync reported complete but pending data still exists");
+            }
+
             setSyncProgress(100);
             showTemporaryStatusMessage(
                 "Sync completed successfully",
@@ -201,6 +219,11 @@ const Sync = () => {
             );
         } catch (error) {
             console.error("Sync error:", error);
+            showTemporaryStatusMessage(
+                "Sync interrupted. Some entries are still pending.",
+                2600,
+                "error",
+            );
         } finally {
             setIsSyncing(false);
             setSyncProgress(0);
