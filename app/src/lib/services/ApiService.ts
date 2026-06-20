@@ -9,6 +9,7 @@ export default class ApiService {
         method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" = "GET",
         body?: unknown,
         baseUrl?: string,
+        timeoutMs?: number,
     ) {
         const normalizedPath = path.startsWith("/") ? path : `/${path}`;
         const url = new URL(normalizedPath, baseUrl || BASE_URL);
@@ -22,15 +23,16 @@ export default class ApiService {
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
         try {
+            const effectiveTimeoutMs = timeoutMs ?? ApiService.REQUEST_TIMEOUT_MS;
             const timeoutPromise = new Promise<never>((_, reject) => {
                 timeoutId = setTimeout(() => {
                     controller.abort();
                     reject(
                         new Error(
-                            `API request timed out after ${ApiService.REQUEST_TIMEOUT_MS / 1000} seconds`,
+                            `API request timed out after ${effectiveTimeoutMs / 1000} seconds`,
                         ),
                     );
-                }, ApiService.REQUEST_TIMEOUT_MS);
+                }, effectiveTimeoutMs);
             });
 
             const response = await Promise.race([

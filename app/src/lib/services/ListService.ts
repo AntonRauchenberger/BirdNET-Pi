@@ -3,6 +3,49 @@ import ApiService from "./ApiService";
 import { Detection, Species } from "../types";
 
 export default class ListService {
+    private static readonly WIKI_BASE_URL = "https://en.wikipedia.org";
+    private static readonly WIKI_TIMEOUT_MS = 6000;
+    private static readonly IMAGE_CACHE_STORAGE_KEY = "birdnet:imageCache:v1";
+    private static imageCache = new Map<string, string>();
+    private static cacheLoaded = false;
+
+    private static loadImageCacheFromStorage() {
+        if (this.cacheLoaded || typeof window === "undefined") {
+            return;
+        }
+
+        this.cacheLoaded = true;
+
+        try {
+            const raw = window.localStorage.getItem(this.IMAGE_CACHE_STORAGE_KEY);
+            if (!raw) {
+                return;
+            }
+
+            const parsed = JSON.parse(raw) as Record<string, string>;
+            for (const [key, value] of Object.entries(parsed)) {
+                if (typeof value === "string") {
+                    this.imageCache.set(key, value);
+                }
+            }
+        } catch {
+            // Ignore invalid cache payloads.
+        }
+    }
+
+    private static persistImageCacheToStorage() {
+        if (typeof window === "undefined") {
+            return;
+        }
+
+        try {
+            const payload = JSON.stringify(Object.fromEntries(this.imageCache.entries()));
+            window.localStorage.setItem(this.IMAGE_CACHE_STORAGE_KEY, payload);
+        } catch {
+            // Ignore storage quota/access errors.
+        }
+    }
+
     static async aggregateDetectionsToSpecies(
         detections: Detection[],
     ): Promise<Species[]> {
@@ -63,11 +106,14 @@ export default class ListService {
                 uncommon: uncommon,
             };
 
-            const imageUrl = await this.getBirdImage(species);
-            species.imageUrl = imageUrl;
-
             speciesList.push(species);
         }
+
+        await Promise.all(
+            speciesList.map(async (species) => {
+                species.imageUrl = await this.getBirdImage(species);
+            }),
+        );
 
         // Sort by number of detections (descending)
         return speciesList.sort((a, b) => b.detections - a.detections);
@@ -89,6 +135,14 @@ export default class ListService {
             return "";
         }
 
+        this.loadImageCacheFromStorage();
+
+        const key = species.scientificName.trim().toLowerCase();
+        const cached = this.imageCache.get(key);
+        if (cached !== undefined) {
+            return cached;
+        }
+
         const pageTitle = encodeURIComponent(
             species.scientificName.trim().replace(/\s+/g, "_"),
         );
@@ -98,17 +152,25 @@ export default class ListService {
             undefined,
             "GET",
             undefined,
-            "https://en.wikipedia.org",
+            this.WIKI_BASE_URL,
+            this.WIKI_TIMEOUT_MS,
         );
 
         if (!response || typeof response !== "object") {
             return "";
         }
 
-        const imageUrl = (response as { originalimage?: { source?: unknown } })
-            .originalimage?.source;
+        const data = response as {
+            originalimage?: { source?: unknown };
+            thumbnail?: { source?: unknown };
+        };
 
-        return typeof imageUrl === "string" ? imageUrl : "";
+        const imageUrl = data.originalimage?.source ?? data.thumbnail?.source;
+        const finalImageUrl = typeof imageUrl === "string" ? imageUrl : "";
+        this.imageCache.set(key, finalImageUrl);
+        this.persistImageCacheToStorage();
+
+        return finalImageUrl;
     }
 
     static async getSpeciesAudioBlob(species: Species): Promise<Blob | null> {
