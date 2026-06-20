@@ -241,6 +241,18 @@ export default class CloudService {
 
             for (const detection of detections) {
                 try {
+                    if (detection?.uncommon) {
+                        console.log(`Skipping uncommon detection ${detection.id} for BirdWeather sync.`);
+
+                        // Mark detection as synced in local database to avoid future sync attempts
+                        await DatabaseService.putOrOverwrite("detections", {
+                            ...detection,
+                            syncedToBirdWeather: true,
+                        });
+
+                        continue;
+                    }
+
                     const rawDate = String(detection.date ?? "").trim();
                     const rawTime = String(detection.time ?? "").trim();
                     const normalizedTime = rawTime.length === 5 ? `${rawTime}:00` : rawTime;
