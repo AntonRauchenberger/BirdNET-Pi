@@ -209,6 +209,14 @@ create_necessary_dirs() {
   [ -d $RECS_DIR/StreamData ] || sudo -u ${USER} mkdir -p $RECS_DIR/StreamData
   [ -L ${EXTRACTED}/spectrogram.png ] || sudo -u ${USER} ln -sf ${RECS_DIR}/StreamData/spectrogram.png ${EXTRACTED}/spectrogram.png
 
+  local exclude_file="$my_dir/exclude_species_list.txt"
+  [ -f "${exclude_file}" ] || sudo -u ${USER} touch "${exclude_file}"
+  for species in Engine Fireworks; do
+    if ! grep -Fxq "${species}" "${exclude_file}"; then
+      echo "${species}" | sudo -u ${USER} tee -a "${exclude_file}" > /dev/null
+    fi
+  done
+
   sudo -u ${USER} ln -fs $my_dir/exclude_species_list.txt $my_dir/scripts
   sudo -u ${USER} ln -fs $my_dir/confirmed_species_list.txt $my_dir/scripts
   sudo -u ${USER} ln -fs $my_dir/include_species_list.txt $my_dir/scripts
