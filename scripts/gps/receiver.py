@@ -64,6 +64,7 @@ class GPSReceiver:
                     line = raw_line.decode('utf-8', errors='ignore').strip()
 
                     if line.startswith('$GPRMC'):
+                        print(f"Received NMEA sentence from GPS: {line}")
                         parts = line.split(',')
                         
                         if len(parts) > 6:
