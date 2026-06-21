@@ -1,5 +1,5 @@
 import { Setting } from "../../lib/types";
-import { Earth, Globe, Bell, Router, Wifi, RefreshCw, KeyRound, Database, DatabaseZap, Package, Tag, AudioWaveform, ALargeSmall, MapPin, HatGlasses, DatabaseBackup, ShieldAlert, Bird, Gpu, Tv, Videotape, BookHeadphones, Link, Blend, Gauge, Ear, Wrench, Activity, WifiSync, Diff, ScrollText, LocateFixed } from "lucide-react";
+import { Earth, Globe, Bell, Router, Wifi, RefreshCw, KeyRound, Database, DatabaseZap, Package, Tag, AudioWaveform, ALargeSmall, MapPin, HatGlasses, DatabaseBackup, ShieldAlert, Bird, Gpu, Tv, Videotape, BookHeadphones, Link, Blend, Gauge, Ear, Wrench, Activity, WifiSync, Diff, ScrollText, LocateFixed, BatteryCharging } from "lucide-react";
 
 export const DEFAULT_SETTINGS: Setting[] = [
     {
@@ -142,6 +142,18 @@ export const DEFAULT_SETTINGS: Setting[] = [
         value: 900,
         min: 60,
         max: 3600,
+        deviceInternal: true,
+    },
+    {
+        id: "GPS_POWER_SAVE_MODE",
+        name: "GPS Power Save Mode",
+        description: "Enable or disable GPS power save mode",
+        defaultValue: true,
+        tab: "LOCATION",
+        topTab: "BASIC",
+        type: "boolean",
+        icon: <BatteryCharging size={18} />,
+        value: true,
         deviceInternal: true,
     },
     {

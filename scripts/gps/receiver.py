@@ -97,7 +97,7 @@ class GPSReceiver:
             return {"latitude": None, "longitude": None, "status": "error"}
         
     @staticmethod
-    def handle_gps_work(gps_active):
+    def handle_gps_work(gps_active, gps_power_save_mode_enabled=True):
         if not gps_active:
             return
 
@@ -120,11 +120,14 @@ class GPSReceiver:
                 if gps_data.get("status") in ["no_fix", "waiting"] and attempt < GPS_UPDATE_ATTEMPTS - 1:
                     time.sleep(GPS_RETRY_DELAY)
         finally:
-            GPSReceiver.activate_sleep_mode()
+            GPSReceiver.activate_sleep_mode(gps_power_save_mode_enabled)
 
 
     @staticmethod
-    def activate_sleep_mode():
+    def activate_sleep_mode(gps_power_save_mode_enabled=True, force=False):
+        if not force and not gps_power_save_mode_enabled:
+            return
+
         try:
             with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=2) as ser:
                 ser.write(UBX_DEEP_SLEEP)
