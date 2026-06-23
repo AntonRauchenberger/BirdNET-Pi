@@ -170,7 +170,6 @@ export const DEFAULT_SETTINGS: Setting[] = [
         max: 90.0,
         step: 0.0001,
         deviceInternal: true,
-        disabled: true
     },
     {
         id: "LONGITUDE",
@@ -186,7 +185,6 @@ export const DEFAULT_SETTINGS: Setting[] = [
         max: 180.0,
         step: 0.0001,
         deviceInternal: true,
-        disabled: true
     },
     {
         id: "BIRDWEATHER_ID",
