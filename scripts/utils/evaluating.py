@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+CAPACITY_POWER_SOURCE_AH = 20 # Ah
+CAPACITY_POWER_SOURCE_WH = 74 # Wh
+EFFICIENCY_POWER_SOURCE = 0.85
+E_USEABLE_POWER_SOURCE = CAPACITY_POWER_SOURCE_WH * EFFICIENCY_POWER_SOURCE
+
 ################################################################################
 # Paths and scenario helpers
 ################################################################################
@@ -457,6 +462,10 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
     if energy_wh is not None and duration_seconds is not None and duration_seconds > 0:
         energy_wh_1h = energy_wh * (3600.0 / duration_seconds)
 
+    estimated_runtime_h: Optional[float] = None
+    if energy_wh_1h is not None and energy_wh_1h > 0:
+        estimated_runtime_h = _calculate_duration(energy_wh_1h)
+
     return {
         "avg_current_a": _fmt(current_stats["avg"], 4),
         "min_current_a": _fmt(current_stats["min"], 4),
@@ -470,6 +479,7 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
         "duration_min": _fmt(duration_minutes, 2),
         "energy_wh": _fmt(energy_wh, 4),
         "energy_wh_1h": _fmt(energy_wh_1h, 4),
+        "estimated_runtime_h": _fmt(estimated_runtime_h, 2),
     }
 
 
@@ -488,6 +498,8 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
             "Energiebedarf während der tatsächlich gemessenen Zeit"),
         ("E_1h (Wh)",
             "Auf 1 Stunde normierter Energiebedarf (hoch/runtergerechnet)"),
+        ("Laufzeit (h)",
+            f"Geschätzte Laufzeit mit {E_USEABLE_POWER_SOURCE} Wh nutzbarer Energiequelle"),
     ]
 
     th_cells = "".join(
@@ -506,6 +518,7 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
             f"<td>{html.escape(s['duration_min'])}</td>"
             f"<td>{html.escape(s['energy_wh'])}</td>"
             f"<td>{html.escape(s['energy_wh_1h'])}</td>"
+            f"<td>{html.escape(s['estimated_runtime_h'])}</td>"
             f"</tr>"
         )
 
@@ -581,6 +594,12 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         f'<div class="chart-card">{watt_svg}</div>'
         "</div>"
     )
+
+
+def _calculate_duration(e_1h: float) -> float:
+    """Calculates the estimated runtime in hours based on normalized hourly energy demand."""
+    duration_hours = E_USEABLE_POWER_SOURCE / e_1h if e_1h != 0 else 0
+    return round(duration_hours, 2)
 
 
 def _build_electricity_section(electricity_dir: Path) -> str:
@@ -823,7 +842,41 @@ def _build_html_report(
         chart_cell = f"<td>{row.get('_curve_svg', '')}</td>"
         body_rows.append(f"<tr>{metric_cells}{chart_cell}</tr>")
 
-    electricity_section_html = _build_electricity_section(electricity_dir) if electricity_dir else ""
+        electricity_section_html = _build_electricity_section(electricity_dir) if electricity_dir else ""
+
+        power_source_section_html = f"""
+        <section class="panel">
+            <h2>Grunddaten der Stromquelle</h2>
+            <div class="table-wrap">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Wert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kapazität</td>
+                            <td>{CAPACITY_POWER_SOURCE_AH:.2f} Ah</td>
+                        </tr>
+                        <tr>
+                            <td>Energieinhalt (nominal)</td>
+                            <td>{CAPACITY_POWER_SOURCE_WH:.2f} Wh</td>
+                        </tr>
+                        <tr>
+                            <td>Wirkungsgrad</td>
+                            <td>{EFFICIENCY_POWER_SOURCE * 100:.1f} %</td>
+                        </tr>
+                        <tr>
+                            <td>Nutzbare Energie</td>
+                            <td>{E_USEABLE_POWER_SOURCE:.2f} Wh</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        """
 
     html_content = f"""<!doctype html>
 <html lang="de">
@@ -962,6 +1015,7 @@ def _build_html_report(
       <h2>Allgemeine Informationen</h2>
       <pre>{html.escape(metadata_block)}</pre>
     </section>
+    {power_source_section_html} 
     {electricity_section_html}
     {summary_section_html}
     <section class="panel table-wrap">
