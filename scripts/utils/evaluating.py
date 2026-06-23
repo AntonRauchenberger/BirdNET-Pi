@@ -610,7 +610,6 @@ def _build_electricity_section(electricity_dir: Path) -> str:
     measurements = [
         ("real_log.csv", "Normalbetrieb draußen (Real)", False),
         ("active_log.csv", "Durchgehende Analyse (Active)", False),
-        ("idle_log.csv", "Ruhemodus (Idle)", False),
         ("sync_log.csv", "Datenabgleich (Sync)", True),
         ("display_log.csv", "Display-Aktualisierung", True),
         ("gps_log.csv", "GPS-Aktivität", True),
