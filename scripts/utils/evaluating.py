@@ -595,6 +595,7 @@ def _build_electricity_section(electricity_dir: Path) -> str:
         ("sync_log.csv", "Datenabgleich (Sync)", True),
         ("display_log.csv", "Display-Aktualisierung", True),
         ("gps_log.csv", "GPS-Aktivität", True),
+        ("gps_no_energy_safe_mode.csv", "GPS ohne Energy-Safe-Mode", True),
         ("live_results_log.csv", "Live-Ergebnisse", True),
     ]
 
