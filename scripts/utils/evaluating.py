@@ -260,28 +260,10 @@ def _generate_single_metric_svg(
 ################################################################################
 def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     """Builds the 4-chart block for one benchmark run."""
-    times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
-    times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
     times_cpu_system, cpu_system_values = _extract_time_and_series(curve_rows, "cpu_percent_system")
     times_used_ram, used_ram_values = _extract_time_and_series(curve_rows, "total_used_ram_percent")
     phase_markers = _extract_phase_change_markers(curve_rows)
 
-    ram_svg = _generate_single_metric_svg(
-        times=times_ram,
-        values=ram_values,
-        title="RAM-Nutzung des BirdNET-Prozesses je Testdurchlauf",
-        y_label="RAM-Nutzung BirdNET-Prozess (MB)",
-        line_color="#0072B2",
-        phase_markers=phase_markers,
-    )
-    cpu_svg = _generate_single_metric_svg(
-        times=times_cpu,
-        values=cpu_values,
-        title="CPU-Auslastung des BirdNET-Prozesses je Testdurchlauf",
-        y_label="CPU-Auslastung BirdNET-Prozess (%)",
-        line_color="#D55E00",
-        phase_markers=phase_markers,
-    )
     cpu_system_svg = _generate_single_metric_svg(
         times=times_cpu_system,
         values=cpu_system_values,
@@ -300,9 +282,7 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     )
     return (
         '<div class="charts-grid">'
-        f'<div class="chart-card">{ram_svg}</div>'
         f'<div class="chart-card">{used_ram_svg}</div>'
-        f'<div class="chart-card">{cpu_svg}</div>'
         f'<div class="chart-card">{cpu_system_svg}</div>'
         "</div>"
     )
@@ -344,14 +324,11 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
     timestamps = [v for v in timestamps if v is not None]
 
-    ram_process = [_to_float(r.get("ram_mb_birdnet_process", "")) for r in curve_rows]
-    ram_process = [v for v in ram_process if v is not None]
+    ram_system = [_to_float(r.get("total_ram_mb", "")) for r in curve_rows]
+    ram_system = [v for v in ram_system if v is not None]
 
     total_used_percent = [_to_float(r.get("total_used_ram_percent", "")) for r in curve_rows]
     total_used_percent = [v for v in total_used_percent if v is not None]
-
-    cpu_process = [_to_float(r.get("cpu_percent_birdnet_process", "")) for r in curve_rows]
-    cpu_process = [v for v in cpu_process if v is not None]
 
     cpu_system = [_to_float(r.get("cpu_percent_system", "")) for r in curve_rows]
     cpu_system = [v for v in cpu_system if v is not None]
@@ -363,9 +340,8 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     if timestamps:
         duration = max(timestamps) - min(timestamps)
 
-    ram_stats = _stats(ram_process)
+    ram_stats = _stats(ram_system)
     used_stats = _stats(total_used_percent)
-    cpu_p_stats = _stats(cpu_process)
     cpu_s_stats = _stats(cpu_system)
 
     return {
@@ -377,8 +353,6 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
         "ram_max_mb": _fmt(ram_stats["max"]),
         "used_ram_avg_pct": _fmt(used_stats["avg"]),
         "used_ram_max_pct": _fmt(used_stats["max"]),
-        "cpu_proc_avg_pct": _fmt(cpu_p_stats["avg"]),
-        "cpu_proc_max_pct": _fmt(cpu_p_stats["max"]),
         "cpu_sys_avg_pct": _fmt(cpu_s_stats["avg"]),
         "cpu_sys_max_pct": _fmt(cpu_s_stats["max"]),
     }
@@ -724,8 +698,6 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
         ("Total Reporting (s)", "Total Reporting (s)"),
         ("ram_avg_mb", "RAM Average (MB)"),
         ("ram_max_mb", "RAM Peak (MB)"),
-        ("cpu_proc_avg_pct", "CPU Process Avg (%)"),
-        ("cpu_proc_max_pct", "CPU Process Peak (%)"),
         ("cpu_sys_avg_pct", "CPU System Avg (%)"),
         ("cpu_sys_max_pct", "CPU System Peak (%)"),
         ("duration_s", "Test Duration (s)"),
@@ -769,8 +741,6 @@ def _build_html_report(
         "ram_max_mb",
         "used_ram_avg_pct",
         "used_ram_max_pct",
-        "cpu_proc_avg_pct",
-        "cpu_proc_max_pct",
         "cpu_sys_avg_pct",
         "cpu_sys_max_pct",
     ]
@@ -789,8 +759,6 @@ def _build_html_report(
         "Total Reporting (s)": "Total Reporting (s)",
         "ram_avg_mb": "RAM Avg (MB)",
         "ram_max_mb": "RAM Max (MB)",
-        "cpu_proc_avg_pct": "CPU Proc Avg (%)",
-        "cpu_proc_max_pct": "CPU Proc Max (%)",
         "cpu_sys_avg_pct": "CPU Sys Avg (%)",
         "cpu_sys_max_pct": "CPU Sys Max (%)",
         "duration_s": "Duration (s)",
@@ -1066,8 +1034,6 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
                     "ram_max_mb": "NA",
                     "used_ram_avg_pct": "NA",
                     "used_ram_max_pct": "NA",
-                    "cpu_proc_avg_pct": "NA",
-                    "cpu_proc_max_pct": "NA",
                     "cpu_sys_avg_pct": "NA",
                     "cpu_sys_max_pct": "NA",
                 }
