@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 
+CAPACITY_POWER_SOURCE_AH = 20 # Ah
+CAPACITY_POWER_SOURCE_WH = 74 # Wh
+EFFICIENCY_POWER_SOURCE = 0.85
+E_USEABLE_POWER_SOURCE = CAPACITY_POWER_SOURCE_WH * EFFICIENCY_POWER_SOURCE
+
 ################################################################################
 # Paths and scenario helpers
 ################################################################################
@@ -149,6 +154,30 @@ def _extract_phase_change_markers(curve_rows: List[Dict[str, str]]) -> List[tupl
     return markers
 
 
+def _draw_vertical_markers(
+    elements: List[str],
+    markers: List[tuple[float, str]],
+    map_x,
+    x_min: float,
+    x_max: float,
+    top: float,
+    plot_h: float,
+) -> None:
+    """Draws labeled vertical markers using the same style as the performance charts."""
+    for idx, (marker_t, marker_label) in enumerate(markers):
+        if marker_t < x_min or marker_t > x_max:
+            continue
+        x = map_x(marker_t)
+        color = _phase_color(marker_label)
+        label_y = top + 12 + ((idx % 2) * 10)
+        elements.append(
+            f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
+        )
+        elements.append(
+            f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(marker_label)}</text>'
+        )
+
+
 def _generate_single_metric_svg(
     times: List[float],
     values: List[float],
@@ -156,6 +185,7 @@ def _generate_single_metric_svg(
     y_label: str,
     line_color: str,
     phase_markers: Optional[List[tuple[float, str]]] = None,
+    markers: Optional[List[tuple[float, str]]] = None,
     width: int = 520,
     height: int = 260,
 ) -> str:
@@ -205,20 +235,11 @@ def _generate_single_metric_svg(
             f'<text x="{left - 8}" y="{y + 4:.2f}" text-anchor="end" font-size="11" fill="#4b5a6a">{y_val:.1f}</text>'
         )
 
-    # Add vertical phase transition markers to correlate metric changes with phases
+    # Add vertical markers to correlate metric changes with named events
     if phase_markers:
-        for idx, (phase_t, phase_name) in enumerate(phase_markers):
-            if phase_t < x_min or phase_t > x_max:
-                continue
-            x = map_x(phase_t)
-            color = _phase_color(phase_name)
-            label_y = top + 12 + ((idx % 2) * 10)
-            elements.append(
-                f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="{color}" stroke-dasharray="4 3" stroke-width="1.4"/>'
-            )
-            elements.append(
-                f'<text x="{x + 3:.2f}" y="{label_y}" font-size="10" fill="{color}">{html.escape(phase_name)}</text>'
-            )
+        _draw_vertical_markers(elements, phase_markers, map_x, x_min, x_max, top, plot_h)
+    if markers:
+        _draw_vertical_markers(elements, markers, map_x, x_min, x_max, top, plot_h)
 
     elements.extend(
         [
@@ -239,28 +260,10 @@ def _generate_single_metric_svg(
 ################################################################################
 def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     """Builds the 4-chart block for one benchmark run."""
-    times_ram, ram_values = _extract_time_and_series(curve_rows, "ram_mb_birdnet_process")
-    times_cpu, cpu_values = _extract_time_and_series(curve_rows, "cpu_percent_birdnet_process")
     times_cpu_system, cpu_system_values = _extract_time_and_series(curve_rows, "cpu_percent_system")
     times_used_ram, used_ram_values = _extract_time_and_series(curve_rows, "total_used_ram_percent")
     phase_markers = _extract_phase_change_markers(curve_rows)
 
-    ram_svg = _generate_single_metric_svg(
-        times=times_ram,
-        values=ram_values,
-        title="RAM-Nutzung des BirdNET-Prozesses je Testdurchlauf",
-        y_label="RAM-Nutzung BirdNET-Prozess (MB)",
-        line_color="#0072B2",
-        phase_markers=phase_markers,
-    )
-    cpu_svg = _generate_single_metric_svg(
-        times=times_cpu,
-        values=cpu_values,
-        title="CPU-Auslastung des BirdNET-Prozesses je Testdurchlauf",
-        y_label="CPU-Auslastung BirdNET-Prozess (%)",
-        line_color="#D55E00",
-        phase_markers=phase_markers,
-    )
     cpu_system_svg = _generate_single_metric_svg(
         times=times_cpu_system,
         values=cpu_system_values,
@@ -279,9 +282,7 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
     )
     return (
         '<div class="charts-grid">'
-        f'<div class="chart-card">{ram_svg}</div>'
         f'<div class="chart-card">{used_ram_svg}</div>'
-        f'<div class="chart-card">{cpu_svg}</div>'
         f'<div class="chart-card">{cpu_system_svg}</div>'
         "</div>"
     )
@@ -323,14 +324,11 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     timestamps = [_to_float(r.get("timestamp_s", "")) for r in curve_rows]
     timestamps = [v for v in timestamps if v is not None]
 
-    ram_process = [_to_float(r.get("ram_mb_birdnet_process", "")) for r in curve_rows]
-    ram_process = [v for v in ram_process if v is not None]
+    ram_system = [_to_float(r.get("total_ram_mb", "")) for r in curve_rows]
+    ram_system = [v for v in ram_system if v is not None]
 
     total_used_percent = [_to_float(r.get("total_used_ram_percent", "")) for r in curve_rows]
     total_used_percent = [v for v in total_used_percent if v is not None]
-
-    cpu_process = [_to_float(r.get("cpu_percent_birdnet_process", "")) for r in curve_rows]
-    cpu_process = [v for v in cpu_process if v is not None]
 
     cpu_system = [_to_float(r.get("cpu_percent_system", "")) for r in curve_rows]
     cpu_system = [v for v in cpu_system if v is not None]
@@ -342,9 +340,8 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
     if timestamps:
         duration = max(timestamps) - min(timestamps)
 
-    ram_stats = _stats(ram_process)
+    ram_stats = _stats(ram_system)
     used_stats = _stats(total_used_percent)
-    cpu_p_stats = _stats(cpu_process)
     cpu_s_stats = _stats(cpu_system)
 
     return {
@@ -356,8 +353,6 @@ def _calculate_curve_summary(curve_rows: List[Dict[str, str]]) -> Dict[str, str]
         "ram_max_mb": _fmt(ram_stats["max"]),
         "used_ram_avg_pct": _fmt(used_stats["avg"]),
         "used_ram_max_pct": _fmt(used_stats["max"]),
-        "cpu_proc_avg_pct": _fmt(cpu_p_stats["avg"]),
-        "cpu_proc_max_pct": _fmt(cpu_p_stats["max"]),
         "cpu_sys_avg_pct": _fmt(cpu_s_stats["avg"]),
         "cpu_sys_max_pct": _fmt(cpu_s_stats["max"]),
     }
@@ -413,9 +408,37 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
     voltage_stats = _stats(voltages)
     power_stats = _stats(powers)
 
-    avg_power = power_stats["avg"]
-    # Simple 1-hour projection: E(Wh) = P_avg(W) * 1h.
-    energy_wh = avg_power
+    # Integrate power over the actually measured timeline using trapezoids.
+    # Result is exact for linear segments between samples and robust for uneven spacing.
+    time_power_pairs: List[tuple[float, float]] = []
+    for row in rows:
+        t = _to_float(row.get("Time", ""))
+        p = _to_float(row.get("Power", ""))
+        if t is None or p is None:
+            continue
+        time_power_pairs.append((t, p))
+
+    energy_wh: Optional[float] = None
+    if len(time_power_pairs) >= 2:
+        time_power_pairs.sort(key=lambda pair: pair[0])
+        energy_ws = 0.0
+        for (t0, p0), (t1, p1) in zip(time_power_pairs, time_power_pairs[1:]):
+            dt = t1 - t0
+            if dt <= 0:
+                continue
+            energy_ws += ((p0 + p1) / 2.0) * dt
+        energy_wh = energy_ws / 3600.0
+    elif power_stats["avg"] is not None and duration_seconds is not None:
+        # Fallback for sparse data: average power over measured duration.
+        energy_wh = power_stats["avg"] * (duration_seconds / 3600.0)
+
+    energy_wh_1h: Optional[float] = None
+    if energy_wh is not None and duration_seconds is not None and duration_seconds > 0:
+        energy_wh_1h = energy_wh * (3600.0 / duration_seconds)
+
+    estimated_runtime_h: Optional[float] = None
+    if energy_wh_1h is not None and energy_wh_1h > 0:
+        estimated_runtime_h = _calculate_duration(energy_wh_1h)
 
     return {
         "avg_current_a": _fmt(current_stats["avg"], 4),
@@ -429,6 +452,8 @@ def _electricity_stats(rows: List[Dict[str, str]]) -> Dict[str, str]:
         "max_power_w": _fmt(power_stats["max"], 4),
         "duration_min": _fmt(duration_minutes, 2),
         "energy_wh": _fmt(energy_wh, 4),
+        "energy_wh_1h": _fmt(energy_wh_1h, 4),
+        "estimated_runtime_h": _fmt(estimated_runtime_h, 2),
     }
 
 
@@ -436,14 +461,19 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
     """Builds a load-profile summary table for battery sizing at the top of the electricity section."""
     header_notes = [
         ("U_nom (V)",
-         "Nennspannung: Welche Spannung benötigt das System? (z.B. 5V, 12V). "
-         "Die Batterie muss diesen Bereich abdecken."),
+         "Nennspannung"),
         ("I_avg (A)",
          "Durchschnittsstrom"),
         ("I_max (A)",
-         "Spitzenstrom: Kann die Batterie diesen Strom liefern, ohne dass die Spannung einbricht?"),
+         "Spitzenstrom"),
+        ("t (min)",
+         "Messdauer in Minuten."),
         ("E (Wh)",
-            "Energiebedarf: Auf 1 Stunde hochgerechnet (E = P_avg * 1h)."),
+            "Energiebedarf während der tatsächlich gemessenen Zeit"),
+        ("E_1h (Wh)",
+            "Auf 1 Stunde normierter Energiebedarf (hoch/runtergerechnet)"),
+        ("Laufzeit (h)",
+            f"Geschätzte Laufzeit mit {E_USEABLE_POWER_SOURCE} Wh nutzbarer Energiequelle"),
     ]
 
     th_cells = "".join(
@@ -459,7 +489,10 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
             f"<td>{html.escape(s['avg_voltage_v'])}</td>"
             f"<td>{html.escape(s['avg_current_a'])}</td>"
             f"<td>{html.escape(s['max_current_a'])}</td>"
+            f"<td>{html.escape(s['duration_min'])}</td>"
             f"<td>{html.escape(s['energy_wh'])}</td>"
+            f"<td>{html.escape(s['energy_wh_1h'])}</td>"
+            f"<td>{html.escape(s['estimated_runtime_h'])}</td>"
             f"</tr>"
         )
 
@@ -496,6 +529,13 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
     times_a, current_values = _extract_electricity_series(rows, "Time", "Current")
     times_v, voltage_values = _extract_electricity_series(rows, "Time", "Voltage")
     times_w, power_values = _extract_electricity_series(rows, "Time", "Power")
+    sync_markers = None
+    if label == "Datenabgleich (Sync)":
+        sync_markers = [
+            (5 * 60.0, "Hotspot aktivieren"),
+            (20 * 60.0, "Daten-Sync"),
+            (35 * 60.0, "Hotspot deaktivieren"),
+        ]
 
     amp_svg = _generate_single_metric_svg(
         times=times_a,
@@ -503,6 +543,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Stromstärke – {label}",
         y_label="Stromstärke (A)",
         line_color="#E67E22",
+        markers=sync_markers,
     )
     volt_svg = _generate_single_metric_svg(
         times=times_v,
@@ -510,6 +551,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Spannung – {label}",
         y_label="Spannung (V)",
         line_color="#2980B9",
+        markers=sync_markers,
     )
     watt_svg = _generate_single_metric_svg(
         times=times_w,
@@ -517,6 +559,7 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
         title=f"Leistung – {label}",
         y_label="Leistung (W)",
         line_color="#27AE60",
+        markers=sync_markers,
     )
     return (
         '<div class="elec-charts-grid">'
@@ -527,20 +570,30 @@ def _generate_electricity_svgs(rows: List[Dict[str, str]], label: str) -> str:
     )
 
 
+def _calculate_duration(e_1h: float) -> float:
+    """Calculates the estimated runtime in hours based on normalized hourly energy demand."""
+    duration_hours = E_USEABLE_POWER_SOURCE / e_1h if e_1h != 0 else 0
+    return round(duration_hours, 2)
+
+
 def _build_electricity_section(electricity_dir: Path) -> str:
     """Builds the HTML section for electricity measurements."""
     if not electricity_dir.exists():
         return ""
 
     measurements = [
-        ("real_log.csv", "Normalbetrieb draußen (Real)"),
-        ("active_log.csv", "Durchgehende Analyse (Active)"),
-        ("idle_log.csv", "Ruhemodus (Idle)"),
+        ("real_log.csv", "Normalbetrieb draußen (Real)", False),
+        ("active_log.csv", "Durchgehende Analyse (Active)", False),
+        ("sync_log.csv", "Datenabgleich (Sync)", True),
+        ("display_log.csv", "Display-Aktualisierung", True),
+        ("gps_log.csv", "GPS-Aktivität", True),
+        ("gps_no_energy_safe_mode.csv", "GPS ohne Energy-Safe-Mode", True),
+        ("live_results_log.csv", "Live-Ergebnisse", True),
     ]
 
     # First pass: collect all stats for the load profile table
     all_stats: List[tuple[str, Dict[str, str]]] = []
-    for filename, label in measurements:
+    for filename, label, _optional in measurements:
         path = electricity_dir / filename
         if path.exists():
             all_stats.append((label, _electricity_stats(_read_electricity_file(path))))
@@ -548,9 +601,11 @@ def _build_electricity_section(electricity_dir: Path) -> str:
     load_profile_html = _generate_load_profile_html(all_stats) if all_stats else ""
 
     blocks = []
-    for filename, label in measurements:
+    for filename, label, optional in measurements:
         path = electricity_dir / filename
         if not path.exists():
+            if optional:
+                continue
             blocks.append(
                 f'<h3>{html.escape(label)}</h3>'
                 f'<p class="chart-missing">Datei nicht gefunden: {html.escape(filename)}</p>'
@@ -643,8 +698,6 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
         ("Total Reporting (s)", "Total Reporting (s)"),
         ("ram_avg_mb", "RAM Average (MB)"),
         ("ram_max_mb", "RAM Peak (MB)"),
-        ("cpu_proc_avg_pct", "CPU Process Avg (%)"),
-        ("cpu_proc_max_pct", "CPU Process Peak (%)"),
         ("cpu_sys_avg_pct", "CPU System Avg (%)"),
         ("cpu_sys_max_pct", "CPU System Peak (%)"),
         ("duration_s", "Test Duration (s)"),
@@ -688,8 +741,6 @@ def _build_html_report(
         "ram_max_mb",
         "used_ram_avg_pct",
         "used_ram_max_pct",
-        "cpu_proc_avg_pct",
-        "cpu_proc_max_pct",
         "cpu_sys_avg_pct",
         "cpu_sys_max_pct",
     ]
@@ -708,8 +759,6 @@ def _build_html_report(
         "Total Reporting (s)": "Total Reporting (s)",
         "ram_avg_mb": "RAM Avg (MB)",
         "ram_max_mb": "RAM Max (MB)",
-        "cpu_proc_avg_pct": "CPU Proc Avg (%)",
-        "cpu_proc_max_pct": "CPU Proc Max (%)",
         "cpu_sys_avg_pct": "CPU Sys Avg (%)",
         "cpu_sys_max_pct": "CPU Sys Max (%)",
         "duration_s": "Duration (s)",
@@ -760,7 +809,41 @@ def _build_html_report(
         chart_cell = f"<td>{row.get('_curve_svg', '')}</td>"
         body_rows.append(f"<tr>{metric_cells}{chart_cell}</tr>")
 
-    electricity_section_html = _build_electricity_section(electricity_dir) if electricity_dir else ""
+        electricity_section_html = _build_electricity_section(electricity_dir) if electricity_dir else ""
+
+        power_source_section_html = f"""
+        <section class="panel">
+            <h2>Grunddaten der Stromquelle</h2>
+            <div class="table-wrap">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Wert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kapazität</td>
+                            <td>{CAPACITY_POWER_SOURCE_AH:.2f} Ah</td>
+                        </tr>
+                        <tr>
+                            <td>Energieinhalt (nominal)</td>
+                            <td>{CAPACITY_POWER_SOURCE_WH:.2f} Wh</td>
+                        </tr>
+                        <tr>
+                            <td>Wirkungsgrad</td>
+                            <td>{EFFICIENCY_POWER_SOURCE * 100:.1f} %</td>
+                        </tr>
+                        <tr>
+                            <td>Nutzbare Energie</td>
+                            <td>{E_USEABLE_POWER_SOURCE:.2f} Wh</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        """
 
     html_content = f"""<!doctype html>
 <html lang="de">
@@ -899,6 +982,7 @@ def _build_html_report(
       <h2>Allgemeine Informationen</h2>
       <pre>{html.escape(metadata_block)}</pre>
     </section>
+    {power_source_section_html} 
     {electricity_section_html}
     {summary_section_html}
     <section class="panel table-wrap">
@@ -950,8 +1034,6 @@ def create_summary(metrics_file: Path, curves_dir: Path, output_file: Path) -> N
                     "ram_max_mb": "NA",
                     "used_ram_avg_pct": "NA",
                     "used_ram_max_pct": "NA",
-                    "cpu_proc_avg_pct": "NA",
-                    "cpu_proc_max_pct": "NA",
                     "cpu_sys_avg_pct": "NA",
                     "cpu_sys_max_pct": "NA",
                 }
