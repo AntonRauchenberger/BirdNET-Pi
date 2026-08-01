@@ -12,6 +12,7 @@ CAPACITY_POWER_SOURCE_AH = 20 # Ah
 CAPACITY_POWER_SOURCE_WH = 74 # Wh
 EFFICIENCY_POWER_SOURCE = 0.85
 E_USEABLE_POWER_SOURCE = CAPACITY_POWER_SOURCE_WH * EFFICIENCY_POWER_SOURCE
+PERFORMANCE_TIME_AXIS_SECONDS = 35.0
 
 ################################################################################
 # Paths and scenario helpers
@@ -188,6 +189,7 @@ def _generate_single_metric_svg(
     markers: Optional[List[tuple[float, str]]] = None,
     width: int = 520,
     height: int = 260,
+    time_axis_seconds: Optional[float] = None,
 ) -> str:
     """Generates one SVG line chart for a metric series."""
     if not times or not values:
@@ -197,13 +199,18 @@ def _generate_single_metric_svg(
     plot_w = width - left - right
     plot_h = height - top - bottom
 
-    x_min, x_max = min(times), max(times)
-    if math.isclose(x_min, x_max):
-        x_max = x_min + 1.0
+    if time_axis_seconds is None:
+        x_min, x_max = min(times), max(times)
+        if math.isclose(x_min, x_max):
+            x_max = x_min + 1.0
+    else:
+        x_min = 0.0
+        x_max = time_axis_seconds
     y_min, y_max = _scaled_range(min(values), max(values), 0.08)
 
     def map_x(x: float) -> float:
-        return left + ((x - x_min) / (x_max - x_min)) * plot_w
+        normalized_x = min(max(x, x_min), x_max)
+        return left + ((normalized_x - x_min) / (x_max - x_min)) * plot_w
 
     def map_y(y: float) -> float:
         return top + ((y_max - y) / (y_max - y_min)) * plot_h
@@ -215,7 +222,7 @@ def _generate_single_metric_svg(
     ]
 
     # Draw chart grid and axis ticks first, then data and overlays
-    x_ticks = 6
+    x_ticks = 5
     y_ticks = 5
     for i in range(x_ticks):
         ratio = i / (x_ticks - 1)
@@ -223,7 +230,7 @@ def _generate_single_metric_svg(
         x_val = x_min + ratio * (x_max - x_min)
         elements.append(f'<line x1="{x:.2f}" y1="{top}" x2="{x:.2f}" y2="{top + plot_h}" stroke="#ecf0f4"/>')
         elements.append(
-            f'<text x="{x:.2f}" y="{height - 24}" text-anchor="middle" font-size="11" fill="#4b5a6a">{x_val:.1f}</text>'
+            f'<text x="{x:.2f}" y="{height - 24}" text-anchor="middle" font-size="11" fill="#4b5a6a">{x_val:.0f}</text>'
         )
 
     for i in range(y_ticks):
@@ -271,6 +278,7 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
         y_label="CPU-Auslastung gesamt (%)",
         line_color="#009E73",
         phase_markers=phase_markers,
+        time_axis_seconds=PERFORMANCE_TIME_AXIS_SECONDS,
     )
     used_ram_svg = _generate_single_metric_svg(
         times=times_used_ram,
@@ -279,6 +287,7 @@ def _generate_svg(curve_rows: List[Dict[str, str]]) -> str:
         y_label="RAM-Auslastung gesamt (%)",
         line_color="#CC79A7",
         phase_markers=phase_markers,
+        time_axis_seconds=PERFORMANCE_TIME_AXIS_SECONDS,
     )
     return (
         '<div class="charts-grid">'
@@ -470,8 +479,8 @@ def _generate_load_profile_html(measurement_stats: List[tuple[str, Dict[str, str
          "Messdauer in Minuten."),
         ("E (Wh)",
             "Energiebedarf während der tatsächlich gemessenen Zeit"),
-        ("E_1h (Wh)",
-            "Auf 1 Stunde normierter Energiebedarf (hoch/runtergerechnet)"),
+        ("P_avg (W)",
+            "Durchschnittliche Leistung (auf 1 Stunde normiert)"),
         ("Laufzeit (h)",
             f"Geschätzte Laufzeit mit {E_USEABLE_POWER_SOURCE} Wh nutzbarer Energiequelle"),
     ]
@@ -721,6 +730,13 @@ def _generate_aggregated_summary_stats(merged_rows: List[Dict[str, str]]) -> Dic
 ################################################################################
 # HTML report assembly
 ################################################################################
+def _clean_metadata_block(metadata_block: str) -> str:
+    """Removes unwanted metadata lines from the report header."""
+    return "\n".join(
+        line for line in metadata_block.splitlines() if "project size" not in line.lower()
+    )
+
+
 def _build_html_report(
     metadata_block: str,
     metric_columns: List[str],
@@ -731,6 +747,7 @@ def _build_html_report(
 ) -> None:
     """Builds and writes the final HTML report with tables and SVG charts."""
     metric_columns = [col for col in metric_columns if "p95" not in col.lower()]    # ignore percentile columns, maybe used for later
+    metadata_block = _clean_metadata_block(metadata_block)
 
     summary_columns = [
         "samples",
